@@ -1,0 +1,38 @@
+package pl.sroki.cci.android.ui.catalog.caps.quicksearch
+
+import androidx.compose.material.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.runtime.Composable
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.paging.compose.collectAsLazyPagingItems
+import pl.sroki.cci.android.model.Cap
+import pl.sroki.cci.android.ui.catalog.caps.CapsView
+
+@Composable
+fun QuickSearchScreen(
+    query: String,
+    onBack: () -> Unit,
+    onCapClick: (Cap) -> Unit,
+) {
+    val viewModel = hiltViewModel<QuickSearchViewModel>()
+    viewModel.query = query
+
+    val caps = viewModel.caps.collectAsLazyPagingItems()
+
+    Scaffold(topBar = {
+        TopAppBar(
+            title = { Text(text = query) },
+            navigationIcon = {
+                IconButton(onClick = onBack) {
+                    Icon(
+                        imageVector = Icons.Filled.ArrowBack,
+                        contentDescription = "Back"
+                    )
+                }
+            }
+        )
+    }) { innerPadding ->
+        CapsView(caps = caps, onCapClick = onCapClick)
+    }
+}
