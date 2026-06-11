@@ -4,6 +4,8 @@ import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -14,6 +16,8 @@ import org.junit.runner.RunWith
 import pl.sroki.cci.android.data.datasource.local.CciDatabase
 import pl.sroki.cci.android.data.datasource.local.entity.BinderPage
 import pl.sroki.cci.android.data.datasource.local.entity.CapPosition
+import pl.sroki.cci.android.data.datasource.remote.firestore.BinderFirestoreService
+import pl.sroki.cci.android.data.datasource.remote.firestore.BinderPageFirestoreService
 
 @RunWith(AndroidJUnit4::class)
 class BinderRepositoryTest {
@@ -27,7 +31,15 @@ class BinderRepositoryTest {
         db = Room.inMemoryDatabaseBuilder(ctx, CciDatabase::class.java)
             .allowMainThreadQueries()
             .build()
-        repo = BinderRepository(db.binderDao(), db.capPositionDao())
+        val firestore = FirebaseFirestore.getInstance()
+        repo = BinderRepository(
+            binderDao = db.binderDao(),
+            binderPageDao = db.binderPageDao(),
+            capPositionDao = db.capPositionDao(),
+            binderFirestoreService = BinderFirestoreService(firestore),
+            binderPageFirestoreService = BinderPageFirestoreService(firestore),
+            authManager = FirebaseAuthManager(FirebaseAuth.getInstance())
+        )
     }
 
     @After

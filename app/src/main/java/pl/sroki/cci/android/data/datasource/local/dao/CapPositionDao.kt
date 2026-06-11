@@ -43,4 +43,10 @@ interface CapPositionDao {
         deleteByCapId(capId)
         insert(CapPosition(binderPageId = newBinderPageId, position = newPosition, capId = capId))
     }
+
+    @Transaction
+    suspend fun reassignFull(capId: Long, newPos: CapPosition) {
+        deleteByCapId(capId)
+        insert(newPos)
+    }
 }

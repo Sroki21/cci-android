@@ -20,4 +20,7 @@ interface BinderPageDao {
 
     @Query("SELECT COUNT(*) FROM binder_page WHERE binder_id = :binderId")
     suspend fun countByBinderId(binderId: Long): Int
+
+    @Query("SELECT * FROM binder_page WHERE id = :id LIMIT 1")
+    suspend fun getById(id: Long): BinderPage?
 }

@@ -5,6 +5,8 @@ import android.database.sqlite.SQLiteConstraintException
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -17,6 +19,7 @@ import org.junit.runner.RunWith
 import pl.sroki.cci.android.data.datasource.local.CciDatabase
 import pl.sroki.cci.android.data.datasource.local.entity.Binder
 import pl.sroki.cci.android.data.datasource.local.entity.BinderPage
+import pl.sroki.cci.android.data.datasource.remote.firestore.CapPositionFirestoreService
 
 @RunWith(AndroidJUnit4::class)
 class CapPositionRepositoryTest {
@@ -31,7 +34,12 @@ class CapPositionRepositoryTest {
         db = Room.inMemoryDatabaseBuilder(ctx, CciDatabase::class.java)
             .allowMainThreadQueries()
             .build()
-        repo = CapPositionRepository(db.capPositionDao())
+        repo = CapPositionRepository(
+            dao = db.capPositionDao(),
+            binderPageDao = db.binderPageDao(),
+            capPositionFirestoreService = CapPositionFirestoreService(FirebaseFirestore.getInstance()),
+            authManager = FirebaseAuthManager(FirebaseAuth.getInstance())
+        )
         val binderId = db.binderDao().insert(Binder(name = "Test"))
         binderPageId = db.binderPageDao().insert(BinderPage(binderId = binderId, pageNumber = 1))
     }

@@ -599,28 +599,28 @@ użytkownik może ręcznie odtworzyć dane lub zaakceptować że stare dane nie 
 
 #### Automated
 
-- [x] 1.1 Kompilacja: `./gradlew :app:compileDebugKotlin`
-- [x] 1.2 KSP: `./gradlew :app:kspDebugKotlin`
-- [x] 1.3 MigrationTest: `./gradlew :app:connectedDebugAndroidTest`
-- [x] 1.4 Ktlint: `./gradlew :app:ktlintCheck`
+- [x] 1.1 Kompilacja: `./gradlew :app:compileDebugKotlin` — a503fa5
+- [x] 1.2 KSP: `./gradlew :app:kspDebugKotlin` — a503fa5
+- [x] 1.3 MigrationTest: `./gradlew :app:connectedDebugAndroidTest` — a503fa5
+- [x] 1.4 Ktlint: `./gradlew :app:ktlintCheck` — a503fa5
 
 #### Manual
 
-- [x] 1.5 Aplikacja uruchamia się bez crasha — Logcat czysty
-- [x] 1.6 Firebase Console → anonimowy użytkownik pojawia się po pierwszym uruchomieniu
+- [x] 1.5 Aplikacja uruchamia się bez crasha — Logcat czysty — a503fa5
+- [x] 1.6 Firebase Console → anonimowy użytkownik pojawia się po pierwszym uruchomieniu — a503fa5
 
 ### Phase 2: Write-through sync
 
 #### Automated
 
-- [ ] 2.1 Kompilacja: `./gradlew :app:compileDebugKotlin`
+- [x] 2.1 Kompilacja: `./gradlew :app:compileDebugKotlin`
 - [ ] 2.2 FirestoreWriteThroughTest (emulator): `./gradlew :app:connectedDebugAndroidTest`
-- [ ] 2.3 Ktlint: `./gradlew :app:ktlintCheck`
+- [x] 2.3 Ktlint: `./gradlew :app:ktlintCheck`
 
 #### Manual
 
-- [ ] 2.4 Firebase Console: utwórz klaser → dokument w `users/{uid}/binders`
-- [ ] 2.5 Firebase Console: usuń klaser → dokument usunięty z Firestore
+- [x] 2.4 Firebase Console: utwórz klaser → dokument w `users/{uid}/binders`
+- [x] 2.5 Firebase Console: usuń klaser → dokument usunięty z Firestore
 
 ### Phase 3: Initial pull / restore
 
