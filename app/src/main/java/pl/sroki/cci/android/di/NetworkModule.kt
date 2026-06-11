@@ -27,6 +27,7 @@ import pl.sroki.cci.android.data.datasource.remote.auth.CsrfInterceptor
 import pl.sroki.cci.android.data.datasource.remote.auth.SessionAuthenticator
 import retrofit2.Converter
 import retrofit2.Retrofit
+import javax.inject.Named
 import javax.inject.Singleton
 
 @Module
@@ -75,7 +76,7 @@ object NetworkModule {
             .addInterceptor(CsrfInterceptor(cookieJar))
             .authenticator(authenticator)
         if (BuildConfig.DEBUG) {
-            builder.addInterceptor(
+            builder.addNetworkInterceptor(
                 HttpLoggingInterceptor().apply { level = HttpLoggingInterceptor.Level.BODY }
             )
         }
@@ -114,9 +115,47 @@ object NetworkModule {
         return retrofit.create(CapApiService::class.java)
     }
 
+    // Osobny klient dla endpointów auth — nie śledzi redirectów (302 po POST /auth/login
+    // to sukces; śledzenie redirectu do GET / nadpisywało uwierzytelnioną sesję gościnną).
     @Singleton
     @Provides
-    fun provideAuthApiService(retrofit: Retrofit): AuthApiService {
+    @Named("auth")
+    fun provideAuthOkHttpClient(
+        cookieJar: PersistentCookieJar,
+        sessionRepository: SessionRepository
+    ): OkHttpClient {
+        val builder = OkHttpClient.Builder()
+            .cookieJar(cookieJar)
+            .addInterceptor(AcceptJsonInterceptor())
+            .addInterceptor(BearerTokenInterceptor(sessionRepository))
+            .addInterceptor(CsrfInterceptor(cookieJar))
+            .followRedirects(false)
+        if (BuildConfig.DEBUG) {
+            builder.addNetworkInterceptor(
+                HttpLoggingInterceptor().apply { level = HttpLoggingInterceptor.Level.BODY }
+            )
+        }
+        return builder.build()
+    }
+
+    @Singleton
+    @Provides
+    @Named("auth")
+    fun provideAuthRetrofit(
+        baseUrl: String,
+        converterFactory: Converter.Factory,
+        @Named("auth") authOkHttpClient: OkHttpClient
+    ): Retrofit {
+        return Retrofit.Builder()
+            .baseUrl(baseUrl)
+            .addConverterFactory(converterFactory)
+            .client(authOkHttpClient)
+            .build()
+    }
+
+    @Singleton
+    @Provides
+    fun provideAuthApiService(@Named("auth") retrofit: Retrofit): AuthApiService {
         return retrofit.create(AuthApiService::class.java)
     }
 }

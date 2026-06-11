@@ -35,12 +35,20 @@ class AuthRepository @Inject constructor(
                 200 -> {
                     sessionRepository.setLoggedIn(true)
                     sessionRepository.setUserName(email)
-                    try {
-                        val bodyStr = response.body()?.string()
-                        if (!bodyStr.isNullOrBlank() && bodyStr.trimStart().startsWith('{')) {
-                            sessionRepository.setToken(json.decodeFromString<LoginResponse>(bodyStr).token)
-                        }
-                    } catch (e: Exception) { /* brak tokenu w odpowiedzi, kontynuuj */ }
+                    val bodyStr = try { response.body()?.string() } catch (e: Exception) { null }
+                    if (!bodyStr.isNullOrBlank() && bodyStr.trimStart().startsWith('{')) {
+                        try {
+                            val token = json.decodeFromString<LoginResponse>(bodyStr).token
+                            sessionRepository.setToken(token)
+                        } catch (e: Exception) { /* brak tokenu w odpowiedzi */ }
+                    }
+                    Result.success(Unit)
+                }
+                302 -> {
+                    // Serwer zwraca redirect po udanym logowaniu webowym;
+                    // CookieJar zapisał już uwierzytelnioną sesję z tej odpowiedzi.
+                    sessionRepository.setLoggedIn(true)
+                    sessionRepository.setUserName(email)
                     Result.success(Unit)
                 }
                 422 -> {

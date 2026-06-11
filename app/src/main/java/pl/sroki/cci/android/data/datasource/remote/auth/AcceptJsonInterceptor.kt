@@ -7,7 +7,8 @@ class AcceptJsonInterceptor : Interceptor {
     override fun intercept(chain: Interceptor.Chain): Response {
         val request = chain.request().newBuilder()
             .header("Accept", "application/json")
-            .header("Referer", "https://crowncaps.info/")
+            .header("Origin", "http://localhost:3000")
+            .header("Referer", "http://localhost:3000/")
             .build()
         return chain.proceed(request)
     }
