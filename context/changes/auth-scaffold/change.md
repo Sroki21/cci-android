@@ -1,7 +1,7 @@
 ---
 id: auth-scaffold
 title: Auth scaffold — logowanie kontem crowncaps.info
-status: implementing
+status: implemented
 created: 2026-06-11
 updated: 2026-06-11
 roadmap_ref: F-01

@@ -510,14 +510,14 @@ transparentny dla anonimowych wywołań.
 
 #### Automated
 
-- [x] 3.1 Projekt kompiluje się bez błędów: `./gradlew :app:compileDebugKotlin`
-- [x] 3.2 Brak błędów Hilt: `./gradlew :app:kspDebugKotlin`
-- [x] 3.3 Lint: `./gradlew :app:ktlintCheck`
+- [x] 3.1 Projekt kompiluje się bez błędów: `./gradlew :app:compileDebugKotlin` — 3e9b418
+- [x] 3.2 Brak błędów Hilt: `./gradlew :app:kspDebugKotlin` — 3e9b418
+- [x] 3.3 Lint: `./gradlew :app:ktlintCheck` — 3e9b418
 
 #### Manual
 
-- [x] 3.4 Nawigacja do `Screen.Login` wyświetla ekran logowania
-- [x] 3.5 Błędne dane → komunikat błędu z API
-- [x] 3.6 Poprawne dane → Loading → sukces → powrót do poprzedniego ekranu
-- [x] 3.7 Po zalogowaniu i restarcie aplikacji `SessionRepository.isLoggedIn = true`
-- [x] 3.8 Kapsle w LatestCaps po zalogowaniu mają `isInCollection = true` dla posiadanych (Logcat)
+- [x] 3.4 Nawigacja do `Screen.Login` wyświetla ekran logowania — 3e9b418
+- [x] 3.5 Błędne dane → komunikat błędu z API — 3e9b418
+- [x] 3.6 Poprawne dane → Loading → sukces → powrót do poprzedniego ekranu — 3e9b418
+- [x] 3.7 Po zalogowaniu i restarcie aplikacji `SessionRepository.isLoggedIn = true` — 3e9b418
+- [x] 3.8 Kapsle w LatestCaps po zalogowaniu mają `isInCollection = true` dla posiadanych (Logcat) — 3e9b418
