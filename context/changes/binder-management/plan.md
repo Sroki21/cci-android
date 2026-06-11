@@ -253,28 +253,28 @@ Testy:
 
 #### Automated
 
-- [x] 1.1 Kompilacja: `./gradlew :app:compileDebugKotlin`
-- [x] 1.2 KSP (Hilt): `./gradlew :app:kspDebugKotlin`
-- [x] 1.3 Ktlint: `./gradlew :app:ktlintCheck`
+- [x] 1.1 Kompilacja: `./gradlew :app:compileDebugKotlin` — 8246197
+- [x] 1.2 KSP (Hilt): `./gradlew :app:kspDebugKotlin` — 8246197
+- [x] 1.3 Ktlint: `./gradlew :app:ktlintCheck` — 8246197
 
 #### Manual
 
-- [x] 1.4 Aplikacja uruchamia się bez crasha
-- [x] 1.5 HomeScreen → wpis "Klasery" widoczny
-- [x] 1.6 Nawigacja do BindersScreen (stub) działa, Back wraca
+- [x] 1.4 Aplikacja uruchamia się bez crasha — 8246197
+- [x] 1.5 HomeScreen → wpis "Klasery" widoczny — 8246197
+- [x] 1.6 Nawigacja do BindersScreen (stub) działa, Back wraca — 8246197
 
 ### Phase 2: Pełne UI + testy
 
 #### Automated
 
-- [ ] 2.1 Kompilacja: `./gradlew :app:compileDebugKotlin`
-- [ ] 2.2 Testy JVM: `./gradlew :app:testDebugUnitTest`
-- [ ] 2.3 Ktlint: `./gradlew :app:ktlintCheck`
+- [x] 2.1 Kompilacja: `./gradlew :app:compileDebugKotlin`
+- [x] 2.2 Testy JVM: `./gradlew :app:testDebugUnitTest`
+- [x] 2.3 Ktlint: `./gradlew :app:ktlintCheck`
 
 #### Manual
 
-- [ ] 2.4 Tworzenie klasera przez FAB + dialog
-- [ ] 2.5 Rozwijanie/zwijanie klasera, widok stron
-- [ ] 2.6 Dodawanie strony, limit 15 → Snackbar
-- [ ] 2.7 Usuwanie strony i klasera przez dialog potwierdzenia
-- [ ] 2.8 Brak crasha / ANR przy wszystkich operacjach
+- [x] 2.4 Tworzenie klasera przez FAB + dialog
+- [x] 2.5 Rozwijanie/zwijanie klasera, widok stron
+- [x] 2.6 Dodawanie strony, limit 15 → Snackbar
+- [x] 2.7 Usuwanie strony i klasera przez dialog potwierdzenia
+- [x] 2.8 Brak crasha / ANR przy wszystkich operacjach
