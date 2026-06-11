@@ -11,14 +11,17 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import kotlinx.serialization.json.Json
+import okhttp3.Authenticator
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
+import pl.sroki.cci.android.data.SessionRepository
 import pl.sroki.cci.android.data.datasource.remote.CapApiService
 import pl.sroki.cci.android.data.datasource.remote.CategoryApiService
 import pl.sroki.cci.android.data.datasource.remote.CountryApiService
 import pl.sroki.cci.android.data.datasource.remote.auth.AcceptJsonInterceptor
 import pl.sroki.cci.android.data.datasource.remote.auth.AuthApiService
 import pl.sroki.cci.android.data.datasource.remote.auth.CsrfInterceptor
+import pl.sroki.cci.android.data.datasource.remote.auth.SessionAuthenticator
 import retrofit2.Converter
 import retrofit2.Retrofit
 import javax.inject.Singleton
@@ -48,11 +51,21 @@ object NetworkModule {
 
     @Singleton
     @Provides
-    fun provideOkHttpClient(cookieJar: PersistentCookieJar): OkHttpClient {
+    fun provideSessionAuthenticator(
+        cookieJar: PersistentCookieJar,
+        sessionRepository: SessionRepository
+    ): Authenticator {
+        return SessionAuthenticator(cookieJar, sessionRepository)
+    }
+
+    @Singleton
+    @Provides
+    fun provideOkHttpClient(cookieJar: PersistentCookieJar, authenticator: Authenticator): OkHttpClient {
         return OkHttpClient.Builder()
             .cookieJar(cookieJar)
             .addInterceptor(AcceptJsonInterceptor())
             .addInterceptor(CsrfInterceptor(cookieJar))
+            .authenticator(authenticator)
             .build()
     }
 

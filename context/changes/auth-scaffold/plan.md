@@ -485,26 +485,26 @@ transparentny dla anonimowych wywołań.
 
 #### Automated
 
-- [x] 1.1 Projekt kompiluje się bez błędów: `./gradlew :app:compileDebugKotlin`
-- [x] 1.2 Brak błędów Hilt: `./gradlew :app:kspDebugKotlin`
-- [x] 1.3 Lint przechodzi: `./gradlew :app:ktlintCheck`
+- [x] 1.1 Projekt kompiluje się bez błędów: `./gradlew :app:compileDebugKotlin` — 5670917
+- [x] 1.2 Brak błędów Hilt: `./gradlew :app:kspDebugKotlin` — 5670917
+- [x] 1.3 Lint przechodzi: `./gradlew :app:ktlintCheck` — 5670917
 
 #### Manual
 
-- [x] 1.4 Aplikacja uruchamia się bez crash na zimnym starcie
-- [x] 1.5 Istniejące ekrany działają bez regresji (Home, Countries, CapDetail ładują kapsle normalnie)
+- [x] 1.4 Aplikacja uruchamia się bez crash na zimnym starcie — 5670917
+- [x] 1.5 Istniejące ekrany działają bez regresji (Home, Countries, CapDetail ładują kapsle normalnie) — 5670917
 
 ### Phase 2: Auth Domain Layer
 
 #### Automated
 
-- [ ] 2.1 Testy jednostkowe przechodzą: `./gradlew :app:test`
-- [ ] 2.2 Projekt kompiluje się: `./gradlew :app:compileDebugKotlin`
+- [x] 2.1 Testy jednostkowe przechodzą: `./gradlew :app:test`
+- [x] 2.2 Projekt kompiluje się: `./gradlew :app:compileDebugKotlin`
 
 #### Manual
 
-- [ ] 2.3 Logcat przy starcie: brak błędów Hilt, `AuthRepository` inicjalizuje się poprawnie
-- [ ] 2.4 `SessionRepository.isLoggedIn = false` przy pierwszym uruchomieniu (brak ciasteczek)
+- [x] 2.3 Logcat przy starcie: brak błędów Hilt, `AuthRepository` inicjalizuje się poprawnie
+- [x] 2.4 `SessionRepository.isLoggedIn = false` przy pierwszym uruchomieniu (brak ciasteczek)
 
 ### Phase 3: Login UI
 
