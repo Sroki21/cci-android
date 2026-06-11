@@ -34,6 +34,7 @@ class AuthRepository @Inject constructor(
                 200 -> {
                     sessionRepository.setLoggedIn(true)
                     sessionRepository.setUserName(email)
+                    sessionRepository.setToken(response.body()?.token)
                     Result.success(Unit)
                 }
                 422 -> {
@@ -53,5 +54,6 @@ class AuthRepository @Inject constructor(
         cookieJar.clear()
         sessionRepository.setLoggedIn(false)
         sessionRepository.setUserName(null)
+        sessionRepository.setToken(null)
     }
 }

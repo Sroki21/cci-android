@@ -1,6 +1,7 @@
 package pl.sroki.cci.android.data.datasource.remote.auth
 
 import pl.sroki.cci.android.model.LoginRequest
+import pl.sroki.cci.android.model.LoginResponse
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.GET
@@ -12,7 +13,7 @@ interface AuthApiService {
     suspend fun initCsrf(): Response<Unit>
 
     @POST("auth/login")
-    suspend fun login(@Body body: LoginRequest): Response<Unit>
+    suspend fun login(@Body body: LoginRequest): Response<LoginResponse>
 
     @POST("logout")
     suspend fun logout(): Response<Unit>

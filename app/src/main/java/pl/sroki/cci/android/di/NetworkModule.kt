@@ -20,6 +20,7 @@ import pl.sroki.cci.android.data.datasource.remote.CategoryApiService
 import pl.sroki.cci.android.data.datasource.remote.CountryApiService
 import pl.sroki.cci.android.data.datasource.remote.auth.AcceptJsonInterceptor
 import pl.sroki.cci.android.data.datasource.remote.auth.AuthApiService
+import pl.sroki.cci.android.data.datasource.remote.auth.BearerTokenInterceptor
 import pl.sroki.cci.android.data.datasource.remote.auth.CsrfInterceptor
 import pl.sroki.cci.android.data.datasource.remote.auth.SessionAuthenticator
 import retrofit2.Converter
@@ -60,10 +61,15 @@ object NetworkModule {
 
     @Singleton
     @Provides
-    fun provideOkHttpClient(cookieJar: PersistentCookieJar, authenticator: Authenticator): OkHttpClient {
+    fun provideOkHttpClient(
+        cookieJar: PersistentCookieJar,
+        authenticator: Authenticator,
+        sessionRepository: SessionRepository
+    ): OkHttpClient {
         return OkHttpClient.Builder()
             .cookieJar(cookieJar)
             .addInterceptor(AcceptJsonInterceptor())
+            .addInterceptor(BearerTokenInterceptor(sessionRepository))
             .addInterceptor(CsrfInterceptor(cookieJar))
             .authenticator(authenticator)
             .build()

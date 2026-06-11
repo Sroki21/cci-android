@@ -15,4 +15,8 @@ class SessionRepository @Inject constructor() {
     private val _userName = MutableStateFlow<String?>(null)
     val userName: StateFlow<String?> = _userName.asStateFlow()
     fun setUserName(value: String?) { _userName.value = value }
+
+    private val _token = MutableStateFlow<String?>(null)
+    val token: StateFlow<String?> = _token.asStateFlow()
+    fun setToken(value: String?) { _token.value = value }
 }
