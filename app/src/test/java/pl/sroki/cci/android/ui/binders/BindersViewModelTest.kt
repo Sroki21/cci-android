@@ -6,6 +6,7 @@ import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
@@ -60,7 +61,7 @@ class BindersViewModelTest {
 
         viewModel.createBinder("")
 
-        val event = viewModel.events.first()
+        val event = withTimeout(1_000) { viewModel.events.first() }
         assertTrue(event is BindersEvent.ShowSnackbar)
     }
 
@@ -71,7 +72,7 @@ class BindersViewModelTest {
         viewModel.requestDeleteBinder(42L)
         viewModel.confirmDeleteBinder()
 
-        val event = viewModel.events.first()
+        val event = withTimeout(1_000) { viewModel.events.first() }
         assertTrue(event is BindersEvent.ShowSnackbar)
     }
 
@@ -81,7 +82,7 @@ class BindersViewModelTest {
 
         viewModel.addPage(1L)
 
-        val event = viewModel.events.first()
+        val event = withTimeout(1_000) { viewModel.events.first() }
         assertTrue(event is BindersEvent.ShowSnackbar)
     }
 

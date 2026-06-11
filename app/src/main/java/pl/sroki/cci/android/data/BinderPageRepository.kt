@@ -1,7 +1,9 @@
 package pl.sroki.cci.android.data
 
+import androidx.room.withTransaction
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import pl.sroki.cci.android.data.datasource.local.CciDatabase
 import pl.sroki.cci.android.data.datasource.local.dao.BinderDao
 import pl.sroki.cci.android.data.datasource.local.dao.BinderPageDao
 import pl.sroki.cci.android.data.datasource.local.dao.CapPositionDao
@@ -13,6 +15,7 @@ import javax.inject.Singleton
 
 @Singleton
 class BinderPageRepository @Inject constructor(
+    private val db: CciDatabase,
     private val dao: BinderPageDao,
     private val binderDao: BinderDao,
     private val capPositionDao: CapPositionDao,
@@ -23,16 +26,18 @@ class BinderPageRepository @Inject constructor(
     fun getByBinder(binderId: Long): Flow<List<BinderPage>> = dao.getByBinderId(binderId)
 
     suspend fun addPage(binderId: Long): Long {
-        val count = dao.countByBinderId(binderId)
-        check(count < 15) { "Klaser może mieć maksymalnie 15 stron" }
         val uid = authManager.uid.value
-        val firestoreId = if (uid != null) {
-            val binder = binderDao.getById(binderId)
-            binder?.firestoreId?.let { binderFirestoreId ->
-                binderPageFirestoreService.scheduleCreate(uid, binderFirestoreId, count + 1)
-            }
-        } else null
-        return dao.insert(BinderPage(binderId = binderId, pageNumber = count + 1, firestoreId = firestoreId))
+        return db.withTransaction {
+            val count = dao.countByBinderId(binderId)
+            check(count < 15) { "Klaser może mieć maksymalnie 15 stron" }
+            val firestoreId = if (uid != null) {
+                val binder = binderDao.getById(binderId)
+                binder?.firestoreId?.let { binderFirestoreId ->
+                    binderPageFirestoreService.scheduleCreate(uid, binderFirestoreId, count + 1)
+                }
+            } else null
+            dao.insert(BinderPage(binderId = binderId, pageNumber = count + 1, firestoreId = firestoreId))
+        }
     }
 
     suspend fun deletePage(pageId: Long) {

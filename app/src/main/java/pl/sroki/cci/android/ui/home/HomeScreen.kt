@@ -59,7 +59,7 @@ fun HomeScreen(
             NavigationItem(text = "Countries", icon = Icons.Filled.Place) {
                 onClick(Screen.Countries)
             }
-            NavigationItem(text = "Klasery", icon = Icons.Filled.Folder) {
+            NavigationItem(text = "Klasery", icon = Icons.Filled.FolderOpen) {
                 onClick(Screen.Binders)
             }
         }

@@ -82,6 +82,7 @@ fun BindersScreen(onBack: () -> Unit) {
                     binder = binder,
                     expanded = expanded,
                     pages = pages,
+                    isLoading = uiState.isLoading,
                     onToggle = { vm.toggleExpand(binder.id) },
                     onDeleteBinder = { vm.requestDeleteBinder(binder.id) },
                     onAddPage = { vm.addPage(binder.id) },
@@ -94,7 +95,8 @@ fun BindersScreen(onBack: () -> Unit) {
     if (uiState.isCreateDialogOpen) {
         CreateBinderDialog(
             onDismiss = vm::dismissCreateDialog,
-            onCreate = vm::createBinder
+            onCreate = vm::createBinder,
+            isLoading = uiState.isLoading
         )
     }
 
@@ -132,6 +134,7 @@ private fun ExpandableBinderRow(
     binder: Binder,
     expanded: Boolean,
     pages: List<BinderPage>,
+    isLoading: Boolean,
     onToggle: () -> Unit,
     onDeleteBinder: () -> Unit,
     onAddPage: () -> Unit,
@@ -171,6 +174,7 @@ private fun ExpandableBinderRow(
             }
             TextButton(
                 onClick = onAddPage,
+                enabled = !isLoading,
                 modifier = Modifier.padding(start = 24.dp)
             ) {
                 Text("Dodaj stronę")
@@ -183,6 +187,7 @@ private fun ExpandableBinderRow(
 private fun CreateBinderDialog(
     onDismiss: () -> Unit,
     onCreate: (String) -> Unit,
+    isLoading: Boolean = false,
 ) {
     var name by remember { mutableStateOf("") }
     AlertDialog(
@@ -199,7 +204,7 @@ private fun CreateBinderDialog(
         confirmButton = {
             TextButton(
                 onClick = { onCreate(name) },
-                enabled = name.isNotBlank()
+                enabled = name.isNotBlank() && !isLoading
             ) { Text("Zapisz") }
         },
         dismissButton = {

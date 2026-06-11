@@ -23,6 +23,7 @@ data class BindersUiState(
     val expandedBinderIds: Set<Long> = emptySet(),
     val binderPages: Map<Long, List<BinderPage>> = emptyMap(),
     val isCreateDialogOpen: Boolean = false,
+    val isLoading: Boolean = false,
     val deleteBinderConfirmId: Long? = null,
     val deletePageConfirmId: Long? = null
 )
@@ -46,9 +47,20 @@ class BindersViewModel @Inject constructor(
     private val pageJobs = mutableMapOf<Long, Job>()
 
     init {
+        var previousIds = emptySet<Long>()
         viewModelScope.launch {
             binderRepository.getAll().collect { binders ->
-                _uiState.update { it.copy(binders = binders) }
+                val newIds = binders.map { it.id }.toSet()
+                val removedIds = previousIds - newIds
+                removedIds.forEach { id -> pageJobs.remove(id)?.cancel() }
+                _uiState.update { state ->
+                    state.copy(
+                        binders = binders,
+                        expandedBinderIds = state.expandedBinderIds - removedIds,
+                        binderPages = state.binderPages - removedIds
+                    )
+                }
+                previousIds = newIds
             }
         }
     }
@@ -74,11 +86,16 @@ class BindersViewModel @Inject constructor(
 
     fun createBinder(name: String) {
         viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
             try {
                 binderRepository.create(name)
                 _uiState.update { it.copy(isCreateDialogOpen = false) }
             } catch (e: IllegalArgumentException) {
                 _events.send(BindersEvent.ShowSnackbar(e.message ?: "Błąd"))
+            } catch (e: Exception) {
+                _events.send(BindersEvent.ShowSnackbar("Nie udało się utworzyć klasera"))
+            } finally {
+                _uiState.update { it.copy(isLoading = false) }
             }
         }
     }
@@ -96,6 +113,8 @@ class BindersViewModel @Inject constructor(
                 _uiState.update { it.copy(binderPages = it.binderPages - binderId) }
             } catch (e: IllegalStateException) {
                 _events.send(BindersEvent.ShowSnackbar(e.message ?: "Błąd"))
+            } catch (e: Exception) {
+                _events.send(BindersEvent.ShowSnackbar("Nie udało się usunąć klasera"))
             }
         }
     }
@@ -104,10 +123,15 @@ class BindersViewModel @Inject constructor(
 
     fun addPage(binderId: Long) {
         viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
             try {
                 binderPageRepository.addPage(binderId)
             } catch (e: IllegalStateException) {
                 _events.send(BindersEvent.ShowSnackbar(e.message ?: "Błąd"))
+            } catch (e: Exception) {
+                _events.send(BindersEvent.ShowSnackbar("Nie udało się dodać strony"))
+            } finally {
+                _uiState.update { it.copy(isLoading = false) }
             }
         }
     }
@@ -121,8 +145,8 @@ class BindersViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 binderPageRepository.deletePage(pageId)
-            } catch (e: IllegalStateException) {
-                _events.send(BindersEvent.ShowSnackbar(e.message ?: "Błąd"))
+            } catch (e: Exception) {
+                _events.send(BindersEvent.ShowSnackbar(e.message ?: "Nie udało się usunąć strony"))
             }
         }
     }
