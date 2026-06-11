@@ -42,19 +42,21 @@ fun Countries(
             }
         )
     }) { innerPadding ->
-        when (countriesUiState) {
-            is CountriesUiState.Loading -> FullSizeLoader()
-            is CountriesUiState.Success -> LazyColumn(
-                modifier = modifier.fillMaxSize()
-            ) {
-                itemsIndexed(countriesUiState.countries) { _, country ->
-                    CountryItem(
-                        country = country,
-                        onClick = { onCountryClick(country) }
-                    )
+        Box(Modifier.padding(innerPadding)) {
+            when (countriesUiState) {
+                is CountriesUiState.Loading -> FullSizeLoader()
+                is CountriesUiState.Success -> LazyColumn(
+                    modifier = modifier.fillMaxSize()
+                ) {
+                    itemsIndexed(countriesUiState.countries) { _, country ->
+                        CountryItem(
+                            country = country,
+                            onClick = { onCountryClick(country) }
+                        )
+                    }
                 }
+                is CountriesUiState.Error -> Text("Error")
             }
-            is CountriesUiState.Error -> Text("Error")
         }
     }
 }

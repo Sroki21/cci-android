@@ -1,7 +1,10 @@
 package pl.sroki.cci.android.ui.catalog.caps.quicksearch
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.ui.Modifier
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.runtime.Composable
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -33,6 +36,8 @@ fun QuickSearchScreen(
             }
         )
     }) { innerPadding ->
-        CapsView(caps = caps, onCapClick = onCapClick)
+        Box(Modifier.padding(innerPadding)) {
+            CapsView(caps = caps, onCapClick = onCapClick)
+        }
     }
 }

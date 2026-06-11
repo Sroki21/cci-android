@@ -1,7 +1,10 @@
 package pl.sroki.cci.android.ui.catalog.caps.detail
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.ui.Modifier
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -32,12 +35,12 @@ fun CapDetailScreen(
             }
         )
     }) { innerPadding ->
-        when (val state = viewModel.capDetailUiState) {
-            is CapDetailUiState.Error -> Text("Error")
-            is CapDetailUiState.Loading -> FullSizeLoader()
-            is CapDetailUiState.Success -> CapDetailView(
-                cap = state.cap,
-            )
+        Box(Modifier.padding(innerPadding)) {
+            when (val state = viewModel.capDetailUiState) {
+                is CapDetailUiState.Error -> Text("Error")
+                is CapDetailUiState.Loading -> FullSizeLoader()
+                is CapDetailUiState.Success -> CapDetailView(cap = state.cap)
+            }
         }
     }
 }

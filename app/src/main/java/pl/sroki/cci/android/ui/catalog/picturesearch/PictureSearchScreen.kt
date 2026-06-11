@@ -1,6 +1,7 @@
 package pl.sroki.cci.android.ui.catalog.picturesearch
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -59,6 +60,7 @@ fun PictureSearch(
             }
         }
     ) { innerPadding ->
+        Box(Modifier.padding(innerPadding)) {
         when (uiState) {
             is PictureSearchUiState.Loading -> FullSizeLoader()
             is PictureSearchUiState.Success -> LazyColumn(
@@ -82,6 +84,7 @@ fun PictureSearch(
             }
 
             is PictureSearchUiState.Error -> Text("Error: " + uiState.error.message)
+        }
         }
     }
 }

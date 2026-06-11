@@ -8,6 +8,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import pl.sroki.cci.android.NavigationItem
 import pl.sroki.cci.android.navigation.Screen
@@ -47,7 +48,7 @@ fun HomeScreen(
             searchVisible = false
         }
     }) { innerPadding ->
-        Column {
+        Column(modifier = Modifier.padding(innerPadding)) {
             NavigationItem(text = "Picture search", icon = Icons.Filled.Star) {
                 onClick(Screen.PictureSearch)
             }

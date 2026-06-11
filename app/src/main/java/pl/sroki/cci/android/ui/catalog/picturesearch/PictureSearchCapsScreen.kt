@@ -5,7 +5,10 @@ import androidx.compose.material.IconButton
 import androidx.compose.material.Scaffold
 import androidx.compose.material.Text
 import androidx.compose.material.TopAppBar
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.ui.Modifier
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.runtime.Composable
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -38,6 +41,8 @@ fun PictureSearchCapsScreen(
             }
         )
     }) { innerPadding ->
-        CapsView(caps = caps, onCapClick = onCapClick)
+        Box(Modifier.padding(innerPadding)) {
+            CapsView(caps = caps, onCapClick = onCapClick)
+        }
     }
 }
