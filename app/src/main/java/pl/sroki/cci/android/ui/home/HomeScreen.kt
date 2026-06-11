@@ -1,64 +1,83 @@
 package pl.sroki.cci.android.ui
 
 import android.content.res.Configuration
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import pl.sroki.cci.android.NavigationItem
 import pl.sroki.cci.android.navigation.Screen
+import pl.sroki.cci.android.ui.home.HomeViewModel
 import pl.sroki.cci.android.ui.theme.CCITheme
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     onClick: (Screen) -> Unit = {},
-    onSearch: (String) -> Unit = {}
+    onSearch: (String) -> Unit = {},
+    onLoginClick: () -> Unit = {}
 ) {
-    var searchVisible by rememberSaveable { mutableStateOf(false) }
+    val vm = hiltViewModel<HomeViewModel>()
+    val uiState by vm.uiState.collectAsState()
+
+    var query by remember { mutableStateOf("") }
 
     Scaffold(topBar = {
         TopAppBar(
-            title = {
-                if (searchVisible) {
-                    SearchBar(
-                        onSearch = onSearch,
-                        onRequestClose = {
-                            searchVisible = false
-                        }
+            title = { Text(text = "Crowncaps.Info") },
+            actions = {
+                if (uiState.isLoggedIn) {
+                    Text(
+                        text = uiState.userName ?: "",
+                        modifier = Modifier.padding(end = 16.dp),
+                        style = MaterialTheme.typography.bodyMedium
                     )
                 } else {
-                    Text(text = "Crowncaps.Info")
-                }
-            },
-            actions = {
-                if (!searchVisible) {
-                    IconButton(onClick = { searchVisible = !searchVisible }) {
-                        Icon(imageVector = Icons.Default.Search, contentDescription = "Search")
+                    TextButton(onClick = onLoginClick) {
+                        Text("Zaloguj")
                     }
                 }
             }
         )
-
-        BackHandler(enabled = searchVisible) {
-            searchVisible = false
-        }
     }) { innerPadding ->
         Column(modifier = Modifier.padding(innerPadding)) {
-            NavigationItem(text = "Picture search", icon = Icons.Filled.Star) {
+            OutlinedTextField(
+                value = query,
+                onValueChange = { query = it },
+                label = { Text("Szukaj") },
+                singleLine = true,
+                trailingIcon = {
+                    IconButton(onClick = { onSearch(query) }) {
+                        Icon(imageVector = Icons.Default.Search, contentDescription = "Szukaj")
+                    }
+                },
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                keyboardActions = KeyboardActions(onSearch = { onSearch(query) }),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+            )
+            NavigationItem(text = "Szukaj wg zdjęcia", icon = Icons.Filled.CameraAlt) {
                 onClick(Screen.PictureSearch)
             }
-            NavigationItem(text = "Additions", icon = Icons.Filled.Home) {
-                onClick(Screen.Latest)
-            }
-            NavigationItem(text = "Countries", icon = Icons.Filled.Place) {
-                onClick(Screen.Countries)
-            }
+            NavigationItem(
+                text = "Szukanie zaawansowane",
+                icon = Icons.Filled.FilterList,
+                enabled = false
+            ) {}
+            NavigationItem(
+                text = "Statystyki",
+                icon = Icons.Filled.BarChart,
+                enabled = false
+            ) {}
             NavigationItem(text = "Klasery", icon = Icons.Filled.FolderOpen) {
                 onClick(Screen.Binders)
             }

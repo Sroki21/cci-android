@@ -33,6 +33,7 @@ class AuthRepository @Inject constructor(
             when (response.code()) {
                 200 -> {
                     sessionRepository.setLoggedIn(true)
+                    sessionRepository.setUserName(email)
                     Result.success(Unit)
                 }
                 422 -> {
@@ -51,5 +52,6 @@ class AuthRepository @Inject constructor(
         try { authApiService.logout() } catch (e: Exception) { }
         cookieJar.clear()
         sessionRepository.setLoggedIn(false)
+        sessionRepository.setUserName(null)
     }
 }

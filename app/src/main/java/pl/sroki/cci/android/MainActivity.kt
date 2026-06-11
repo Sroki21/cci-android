@@ -5,6 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.draw.alpha
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -65,6 +66,9 @@ fun Navigation(
                 },
                 onSearch = { query ->
                     navController.navigate(Screen.QuickSearchResults.createUrl(query))
+                },
+                onLoginClick = {
+                    navController.navigate(Screen.Login.route)
                 }
             )
         }
@@ -189,12 +193,15 @@ fun Navigation(
 fun NavigationItem(
     text: String,
     icon: ImageVector,
+    enabled: Boolean = true,
     onClick: () -> Unit = {}
 ) {
     ListItem(
         leadingContent = { Icon(imageVector = icon, contentDescription = null) },
         headlineContent = { Text(text = text) },
-        modifier = Modifier.clickable(onClick = onClick)
+        modifier = Modifier
+            .clickable(enabled = enabled, onClick = onClick)
+            .alpha(if (enabled) 1f else 0.38f)
     )
 }
 
