@@ -613,24 +613,24 @@ użytkownik może ręcznie odtworzyć dane lub zaakceptować że stare dane nie 
 
 #### Automated
 
-- [x] 2.1 Kompilacja: `./gradlew :app:compileDebugKotlin`
+- [x] 2.1 Kompilacja: `./gradlew :app:compileDebugKotlin` — 46912cc
 - [ ] 2.2 FirestoreWriteThroughTest (emulator): `./gradlew :app:connectedDebugAndroidTest`
-- [x] 2.3 Ktlint: `./gradlew :app:ktlintCheck`
+- [x] 2.3 Ktlint: `./gradlew :app:ktlintCheck` — 46912cc
 
 #### Manual
 
-- [x] 2.4 Firebase Console: utwórz klaser → dokument w `users/{uid}/binders`
-- [x] 2.5 Firebase Console: usuń klaser → dokument usunięty z Firestore
+- [x] 2.4 Firebase Console: utwórz klaser → dokument w `users/{uid}/binders` — 46912cc
+- [x] 2.5 Firebase Console: usuń klaser → dokument usunięty z Firestore — 46912cc
 
 ### Phase 3: Initial pull / restore
 
 #### Automated
 
 - [ ] 3.1 FirestoreRestoreTest (emulator): `./gradlew :app:connectedDebugAndroidTest`
-- [ ] 3.2 Kompilacja: `./gradlew :app:compileDebugKotlin`
-- [ ] 3.3 Ktlint: `./gradlew :app:ktlintCheck`
+- [x] 3.2 Kompilacja: `./gradlew :app:compileDebugKotlin`
+- [x] 3.3 Ktlint: `./gradlew :app:ktlintCheck`
 
 #### Manual
 
-- [ ] 3.4 Wyczyść dane app → uruchom → Room odtworzone z Firestore (App Inspection)
-- [ ] 3.5 Brak ANR/crasha podczas restore w tle
+- [x] 3.4 Wyczyść dane app → uruchom → Room odtworzone z Firestore (App Inspection)
+- [x] 3.5 Brak ANR/crasha podczas restore w tle

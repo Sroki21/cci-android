@@ -20,4 +20,7 @@ interface BinderDao {
 
     @Query("SELECT * FROM binder WHERE id = :id")
     suspend fun getById(id: Long): Binder?
+
+    @Query("SELECT COUNT(*) FROM binder")
+    suspend fun countAll(): Int
 }
