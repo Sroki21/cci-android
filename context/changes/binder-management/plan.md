@@ -267,14 +267,14 @@ Testy:
 
 #### Automated
 
-- [x] 2.1 Kompilacja: `./gradlew :app:compileDebugKotlin`
-- [x] 2.2 Testy JVM: `./gradlew :app:testDebugUnitTest`
-- [x] 2.3 Ktlint: `./gradlew :app:ktlintCheck`
+- [x] 2.1 Kompilacja: `./gradlew :app:compileDebugKotlin` — bec7103
+- [x] 2.2 Testy JVM: `./gradlew :app:testDebugUnitTest` — bec7103
+- [x] 2.3 Ktlint: `./gradlew :app:ktlintCheck` — bec7103
 
 #### Manual
 
-- [x] 2.4 Tworzenie klasera przez FAB + dialog
-- [x] 2.5 Rozwijanie/zwijanie klasera, widok stron
-- [x] 2.6 Dodawanie strony, limit 15 → Snackbar
-- [x] 2.7 Usuwanie strony i klasera przez dialog potwierdzenia
-- [x] 2.8 Brak crasha / ANR przy wszystkich operacjach
+- [x] 2.4 Tworzenie klasera przez FAB + dialog — bec7103
+- [x] 2.5 Rozwijanie/zwijanie klasera, widok stron — bec7103
+- [x] 2.6 Dodawanie strony, limit 15 → Snackbar — bec7103
+- [x] 2.7 Usuwanie strony i klasera przez dialog potwierdzenia — bec7103
+- [x] 2.8 Brak crasha / ANR przy wszystkich operacjach — bec7103

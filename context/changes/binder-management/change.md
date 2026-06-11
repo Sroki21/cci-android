@@ -1,8 +1,9 @@
 ---
 change_id: binder-management
 roadmap_ref: S-02
-status: implementing
+status: implemented
 created: 2026-06-11
+updated: 2026-06-11
 ---
 
 # binder-management
