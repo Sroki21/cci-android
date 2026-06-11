@@ -25,6 +25,7 @@ import pl.sroki.cci.android.ui.catalog.countries.Countries
 import pl.sroki.cci.android.ui.catalog.countries.CountriesViewModel
 import pl.sroki.cci.android.ui.catalog.country.CountryCapsScreen
 import pl.sroki.cci.android.ui.catalog.latest.LatestCapsScreen
+import pl.sroki.cci.android.ui.auth.LoginScreen
 import pl.sroki.cci.android.ui.catalog.picturesearch.PictureSearch
 import pl.sroki.cci.android.ui.catalog.picturesearch.PictureSearchCapsScreen
 import pl.sroki.cci.android.ui.theme.CCITheme
@@ -173,6 +174,9 @@ fun Navigation(
                 id = backEntryState.arguments?.getInt("capId") ?: 0,
                 onBack = { navController.popBackStack() }
             )
+        }
+        composable(route = Screen.Login.route) {
+            LoginScreen(onLoginSuccess = { navController.popBackStack() })
         }
     }
 }

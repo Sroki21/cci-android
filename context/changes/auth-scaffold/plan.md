@@ -498,26 +498,26 @@ transparentny dla anonimowych wywołań.
 
 #### Automated
 
-- [x] 2.1 Testy jednostkowe przechodzą: `./gradlew :app:test`
-- [x] 2.2 Projekt kompiluje się: `./gradlew :app:compileDebugKotlin`
+- [x] 2.1 Testy jednostkowe przechodzą: `./gradlew :app:test` — 56dbcb6
+- [x] 2.2 Projekt kompiluje się: `./gradlew :app:compileDebugKotlin` — 56dbcb6
 
 #### Manual
 
-- [x] 2.3 Logcat przy starcie: brak błędów Hilt, `AuthRepository` inicjalizuje się poprawnie
-- [x] 2.4 `SessionRepository.isLoggedIn = false` przy pierwszym uruchomieniu (brak ciasteczek)
+- [x] 2.3 Logcat przy starcie: brak błędów Hilt, `AuthRepository` inicjalizuje się poprawnie — 56dbcb6
+- [x] 2.4 `SessionRepository.isLoggedIn = false` przy pierwszym uruchomieniu (brak ciasteczek) — 56dbcb6
 
 ### Phase 3: Login UI
 
 #### Automated
 
-- [ ] 3.1 Projekt kompiluje się bez błędów: `./gradlew :app:compileDebugKotlin`
-- [ ] 3.2 Brak błędów Hilt: `./gradlew :app:kspDebugKotlin`
-- [ ] 3.3 Lint: `./gradlew :app:ktlintCheck`
+- [x] 3.1 Projekt kompiluje się bez błędów: `./gradlew :app:compileDebugKotlin`
+- [x] 3.2 Brak błędów Hilt: `./gradlew :app:kspDebugKotlin`
+- [x] 3.3 Lint: `./gradlew :app:ktlintCheck`
 
 #### Manual
 
-- [ ] 3.4 Nawigacja do `Screen.Login` wyświetla ekran logowania
-- [ ] 3.5 Błędne dane → komunikat błędu z API
-- [ ] 3.6 Poprawne dane → Loading → sukces → powrót do poprzedniego ekranu
-- [ ] 3.7 Po zalogowaniu i restarcie aplikacji `SessionRepository.isLoggedIn = true`
-- [ ] 3.8 Kapsle w LatestCaps po zalogowaniu mają `isInCollection = true` dla posiadanych (Logcat)
+- [x] 3.4 Nawigacja do `Screen.Login` wyświetla ekran logowania
+- [x] 3.5 Błędne dane → komunikat błędu z API
+- [x] 3.6 Poprawne dane → Loading → sukces → powrót do poprzedniego ekranu
+- [x] 3.7 Po zalogowaniu i restarcie aplikacji `SessionRepository.isLoggedIn = true`
+- [x] 3.8 Kapsle w LatestCaps po zalogowaniu mają `isInCollection = true` dla posiadanych (Logcat)
