@@ -7,6 +7,7 @@ import androidx.room.Query
 import androidx.room.Transaction
 import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
+import pl.sroki.cci.android.data.model.CapBinderInfo
 import pl.sroki.cci.android.data.datasource.local.entity.CapPosition
 
 @Dao
@@ -29,6 +30,16 @@ interface CapPositionDao {
 
     @Query("DELETE FROM cap_position WHERE cap_id = :capId")
     suspend fun deleteByCapId(capId: Long)
+
+    @Query("""
+        SELECT b.name as binderName, bp.page_number as pageNumber, cp.position as position
+        FROM cap_position cp
+        JOIN binder_page bp ON cp.binder_page_id = bp.id
+        JOIN binder b ON bp.binder_id = b.id
+        WHERE cp.cap_id = :capId
+        LIMIT 1
+    """)
+    suspend fun getBinderInfoByCapId(capId: Long): CapBinderInfo?
 
     @Query(
         """

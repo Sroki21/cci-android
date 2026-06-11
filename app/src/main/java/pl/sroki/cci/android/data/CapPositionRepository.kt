@@ -4,6 +4,7 @@ import kotlinx.coroutines.flow.Flow
 import pl.sroki.cci.android.data.datasource.local.dao.BinderPageDao
 import pl.sroki.cci.android.data.datasource.local.dao.CapPositionDao
 import pl.sroki.cci.android.data.datasource.local.entity.CapPosition
+import pl.sroki.cci.android.data.model.CapBinderInfo
 import pl.sroki.cci.android.data.datasource.remote.firestore.CapPositionFirestoreService
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -18,6 +19,8 @@ class CapPositionRepository @Inject constructor(
     fun getByPage(binderPageId: Long): Flow<List<CapPosition>> = dao.getByPage(binderPageId)
 
     suspend fun getByCapId(capId: Long): CapPosition? = dao.getByCapId(capId)
+
+    suspend fun getBinderInfoByCapId(capId: Long): CapBinderInfo? = dao.getBinderInfoByCapId(capId)
 
     suspend fun assign(binderPageId: Long, position: Int, capId: Long): Long {
         require(position in 1..35) { "Pozycja musi być w zakresie 1-35" }

@@ -1,10 +1,15 @@
 package pl.sroki.cci.android.ui.catalog.caps.detail
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -18,6 +23,7 @@ fun CapDetailScreen(
     onBack: () -> Unit,
 ) {
     val viewModel = hiltViewModel<CapDetailViewModel>()
+    val uiState = viewModel.capDetailUiState
 
     LaunchedEffect(true) {
         viewModel.getCap(id)
@@ -25,22 +31,41 @@ fun CapDetailScreen(
 
     Scaffold(topBar = {
         TopAppBar(
-            title = { Text(text = "#$id") },
+            title = {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(text = "#$id")
+                    if (uiState is CapDetailUiState.Success) {
+                        val (label, color) = when (uiState.status) {
+                            CapStatus.IN_COLLECTION -> "W kolekcji" to Color(0xFF4CAF50)
+                            CapStatus.PURCHASED -> "Zakupiony" to Color(0xFF2196F3)
+                            CapStatus.MISSING -> "Brak" to Color(0xFFF44336)
+                        }
+                        Text(
+                            text = label,
+                            color = color,
+                            style = MaterialTheme.typography.labelMedium
+                        )
+                    }
+                }
+            },
             navigationIcon = {
                 IconButton(onClick = onBack) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Back"
+                        contentDescription = "Wstecz"
                     )
                 }
             }
         )
     }) { innerPadding ->
         Box(Modifier.padding(innerPadding)) {
-            when (val state = viewModel.capDetailUiState) {
-                is CapDetailUiState.Error -> Text("Error")
+            when (uiState) {
+                is CapDetailUiState.Error -> Text("Błąd ładowania")
                 is CapDetailUiState.Loading -> FullSizeLoader()
-                is CapDetailUiState.Success -> CapDetailView(cap = state.cap)
+                is CapDetailUiState.Success -> CapDetailView(cap = uiState.cap, binderInfo = uiState.binderInfo)
             }
         }
     }

@@ -1,10 +1,6 @@
 package pl.sroki.cci.android.ui.catalog.caps.detail
 
-import android.content.Context
-import android.content.Intent
-import androidx.core.net.toUri
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.aspectRatio
@@ -20,7 +16,7 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import kotlin.time.Clock
-import pl.sroki.cci.android.R
+import pl.sroki.cci.android.data.model.CapBinderInfo
 import pl.sroki.cci.android.data.model.Country
 import pl.sroki.cci.android.model.*
 import pl.sroki.cci.android.ui.theme.CCITheme
@@ -30,10 +26,9 @@ import pl.sroki.cci.android.ui.theme.ImageBackground
 @Composable
 fun CapDetailView(
     cap: CapExtended,
+    binderInfo: CapBinderInfo? = null,
     modifier: Modifier = Modifier
 ) {
-    val context = LocalContext.current
-
     Column(
         modifier = modifier.verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -52,85 +47,20 @@ fun CapDetailView(
         Column(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            CapDetailTextView(label = "Text on the crown cap", text = cap.description)
-            CapDetailTextView(label = "Country", text = cap.country.name)
-            CapDetailTextView(label = "Product", text = cap.product.name)
-            CapDetailTextView(label = "Liner", text = cap.liner.name)
-            CapDetailTextView(label = "Type", text = cap.purpose.name)
-            if (cap.generic) {
-                CapDetailTextView(label = "Generic", text = "Yes")
+            CapDetailTextView(label = "Tekst", text = cap.description)
+            CapDetailTextView(label = "Kraj", text = cap.country.name)
+            CapDetailTextView(label = "Rok", text = cap.year?.toString())
+            if (cap.producers.isNotEmpty()) {
+                CapDetailTextView(label = "Producent", text = cap.producers.joinToString { it.name })
             }
-            CapDetailTextView(label = "Issued", text = cap.year?.toString())
-            CapDetailTextView(label = "Period used", text = cap.periodUsed?.name)
-            CapDetailTextView(label = "Skirt text", text = cap.rimtext)
-            CapDetailTextView(label = "Info", text = cap.info)
-            if (cap.properties.isNotEmpty()) {
-                CapDetailTextView(
-                    label = "Properties",
-                    text = cap.properties.joinToString { it.name })
+            if (binderInfo != null) {
+                CapDetailTextView(label = "Klaser", text = binderInfo.binderName)
+                CapDetailTextView(label = "Strona", text = binderInfo.pageNumber.toString())
+                CapDetailTextView(label = "Pozycja", text = binderInfo.position.toString())
             }
         }
-
-
-        cap.series?.let {
-            Column {
-                SectionHeader(text = "Series")
-                CapDetailSeriesView(series = it, capSeriesSortOrder = cap.seriesSortOrder)
-            }
-        }
-
-        // TODO additionalImages
-        // TODO inside images
-
-        if (cap.producers.isNotEmpty()) {
-            Column {
-                SectionHeader(text = "Producers")
-                cap.producers.map {
-                    CapDetailProducerView(producer = it, onWebsiteClick = {
-                        openProducerUrl(context = context, producer = it)
-                    }, modifier = Modifier.clickable {
-                        println(it)
-                    })
-                }
-            }
-        }
-
-        if (cap.signGroups.isNotEmpty()) {
-            Column {
-                SectionHeader(text = "Signs")
-                CapDetailSignsView(signGroups = cap.signGroups)
-            }
-        }
-
-        // TODO who has this one?
     }
 
-}
-
-private fun shareCap(context: Context, subject: String, summary: String) {
-    val intent = Intent(Intent.ACTION_SEND).apply {
-        type = "text/plain"
-        putExtra(Intent.EXTRA_SUBJECT, subject)
-        putExtra(Intent.EXTRA_TEXT, summary)
-    }
-
-    context.startActivity(
-        Intent.createChooser(
-            intent,
-            context.getString(R.string.app_name)
-        )
-    )
-}
-
-private fun openProducerUrl(context: Context, producer: Producer) {
-    val intent = Intent(Intent.ACTION_VIEW, producer.website!!.toUri())
-
-    context.startActivity(
-        Intent.createChooser(
-            intent,
-            context.getString(R.string.app_name)
-        )
-    )
 }
 
 @Preview(widthDp = 320, heightDp = 1600, backgroundColor = 0xFFFFFFFF)

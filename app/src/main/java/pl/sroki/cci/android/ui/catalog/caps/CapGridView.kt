@@ -1,5 +1,6 @@
 package pl.sroki.cci.android.ui.catalog.caps
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.aspectRatio
@@ -9,9 +10,11 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material3.Card
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import pl.sroki.cci.android.model.Cap
@@ -21,7 +24,9 @@ import pl.sroki.cci.android.ui.theme.ImageBackground
 
 @Composable
 fun CapGridCard(cap: Cap, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    Card {
+    Card(
+        border = if (cap.isInCollection) BorderStroke(3.dp, Color.Black) else null
+    ) {
         AsyncImage(
             model = ImageRequest.Builder(LocalContext.current)
                 .data(cap.imageUrl)
