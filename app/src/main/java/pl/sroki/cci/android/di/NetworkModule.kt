@@ -1,34 +1,38 @@
 package pl.sroki.cci.android.di
 
+import android.content.Context
+import com.franmontiel.persistentcookiejar.PersistentCookieJar
+import com.franmontiel.persistentcookiejar.cache.SetCookieCache
+import com.franmontiel.persistentcookiejar.persistence.SharedPrefsCookiePersistor
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
-import retrofit2.Converter
-import retrofit2.Retrofit
+import okhttp3.OkHttpClient
 import pl.sroki.cci.android.data.datasource.remote.CapApiService
 import pl.sroki.cci.android.data.datasource.remote.CategoryApiService
 import pl.sroki.cci.android.data.datasource.remote.CountryApiService
+import pl.sroki.cci.android.data.datasource.remote.auth.AcceptJsonInterceptor
+import pl.sroki.cci.android.data.datasource.remote.auth.AuthApiService
+import pl.sroki.cci.android.data.datasource.remote.auth.CsrfInterceptor
+import retrofit2.Converter
+import retrofit2.Retrofit
 import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
 object NetworkModule {
-    /**
-     * Provides BaseUrl as string
-     */
+
     @Singleton
     @Provides
     fun provideBaseURL(): String {
         return "https://crowncaps.info"
     }
 
-    /**
-     * Provides converter factory for retrofit
-     */
     @Singleton
     @Provides
     fun provideConverterFactory(): Converter.Factory {
@@ -36,20 +40,36 @@ object NetworkModule {
         return json.asConverterFactory("application/json".toMediaType())
     }
 
-    /**
-     * Provides ApiServices client for Retrofit
-     */
+    @Singleton
+    @Provides
+    fun provideCookieJar(@ApplicationContext context: Context): PersistentCookieJar {
+        return PersistentCookieJar(SetCookieCache(), SharedPrefsCookiePersistor(context))
+    }
+
+    @Singleton
+    @Provides
+    fun provideOkHttpClient(cookieJar: PersistentCookieJar): OkHttpClient {
+        return OkHttpClient.Builder()
+            .cookieJar(cookieJar)
+            .addInterceptor(AcceptJsonInterceptor())
+            .addInterceptor(CsrfInterceptor(cookieJar))
+            .build()
+    }
+
     @Singleton
     @Provides
     fun provideRetrofitClient(
         baseUrl: String,
-        converterFactory: Converter.Factory
+        converterFactory: Converter.Factory,
+        okHttpClient: OkHttpClient
     ): Retrofit {
         return Retrofit.Builder()
             .baseUrl(baseUrl)
             .addConverterFactory(converterFactory)
+            .client(okHttpClient)
             .build()
     }
+
     @Singleton
     @Provides
     fun provideCountriesApiService(retrofit: Retrofit): CountryApiService {
@@ -66,5 +86,11 @@ object NetworkModule {
     @Provides
     fun provideCapApiService(retrofit: Retrofit): CapApiService {
         return retrofit.create(CapApiService::class.java)
+    }
+
+    @Singleton
+    @Provides
+    fun provideAuthApiService(retrofit: Retrofit): AuthApiService {
+        return retrofit.create(AuthApiService::class.java)
     }
 }
