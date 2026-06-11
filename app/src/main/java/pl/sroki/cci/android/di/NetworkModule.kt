@@ -14,6 +14,8 @@ import kotlinx.serialization.json.Json
 import okhttp3.Authenticator
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
+import okhttp3.logging.HttpLoggingInterceptor
+import pl.sroki.cci.android.BuildConfig
 import pl.sroki.cci.android.data.SessionRepository
 import pl.sroki.cci.android.data.datasource.remote.CapApiService
 import pl.sroki.cci.android.data.datasource.remote.CategoryApiService
@@ -66,13 +68,18 @@ object NetworkModule {
         authenticator: Authenticator,
         sessionRepository: SessionRepository
     ): OkHttpClient {
-        return OkHttpClient.Builder()
+        val builder = OkHttpClient.Builder()
             .cookieJar(cookieJar)
             .addInterceptor(AcceptJsonInterceptor())
             .addInterceptor(BearerTokenInterceptor(sessionRepository))
             .addInterceptor(CsrfInterceptor(cookieJar))
             .authenticator(authenticator)
-            .build()
+        if (BuildConfig.DEBUG) {
+            builder.addInterceptor(
+                HttpLoggingInterceptor().apply { level = HttpLoggingInterceptor.Level.BODY }
+            )
+        }
+        return builder.build()
     }
 
     @Singleton
