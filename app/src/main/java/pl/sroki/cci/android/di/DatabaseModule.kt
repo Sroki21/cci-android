@@ -22,6 +22,7 @@ object DatabaseModule {
     @Provides
     fun provideDatabase(@ApplicationContext context: Context): CciDatabase =
         Room.databaseBuilder(context, CciDatabase::class.java, "cci.db")
+            .addMigrations(CciDatabase.MIGRATION_1_2)
             .fallbackToDestructiveMigration(dropAllTables = true)
             .build()
 

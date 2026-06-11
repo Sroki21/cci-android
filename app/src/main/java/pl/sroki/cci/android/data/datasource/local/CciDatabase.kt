@@ -2,6 +2,8 @@ package pl.sroki.cci.android.data.datasource.local
 
 import androidx.room.Database
 import androidx.room.RoomDatabase
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import pl.sroki.cci.android.data.datasource.local.dao.BinderDao
 import pl.sroki.cci.android.data.datasource.local.dao.BinderPageDao
 import pl.sroki.cci.android.data.datasource.local.dao.CapPositionDao
@@ -13,7 +15,7 @@ import pl.sroki.cci.android.data.datasource.local.entity.PendingCap
 
 @Database(
     entities = [PendingCap::class, Binder::class, BinderPage::class, CapPosition::class],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 abstract class CciDatabase : RoomDatabase() {
@@ -21,4 +23,14 @@ abstract class CciDatabase : RoomDatabase() {
     abstract fun binderDao(): BinderDao
     abstract fun binderPageDao(): BinderPageDao
     abstract fun capPositionDao(): CapPositionDao
+
+    companion object {
+        val MIGRATION_1_2 = object : Migration(1, 2) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE binder ADD COLUMN firestore_id TEXT")
+                db.execSQL("ALTER TABLE binder_page ADD COLUMN firestore_id TEXT")
+                db.execSQL("ALTER TABLE cap_position ADD COLUMN firestore_id TEXT")
+            }
+        }
+    }
 }

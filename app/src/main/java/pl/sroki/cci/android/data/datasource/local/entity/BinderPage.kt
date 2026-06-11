@@ -24,5 +24,6 @@ import androidx.room.PrimaryKey
 data class BinderPage(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     @ColumnInfo(name = "binder_id") val binderId: Long,
-    @ColumnInfo(name = "page_number") val pageNumber: Int
+    @ColumnInfo(name = "page_number") val pageNumber: Int,
+    @ColumnInfo(name = "firestore_id") val firestoreId: String? = null
 )

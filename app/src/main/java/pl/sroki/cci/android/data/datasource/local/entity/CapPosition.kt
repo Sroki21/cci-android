@@ -25,5 +25,6 @@ data class CapPosition(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     @ColumnInfo(name = "binder_page_id") val binderPageId: Long,
     val position: Int,
-    @ColumnInfo(name = "cap_id") val capId: Long
+    @ColumnInfo(name = "cap_id") val capId: Long,
+    @ColumnInfo(name = "firestore_id") val firestoreId: String? = null
 )

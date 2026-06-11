@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "470782298146",
+    "project_id": "cci-android",
+    "storage_bucket": "cci-android.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:470782298146:android:67b9f0decffcd48fd3a27b",
+        "android_client_info": {
+          "package_name": "pl.sroki.cci.android"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAZsLKlhXHNzZws58_aVcC172xS1ZrxoT4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
