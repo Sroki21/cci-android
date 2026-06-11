@@ -20,7 +20,7 @@ android {
     defaultConfig {
         applicationId "pl.sroki.cci.android"
         minSdk 24
-        targetSdk 35
+        targetSdk 37
         versionCode 3
         versionName "1.2"
 

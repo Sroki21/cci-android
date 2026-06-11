@@ -23,9 +23,9 @@ import pl.sroki.cci.android.ui.theme.CCITheme
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PictureSearch(
+    modifier: Modifier = Modifier,
     onSearch: (categories: Set<Category>) -> Unit = {},
     onBack: () -> Unit = {},
-    modifier: Modifier = Modifier
 ) {
     val viewModel = hiltViewModel<PictureSearchViewModel>()
     val uiState = viewModel.pictureSearchUiState

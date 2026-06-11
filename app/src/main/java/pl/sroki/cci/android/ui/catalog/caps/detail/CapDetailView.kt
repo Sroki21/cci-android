@@ -2,7 +2,7 @@ package pl.sroki.cci.android.ui.catalog.caps.detail
 
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
+import androidx.core.net.toUri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -123,8 +123,7 @@ private fun shareCap(context: Context, subject: String, summary: String) {
 }
 
 private fun openProducerUrl(context: Context, producer: Producer) {
-    Intent(Intent.ACTION_VIEW, Uri.parse("http://www.google.com"))
-    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(producer.website))
+    val intent = Intent(Intent.ACTION_VIEW, producer.website!!.toUri())
 
     context.startActivity(
         Intent.createChooser(

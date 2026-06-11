@@ -18,7 +18,7 @@ import pl.sroki.cci.android.ui.theme.CCITheme
 
 
 @Composable
-fun CapDetailTextView(label: String, text: String? = "", modifier: Modifier = Modifier) {
+fun CapDetailTextView(label: String, modifier: Modifier = Modifier, text: String? = "") {
     text?.let {
         if (it.isNotBlank()) {
             Row(
