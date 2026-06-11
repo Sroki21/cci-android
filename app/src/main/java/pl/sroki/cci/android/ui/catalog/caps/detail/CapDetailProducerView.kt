@@ -6,7 +6,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
@@ -52,7 +52,7 @@ fun CapDetailProducerView(
         producer.website?.let {
             IconButton(onClick = onWebsiteClick) {
                 Icon(
-                    imageVector = Icons.Default.Send, // TODO import www icon
+                    imageVector = Icons.AutoMirrored.Filled.Send, // TODO import www icon
                     contentDescription = "Open URL",
                     tint = MaterialTheme.colors.secondary
                 )
