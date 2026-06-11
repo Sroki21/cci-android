@@ -453,12 +453,12 @@ wymagane będzie zastąpienie to przez `addMigrations(MIGRATION_1_2, ...)`.
 
 #### Automated
 
-- [ ] 1.1 Projekt kompiluje się bez błędów: `./gradlew :app:compileDebugKotlin`
-- [ ] 1.2 Hilt + Room codegen bez błędów: `./gradlew :app:kspDebugKotlin`
-- [ ] 1.3 Testy in-memory przechodzą: `./gradlew :app:connectedDebugAndroidTest`
-- [ ] 1.4 Lint przechodzi: `./gradlew :app:ktlintCheck`
+- [x] 1.1 Projekt kompiluje się bez błędów: `./gradlew :app:compileDebugKotlin` — c2d5697
+- [x] 1.2 Hilt + Room codegen bez błędów: `./gradlew :app:kspDebugKotlin` — c2d5697
+- [x] 1.3 Testy in-memory przechodzą: `./gradlew :app:connectedDebugAndroidTest` — c2d5697
+- [x] 1.4 Lint przechodzi: `./gradlew :app:ktlintCheck` — c2d5697
 
 #### Manual
 
-- [ ] 1.5 Aplikacja uruchamia się bez crash — Hilt tworzy CciDatabase (Logcat czysty)
-- [ ] 1.6 CciDatabase widoczny w Android Studio App Inspection z 4 tabelami
+- [x] 1.5 Aplikacja uruchamia się bez crash — Hilt tworzy CciDatabase (Logcat czysty) — c2d5697
+- [x] 1.6 CciDatabase widoczny w Android Studio App Inspection z 4 tabelami — c2d5697

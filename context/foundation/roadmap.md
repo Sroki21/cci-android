@@ -44,8 +44,9 @@ autentykację i zwraca prawdziwy `isInCollection` dla zalogowanego użytkownika.
 |------|----------------------------|----------------------------------------------------------------------------------|---------------|---------------------------------------------|----------|
 | F-01 | auth-scaffold              | (foundation) zalogować się kontem crowncaps.info i wywoływać auth'd endpointy    | —             | FR-001, FR-002, FR-004, FR-005, FR-006      | ready    |
 | F-02 | room-local-data            | (foundation) lokalnie trwałe dane klaserów i kapsli oczekujących są dostępne     | —             | FR-008, FR-009, FR-010, FR-011, FR-012, FR-013 | ready |
+| F-03 | firestore-sync             | (foundation) dane klaserów/stron/pozycji synchronizowane z Firestore — backup i odtwarzanie po utracie urządzenia | F-02 | — | proposed |
 | S-01 | shop-check-and-mark-bought | widzieć status posiadania przy kapslu i oznaczyć go jako kupiony                  | F-01, F-02    | FR-001, FR-003, FR-007, FR-008, US-01       | proposed |
-| S-02 | binder-management          | tworzyć i usuwać klasery oraz dodawać do nich strony                              | F-02          | FR-010, FR-011                              | proposed |
+| S-02 | binder-management          | tworzyć i usuwać klasery oraz dodawać do nich strony                              | F-02, F-03    | FR-010, FR-011                              | proposed |
 | S-03 | cataloging-flow            | katalogować kapsel z zakładki oczekujących do pozycji w klaserze                  | S-01, S-02    | FR-008, FR-009, FR-012, US-02               | proposed |
 | S-04 | binder-fill-stats          | widzieć zapełnienie klaserów — ile wolnych pozycji na każdej stronie              | S-02, S-03    | FR-013                                      | proposed |
 
@@ -54,10 +55,10 @@ autentykację i zwraca prawdziwy `isInCollection` dla zalogowanego użytkownika.
 Navigation aid — groups items that share a Prerequisites chain. Canonical ordering still lives
 in the dependency graph below; this table is the proposed reading order across parallel tracks.
 
-| Stream | Theme                                 | Chain                              | Note                                                                           |
-|--------|---------------------------------------|------------------------------------|--------------------------------------------------------------------------------|
-| A      | Struktura klaserów + katalogowanie    | `F-02` → `S-02` → `S-03` → `S-04` | `S-03` joins Stream B at `S-01`; ścieżka niezależna od OQ-1, można zacząć teraz |
-| B      | Autentykacja + weryfikacja posiadania | `F-01` → `S-01`                    | OQ-1/OQ-2 rozwiązane 2026-06-11; `S-01` wchodzi w `S-03` (Stream A)           |
+| Stream | Theme                                 | Chain                                       | Note                                                                           |
+|--------|---------------------------------------|---------------------------------------------|--------------------------------------------------------------------------------|
+| A      | Struktura klaserów + katalogowanie    | `F-02` → `F-03` → `S-02` → `S-03` → `S-04` | `S-03` joins Stream B at `S-01`; F-03 (Firestore backup) wymagane przed S-02  |
+| B      | Autentykacja + weryfikacja posiadania | `F-01` → `S-01`                             | OQ-1/OQ-2 rozwiązane 2026-06-11; `S-01` wchodzi w `S-03` (Stream A)           |
 
 ## Baseline
 
@@ -106,6 +107,19 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Risk:** Schemat musi przewidzieć reguły domenowe z góry: strona 1–15, pozycja 1–35, unikalność (binder_id, page, position). Błąd tu wymaga późniejszej migracji Room — jednorazowe przemyślenie schematu jest tańsze niż refactor.
 - **Status:** ready
 
+### F-03: Firestore sync
+
+- **Outcome:** (foundation) dane klaserów (`Binder`), stron (`BinderPage`) i pozycji kapsli (`CapPosition`) są synchronizowane dwukierunkowo z Firebase Firestore; utrata urządzenia nie oznacza utraty danych kolekcji; Room pozostaje lokalnym cache (offline-first) — zapis do Room i Firestore jednocześnie, odczyt zawsze z Room.
+- **Change ID:** `firestore-sync`
+- **PRD refs:** —
+- **Unlocks:** S-02 (klasery muszą być trwałe przed UI), S-03, S-04
+- **Prerequisites:** F-02 (schemat Room musi istnieć; Firestore odzwierciedla te same encje)
+- **Parallel with:** F-01, S-01 (Firestore nie blokuje auth flow)
+- **Blockers:** —
+- **Unknowns:** strategia pierwszej synchronizacji po instalacji (Firestore → Room pull); konflikt przy jednoczesnej edycji z dwóch urządzeń (MVP: last-write-wins).
+- **Risk:** Firestore wymaga konta Google i konfiguracji `google-services.json`; darmowy tier (Spark): 1 GB storage, 50K reads/day, 20K writes/day — wystarczający dla prywatnej kolekcji. Offline-first z Room chroni przed przerwami sieciowymi.
+- **Status:** proposed
+
 ## Slices
 
 ### S-01: Kolekcjoner w sklepie widzi status posiadania i oznacza kapsel jako kupiony
@@ -125,8 +139,8 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Outcome:** użytkownik może dodać nowy klaser (nazwa: kontynent + numer), usunąć pusty klaser, dodać stronę do klasera (limit 15); zajęte klasery są chronione przed usunięciem; próba dodania 16. strony kończy się czytelnym komunikatem błędu
 - **Change ID:** `binder-management`
 - **PRD refs:** FR-010, FR-011
-- **Prerequisites:** F-02 (tabele `Binder`+`BinderPage`)
-- **Parallel with:** S-01 (S-02 nie potrzebuje F-01 — niezależne od Streamu B; można zacząć gdy F-02 gotowe)
+- **Prerequisites:** F-02 (tabele `Binder`+`BinderPage`), F-03 (dane muszą być backupowane przed UI zarządzania)
+- **Parallel with:** S-01 (S-02 nie potrzebuje F-01 — niezależne od Streamu B; można zacząć gdy F-02 i F-03 gotowe)
 - **Blockers:** —
 - **Unknowns:** —
 - **Risk:** Prosta CRUD slice — niskie ryzyko. Ważne: blokada usuwania klasera z kapslami egzekwowana w Room (FK constraint lub DAO-level guard), nie tylko w UI — inaczej user może usunąć klasery przy bezpośrednim dostępie do DB.
@@ -162,8 +176,9 @@ Foundations below assume these are present and do NOT re-scaffold them.
 |------------|----------------------------|---------------------------------------------------------------------|-----------------------|-----------------------------------------|
 | F-01       | auth-scaffold              | [Foundation] Scaffold autoryzacji crowncaps.info                    | yes                   | Uruchom `/10x-plan auth-scaffold`       |
 | F-02       | room-local-data            | [Foundation] Room local data layer — schemat klaserów + PendingCap  | yes                   | Uruchom `/10x-plan room-local-data`     |
+| F-03       | firestore-sync             | [Foundation] Firestore sync — backup klaserów/stron/pozycji         | no                    | Czeka na F-02                           |
 | S-01       | shop-check-and-mark-bought | Kolekcjoner: status posiadania i oznaczenie kupionego               | no                    | Czeka na F-01 i F-02                    |
-| S-02       | binder-management          | Kolekcjoner: tworzenie klaserów i stron                             | no                    | Czeka na F-02                           |
+| S-02       | binder-management          | Kolekcjoner: tworzenie klaserów i stron                             | no                    | Czeka na F-02 i F-03                    |
 | S-03       | cataloging-flow            | Kolekcjoner: katalogowanie kapsla do klasera                        | no                    | Czeka na S-01 i S-02                   |
 | S-04       | binder-fill-stats          | Kolekcjoner: zapełnienie klaserów                                   | no                    | Czeka na S-02 i S-03                    |
 
@@ -178,7 +193,6 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Tryb offline dla sprawdzania isInCollection** — Why parked: PRD §Non-Goals — wymaga aktywnego połączenia z API; widok klaserów (dane lokalne) działa offline. Kandydat do v2.
 - **Wersja publiczna** — Why parked: PRD §Non-Goals — osobny projekt, osobny shaping.
 - **Rozpoznawanie kapsla ze zdjęcia przez AI** — Why parked: PRD §Non-Goals — PictureSearch pozostaje jako wybór kategorii wizualnych; AI image recognition to oddzielna, kosztowna decyzja.
-- **Synchronizacja struktury klaserów z chmurą / backup** — Why parked: PRD §Non-Goals — dane klaserów lokalne, brak backupu w v1.
 - **Udostępnianie kolekcji innym użytkownikom** — Why parked: PRD §Non-Goals — aplikacja prywatna, jedno konto.
 - **Usuwanie kapsla z kolekcji crowncaps.info z poziomu aplikacji** — Why parked: PRD §Non-Goals — MVP obsługuje tylko dodawanie (oznaczanie jako kupiony).
 - **FR-014: Statystyki kolekcji (liczba kapsli, podział wg kraju)** — Why parked: Priority: nice-to-have; dostępność API weryfikowana przed implementacją — endpoint może nie istnieć.
