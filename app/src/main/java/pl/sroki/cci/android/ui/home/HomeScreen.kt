@@ -59,6 +59,9 @@ fun HomeScreen(
             NavigationItem(text = "Countries", icon = Icons.Filled.Place) {
                 onClick(Screen.Countries)
             }
+            NavigationItem(text = "Klasery", icon = Icons.Filled.Folder) {
+                onClick(Screen.Binders)
+            }
         }
     }
 }

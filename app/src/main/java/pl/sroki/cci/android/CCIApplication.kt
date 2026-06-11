@@ -21,8 +21,12 @@ class CCIApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         applicationScope.launch {
-            firebaseAuthManager.ensureSignedIn()
-            firestoreRestoreUseCase.restoreIfEmpty()
+            try {
+                firebaseAuthManager.ensureSignedIn()
+                firestoreRestoreUseCase.restoreIfEmpty()
+            } catch (e: Exception) {
+                // Restore failure is non-fatal — app works offline without it
+            }
         }
     }
 }
