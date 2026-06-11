@@ -1,8 +1,7 @@
 package pl.sroki.cci.android.model
 
 import androidx.compose.runtime.Immutable
-import kotlinx.datetime.Instant
-import kotlinx.datetime.serializers.InstantIso8601Serializer
+import kotlin.time.Instant
 import kotlinx.serialization.Serializable
 import pl.sroki.cci.android.data.model.Country
 
@@ -33,7 +32,7 @@ data class CapExtended(
     val usersCount: Int,
     val isInCollection: Boolean = false,
     val createdBy: UserPublic? = null,
-    @Serializable(with = InstantIso8601Serializer::class)
+    @Serializable(with = InstantSerializer::class)
     val createdAt: Instant
 )
 

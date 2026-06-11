@@ -19,7 +19,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import pl.sroki.cci.android.R
 import pl.sroki.cci.android.data.model.Country
 import pl.sroki.cci.android.model.*

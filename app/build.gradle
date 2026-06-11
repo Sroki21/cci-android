@@ -86,7 +86,7 @@ dependencies {
     // Kotlin serialization
     implementation "org.jetbrains.kotlinx:kotlinx-serialization-json:1.11.0"
     // Date time from JSON
-    implementation "org.jetbrains.kotlinx:kotlinx-datetime:0.6.1"
+    implementation "org.jetbrains.kotlinx:kotlinx-datetime:0.7.0"
     // Paging
     implementation "androidx.paging:paging-runtime:$paging_version"
     implementation "androidx.paging:paging-compose:$paging_version"
