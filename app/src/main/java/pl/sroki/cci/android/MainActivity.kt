@@ -5,7 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material.*
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -35,10 +35,9 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             CCITheme {
-                // A surface container using the 'background' color from the theme
                 Surface(
                     modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colors.background
+                    color = MaterialTheme.colorScheme.background
                 ) {
                     Navigation()
                 }
@@ -179,15 +178,14 @@ fun Navigation(
 }
 
 @Composable
-@OptIn(ExperimentalMaterialApi::class)
 fun NavigationItem(
     text: String,
     icon: ImageVector,
     onClick: () -> Unit = {}
 ) {
     ListItem(
-        icon = { Icon(imageVector = icon, contentDescription = null) },
-        text = { Text(text = text) },
+        leadingContent = { Icon(imageVector = icon, contentDescription = null) },
+        headlineContent = { Text(text = text) },
         modifier = Modifier.clickable(onClick = onClick)
     )
 }

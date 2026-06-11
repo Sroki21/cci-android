@@ -3,7 +3,7 @@ package pl.sroki.cci.android.ui
 import android.content.res.Configuration
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.*
+import androidx.compose.material3.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.runtime.*
@@ -14,6 +14,7 @@ import pl.sroki.cci.android.NavigationItem
 import pl.sroki.cci.android.navigation.Screen
 import pl.sroki.cci.android.ui.theme.CCITheme
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     onClick: (Screen) -> Unit = {},

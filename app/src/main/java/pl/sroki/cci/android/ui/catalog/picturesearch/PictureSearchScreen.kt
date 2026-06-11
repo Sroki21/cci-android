@@ -7,7 +7,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.material.*
+import androidx.compose.material3.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.runtime.Composable
@@ -20,7 +20,7 @@ import pl.sroki.cci.android.model.Category
 import pl.sroki.cci.android.ui.components.FullSizeLoader
 import pl.sroki.cci.android.ui.theme.CCITheme
 
-@OptIn(ExperimentalMaterialApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PictureSearch(
     onSearch: (categories: Set<Category>) -> Unit = {},
@@ -68,18 +68,18 @@ fun PictureSearch(
             ) {
                 itemsIndexed(uiState.categories) { _, category ->
                     ListItem(
-                        trailing = {
+                        trailingContent = {
                             Checkbox(
                                 checked = viewModel.selectedCategories.contains(category),
                                 onCheckedChange = {
                                     viewModel.toggleCategory(category)
                                 })
                         },
+                        headlineContent = { Text(text = category.name) },
                         modifier = Modifier.clickable {
                             viewModel.toggleCategory(category)
-                        }) {
-                        Text(text = category.name)
-                    }
+                        }
+                    )
                 }
             }
 

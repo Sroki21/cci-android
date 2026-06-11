@@ -4,7 +4,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.material.*
+import androidx.compose.material3.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.runtime.Composable
@@ -20,6 +20,7 @@ import pl.sroki.cci.android.data.model.Country
 import pl.sroki.cci.android.ui.components.FullSizeLoader
 import pl.sroki.cci.android.ui.theme.CCITheme
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun Countries(
     countriesUiState: CountriesUiState,
@@ -61,11 +62,10 @@ fun Countries(
     }
 }
 
-@OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun CountryItem(country: Country, onClick: () -> Unit, modifier: Modifier = Modifier) {
     ListItem(
-        icon = {
+        leadingContent = {
             AsyncImage(
                 model = ImageRequest.Builder(LocalContext.current)
                     .data(country.imageUrl)
@@ -78,7 +78,7 @@ fun CountryItem(country: Country, onClick: () -> Unit, modifier: Modifier = Modi
                 contentScale = ContentScale.Crop,
             )
         },
-        text = { Text(text = country.name) },
+        headlineContent = { Text(text = country.name) },
         modifier = modifier.clickable(onClick = onClick)
     )
 }

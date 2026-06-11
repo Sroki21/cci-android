@@ -4,9 +4,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Surface
-import androidx.compose.material.Text
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -55,8 +55,8 @@ private fun SearchResult(
                 .padding(8.dp)
         ) {
             cap.description?.let { Text(text = it) }
-            Text(text = cap.country, color = MaterialTheme.colors.secondary)
-            Text(text = cap.product, color = MaterialTheme.colors.secondary)
+            Text(text = cap.country, color = MaterialTheme.colorScheme.secondary)
+            Text(text = cap.product, color = MaterialTheme.colorScheme.secondary)
         }
     }
 
@@ -75,7 +75,7 @@ fun NoResults(
     ) {
         Text(
             text = "No results",
-            style = MaterialTheme.typography.subtitle1,
+            style = MaterialTheme.typography.titleMedium,
             textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth()
         )

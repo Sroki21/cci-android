@@ -2,7 +2,7 @@ package pl.sroki.cci.android.ui.catalog.caps.detail
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.*
+import androidx.compose.material3.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.ui.Modifier
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -11,6 +11,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import pl.sroki.cci.android.ui.components.FullSizeLoader
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CapDetailScreen(
     id: Int,

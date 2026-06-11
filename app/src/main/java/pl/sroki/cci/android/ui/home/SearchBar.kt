@@ -6,7 +6,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.*
+import androidx.compose.material3.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
@@ -24,7 +24,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import pl.sroki.cci.android.ui.theme.CCITheme
 
-@OptIn(ExperimentalMaterialApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SearchBar(
     onSearch: (String) -> Unit = {},
@@ -58,7 +58,7 @@ fun SearchBar(
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
         keyboardActions = KeyboardActions(onSearch = { onSearch(searchQuery) }),
         decorationBox = @Composable { innerTextField ->
-            TextFieldDefaults.TextFieldDecorationBox(
+            TextFieldDefaults.DecorationBox(
                 value = searchQuery,
                 innerTextField = innerTextField,
                 enabled = true,
@@ -67,7 +67,7 @@ fun SearchBar(
                 placeholder = {
                     Text(
                         "Search",
-                        color = Color.White.copy(alpha = ContentAlpha.medium)
+                        color = Color.White.copy(alpha = 0.74f)
                     )
                 },
                 leadingIcon = {
@@ -91,7 +91,7 @@ fun SearchBar(
                     }
                 },
                 interactionSource = interactionSource,
-                contentPadding = TextFieldDefaults.textFieldWithoutLabelPadding(),
+                contentPadding = TextFieldDefaults.contentPaddingWithoutLabel(),
             )
         }
     )

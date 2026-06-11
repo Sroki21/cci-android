@@ -2,7 +2,7 @@ package pl.sroki.cci.android.ui.catalog.country
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.*
+import androidx.compose.material3.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.ui.Modifier
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -12,6 +12,7 @@ import androidx.paging.compose.collectAsLazyPagingItems
 import pl.sroki.cci.android.model.Cap
 import pl.sroki.cci.android.ui.catalog.caps.CapsView
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CountryCapsScreen(
     id: Int,

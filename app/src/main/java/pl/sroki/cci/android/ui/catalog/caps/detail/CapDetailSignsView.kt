@@ -6,7 +6,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.*
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -35,7 +36,7 @@ fun CapDetailSignsView(signGroups: List<SignGroup>, modifier: Modifier = Modifie
                     .clip(shape = RoundedCornerShape(8.dp))
                     .border(
                         width = 1.dp,
-                        color = MaterialTheme.colors.onSurface.copy(alpha = ContentAlpha.disabled),
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
                         shape = RoundedCornerShape(8.dp)
                     )
                     .padding(horizontal = 8.dp)
@@ -49,7 +50,7 @@ fun CapDetailSignsView(signGroups: List<SignGroup>, modifier: Modifier = Modifie
                         contentDescription = "Sign #${groupSign.sign.id}}",
                         modifier = modifier
                             .size(40.dp)
-                            .background(MaterialTheme.colors.surface),
+                            .background(MaterialTheme.colorScheme.surface),
                         contentScale = ContentScale.Fit,
                     )
                 }
