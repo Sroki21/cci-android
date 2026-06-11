@@ -15,7 +15,6 @@ import org.junit.Before
 import org.junit.Test
 import pl.sroki.cci.android.data.datasource.remote.auth.AuthApiService
 import pl.sroki.cci.android.model.LoginRequest
-import pl.sroki.cci.android.model.LoginResponse
 import retrofit2.Response
 
 class AuthRepositoryTest {
@@ -59,7 +58,7 @@ class AuthRepositoryTest {
         every { cookieJar.loadForRequest(any()) } returns emptyList()
         val repo = AuthRepository(authApiService, sessionRepository, cookieJar)
         coEvery { authApiService.initCsrf() } returns Response.success(Unit)
-        coEvery { authApiService.login(any()) } returns Response.success(LoginResponse(token = null))
+        coEvery { authApiService.login(any()) } returns Response.success("{}".toResponseBody("application/json".toMediaType()))
 
         val result = repo.login("user@example.com", "password")
 

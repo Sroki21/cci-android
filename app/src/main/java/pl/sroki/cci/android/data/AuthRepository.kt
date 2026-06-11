@@ -6,6 +6,7 @@ import okhttp3.HttpUrl.Companion.toHttpUrl
 import pl.sroki.cci.android.data.datasource.remote.auth.AuthApiService
 import pl.sroki.cci.android.model.LoginErrorResponse
 import pl.sroki.cci.android.model.LoginRequest
+import pl.sroki.cci.android.model.LoginResponse
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -34,7 +35,12 @@ class AuthRepository @Inject constructor(
                 200 -> {
                     sessionRepository.setLoggedIn(true)
                     sessionRepository.setUserName(email)
-                    sessionRepository.setToken(response.body()?.token)
+                    try {
+                        val bodyStr = response.body()?.string()
+                        if (!bodyStr.isNullOrBlank() && bodyStr.trimStart().startsWith('{')) {
+                            sessionRepository.setToken(json.decodeFromString<LoginResponse>(bodyStr).token)
+                        }
+                    } catch (e: Exception) { /* brak tokenu w odpowiedzi, kontynuuj */ }
                     Result.success(Unit)
                 }
                 422 -> {
