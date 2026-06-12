@@ -38,11 +38,15 @@ class AdvancedSearchPagingSource(
             val isPureCountry = filter.countryId != null && !hasTextFilter
                 && filter.producerName.isBlank() && !filter.onlyInCollection
 
+            // advancedSearch wymaga ?query= w URL (nawet pustego) żeby API przetworzyło
+            // pozostałe filtry (producer, in_collection). Bez ?query= API zwraca 0 wyników.
+            val queryParam = if (filter.textValue.isNotBlank()) filter.textValue.trim() else ""
+
             val result = if (isPureCountry) {
                 capsRepository.getByCountryId(filter.countryId!!, page)
             } else {
                 capsRepository.advancedSearch(
-                    query = filter.textValue.trim().takeIf { it.isNotBlank() },
+                    query = queryParam,
                     countryId = filter.countryId,
                     producer = filter.producerName.takeIf { it.isNotBlank() },
                     inCollection = if (filter.onlyInCollection) 1 else null,
