@@ -107,6 +107,7 @@ class AdvancedSearchPagingSource(
     }
 
     private fun matchesExtendedFilters(cap: CapExtended): Boolean {
+        if (cap.product.id != 2) return false
         if (filter.textValue.isNotBlank()) {
             val text = filter.textValue.trim()
             val desc = cap.description ?: ""
