@@ -49,6 +49,9 @@ interface CapPositionDao {
     )
     suspend fun countByBinderId(binderId: Long): Int
 
+    @Query("SELECT cap_id FROM cap_position")
+    suspend fun getAllCapIds(): List<Long>
+
     @Transaction
     suspend fun reassign(capId: Long, newBinderPageId: Long, newPosition: Int) {
         deleteByCapId(capId)

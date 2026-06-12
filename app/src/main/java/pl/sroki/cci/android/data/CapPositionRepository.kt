@@ -22,6 +22,8 @@ class CapPositionRepository @Inject constructor(
 
     suspend fun getBinderInfoByCapId(capId: Long): CapBinderInfo? = dao.getBinderInfoByCapId(capId)
 
+    suspend fun getAllCapIds(): List<Long> = dao.getAllCapIds()
+
     suspend fun assign(binderPageId: Long, position: Int, capId: Long): Long {
         require(position in 1..35) { "Pozycja musi być w zakresie 1-35" }
         val uid = authManager.uid.value
