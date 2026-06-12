@@ -7,11 +7,14 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.foundation.Image
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import pl.sroki.cci.android.R
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import pl.sroki.cci.android.NavigationItem
 import pl.sroki.cci.android.navigation.Screen
@@ -32,7 +35,13 @@ fun HomeScreen(
 
     Scaffold(topBar = {
         TopAppBar(
-            title = { Text(text = "Crowncaps.Info") },
+            title = {
+                Image(
+                    painter = painterResource(id = R.drawable.ic_cci_logo),
+                    contentDescription = "CCI",
+                    modifier = Modifier.height(40.dp)
+                )
+            },
             actions = {
                 if (uiState.isLoggedIn) {
                     Text(
