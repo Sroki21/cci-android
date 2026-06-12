@@ -24,8 +24,14 @@ import pl.sroki.cci.android.ui.theme.ImageBackground
 
 @Composable
 fun CapGridCard(cap: Cap, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val assignedCapIds = LocalAssignedCapIds.current
+    val border = when {
+        !cap.isInCollection -> null
+        cap.id in assignedCapIds -> BorderStroke(3.dp, Color(0xFF000000)) // W kolekcji → czarna
+        else -> BorderStroke(3.dp, Color(0xFFF44336))                     // Zakupiony → czerwona
+    }
     Card(
-        border = if (cap.isInCollection) BorderStroke(3.dp, Color(0xFFF44336)) else null
+        border = border
     ) {
         AsyncImage(
             model = ImageRequest.Builder(LocalContext.current)

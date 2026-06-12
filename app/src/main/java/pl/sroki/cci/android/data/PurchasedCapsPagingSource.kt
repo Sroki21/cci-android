@@ -17,7 +17,7 @@ class PurchasedCapsPagingSource(
                 query = null, countryId = null, producer = null, inCollection = 1, page = page
             )
             LoadResult.Page(
-                data = result.data,
+                data = result.data.filter { it.isInCollection },
                 prevKey = if (page == 1) null else page - 1,
                 nextKey = if (result.currentPage == result.lastPage) null else page + 1
             )

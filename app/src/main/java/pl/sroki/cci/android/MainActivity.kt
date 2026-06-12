@@ -8,9 +8,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.draw.alpha
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -20,6 +24,8 @@ import androidx.navigation.navArgument
 import dagger.hilt.android.AndroidEntryPoint
 import pl.sroki.cci.android.navigation.Screen
 import pl.sroki.cci.android.ui.HomeScreen
+import pl.sroki.cci.android.ui.catalog.caps.AssignedCapsViewModel
+import pl.sroki.cci.android.ui.catalog.caps.LocalAssignedCapIds
 import pl.sroki.cci.android.ui.catalog.caps.detail.CapDetailScreen
 import pl.sroki.cci.android.ui.catalog.caps.quicksearch.QuickSearchScreen
 import pl.sroki.cci.android.ui.catalog.countries.Countries
@@ -53,9 +59,12 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun Navigation(
     countriesViewModel: CountriesViewModel = viewModel(),
+    assignedCapsViewModel: AssignedCapsViewModel = hiltViewModel(),
 ) {
     val navController = rememberNavController()
+    val assignedCapIds by assignedCapsViewModel.assignedCapIds.collectAsState()
 
+    CompositionLocalProvider(LocalAssignedCapIds provides assignedCapIds) {
     NavHost(
         navController = navController,
         startDestination = Screen.Home.route
@@ -177,6 +186,7 @@ fun Navigation(
             BindersScreen(onBack = { navController.popBackStack() })
         }
     }
+    } // CompositionLocalProvider
 }
 
 @Composable

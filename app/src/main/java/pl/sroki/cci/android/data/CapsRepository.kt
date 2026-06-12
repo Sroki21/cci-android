@@ -88,12 +88,14 @@ class CapsRepository @Inject constructor(private val capApiService: CapApiServic
     suspend fun addToCollection(id: Int) {
         val resp = capApiService.addToCollection(id)
         Log.d("CCI_COLLECTION", "addToCollection id=$id code=${resp.code()}")
-        if (resp.isSuccessful) _collectionChanged.tryEmit(Unit)
+        if (!resp.isSuccessful) throw java.io.IOException("HTTP ${resp.code()}")
+        _collectionChanged.tryEmit(Unit)
     }
 
     suspend fun removeFromCollection(id: Int) {
         val resp = capApiService.removeFromCollection(id)
         Log.d("CCI_COLLECTION", "removeFromCollection id=$id code=${resp.code()}")
-        if (resp.isSuccessful) _collectionChanged.tryEmit(Unit)
+        if (!resp.isSuccessful) throw java.io.IOException("HTTP ${resp.code()}")
+        _collectionChanged.tryEmit(Unit)
     }
 }

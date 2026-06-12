@@ -153,6 +153,7 @@ class CapDetailViewModel @Inject constructor(
                 }
             } catch (e: Exception) {
                 capDetailUiState = current
+                assignmentError = "Błąd zmiany statusu: ${e.message}"
                 if (leavingCollection && current.binderInfo != null) {
                     initBinderPreFill(current.binderInfo)
                 }
