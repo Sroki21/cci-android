@@ -1,5 +1,6 @@
 package pl.sroki.cci.android.data.datasource.remote
 
+import okhttp3.ResponseBody
 import retrofit2.Response
 import retrofit2.http.DELETE
 import retrofit2.http.GET
@@ -41,9 +42,9 @@ interface CapApiService {
         @Query("perPage") perPage: Int
     ): Page<Cap>
 
-    @POST("api/v1/caps/{id}/collect")
-    suspend fun addToCollection(@Path("id") id: Int): Response<Unit>
+    @POST("data/catalog/caps/{id}/collection")
+    suspend fun addToCollection(@Path("id") id: Int): Response<ResponseBody>
 
-    @DELETE("api/v1/caps/{id}/collect")
-    suspend fun removeFromCollection(@Path("id") id: Int): Response<Unit>
+    @DELETE("data/catalog/caps/{id}/collection")
+    suspend fun removeFromCollection(@Path("id") id: Int): Response<ResponseBody>
 }
