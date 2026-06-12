@@ -75,7 +75,8 @@ fun AdvancedSearchScreen(
                 IconButton(onClick = onBack) {
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Wstecz")
                 }
-            }
+            },
+            expandedHeight = 48.dp
         )
     }) { innerPadding ->
         Column(
@@ -121,7 +122,7 @@ private fun FilterForm(
     onProducerSuggestionsDismiss: () -> Unit,
     onSearch: () -> Unit
 ) {
-    Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp)) {
+    Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 1.dp)) {
         OperatorFilterRow(
             label = "Tekst",
             value = filter.textValue,
