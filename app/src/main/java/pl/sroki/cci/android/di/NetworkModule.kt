@@ -75,6 +75,15 @@ object NetworkModule {
             .addInterceptor(BearerTokenInterceptor(sessionRepository))
             .addInterceptor(CsrfInterceptor(cookieJar))
             .authenticator(authenticator)
+        builder.addNetworkInterceptor { chain ->
+            val req = chain.request()
+            val cookies = req.header("Cookie") ?: ""
+            val fixed = if ("user-locale=" in cookies)
+                cookies.replace(Regex("user-locale=[^;\\s]*"), "user-locale=pl")
+            else
+                if (cookies.isEmpty()) "user-locale=pl" else "$cookies; user-locale=pl"
+            chain.proceed(req.newBuilder().header("Cookie", fixed).build())
+        }
         if (BuildConfig.DEBUG) {
             builder.addNetworkInterceptor(
                 HttpLoggingInterceptor().apply { level = HttpLoggingInterceptor.Level.BODY }
