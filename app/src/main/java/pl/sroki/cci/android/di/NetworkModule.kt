@@ -82,7 +82,8 @@ object NetworkModule {
                 val isCapsListPath = req.method == "GET" &&
                     (path == "/api/v1/caps" || path.endsWith("/caps")) &&
                     !capsDetailRegex.matches(path)
-                if (isCapsListPath) {
+                val isCollectionQuery = req.url.queryParameter("in_collection") != null
+                if (isCapsListPath && !isCollectionQuery) {
                     val newUrl = req.url.newBuilder()
                         .addQueryParameter("productId", "1")
                         .build()

@@ -3,7 +3,6 @@ package pl.sroki.cci.android.data
 import androidx.paging.PagingSource
 import androidx.paging.PagingState
 import pl.sroki.cci.android.model.Cap
-import pl.sroki.cci.android.model.CapsSearchRequest
 
 class PurchasedCapsPagingSource(
     private val capsRepository: CapsRepository
@@ -19,9 +18,8 @@ class PurchasedCapsPagingSource(
     override suspend fun load(params: LoadParams<Int>): LoadResult<Int, Cap> {
         return try {
             val page = params.key ?: 1
-            val result = capsRepository.searchByFilter(
-                CapsSearchRequest(inCollection = true),
-                page = page
+            val result = capsRepository.advancedSearch(
+                query = null, countryId = null, producer = null, inCollection = 1, page = page
             )
             LoadResult.Page(
                 data = result.data.filter { it.isInCollection },
