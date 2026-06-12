@@ -3,6 +3,7 @@ package pl.sroki.cci.android.data
 import android.util.Log
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
+import okhttp3.MultipartBody
 import pl.sroki.cci.android.data.datasource.remote.CapApiService
 import pl.sroki.cci.android.model.Cap
 import pl.sroki.cci.android.model.CapExtended
@@ -24,6 +25,13 @@ class CapsRepository @Inject constructor(private val capApiService: CapApiServic
     fun quickSearchCapsPagingSource(query: String) = QuickSearchCapsPagingSource(query, this)
     fun pictureSearchCapsPagingSource(categoryIds: List<Int>) =
         PictureSearchCapsPagingSource(categoryIds, this)
+
+    fun similarCapsPagingSource(imageBytes: ByteArray, mimeType: String) =
+        SimilarCapsPagingSource(imageBytes, mimeType, this)
+
+    suspend fun searchSimilar(image: MultipartBody.Part, page: Int = 1): Page<Cap> {
+        return capApiService.searchSimilar(image, page, perPage)
+    }
     fun advancedSearchPagingSource(
         filter: pl.sroki.cci.android.model.AdvancedSearchFilter,
         onPageLoaded: (filteredCount: Int, apiTotal: Int?) -> Unit

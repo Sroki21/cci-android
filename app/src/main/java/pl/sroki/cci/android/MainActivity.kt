@@ -30,7 +30,6 @@ import pl.sroki.cci.android.ui.auth.LoginScreen
 import pl.sroki.cci.android.ui.binders.BindersScreen
 import pl.sroki.cci.android.ui.catalog.caps.advanced.AdvancedSearchScreen
 import pl.sroki.cci.android.ui.catalog.picturesearch.PictureSearch
-import pl.sroki.cci.android.ui.catalog.picturesearch.PictureSearchCapsScreen
 import pl.sroki.cci.android.ui.theme.CCITheme
 
 @AndroidEntryPoint
@@ -88,10 +87,8 @@ fun Navigation(
         composable(route = Screen.PictureSearch.route) {
             PictureSearch(
                 onBack = { navController.popBackStack() },
-                onSearch = { categories ->
-                    navController.navigate(
-                        Screen.PictureSearchResults.createUrl(categories)
-                    )
+                onCapClick = {
+                    navController.navigate(Screen.CapDetail.createUrl(it.id))
                 }
             )
         }
@@ -108,27 +105,6 @@ fun Navigation(
         ) { backEntryState ->
             CountryCapsScreen(
                 id = backEntryState.arguments?.getInt("countryId") ?: 0,
-                name = backEntryState.arguments?.getString("name") ?: "",
-                onBack = { navController.popBackStack() },
-                onCapClick = {
-                    navController.navigate(
-                        Screen.CapDetail.createUrl(it.id)
-                    )
-                }
-            )
-        }
-        composable(
-            route = Screen.PictureSearchResults.route,
-            arguments = listOf(
-                navArgument("id") {
-                    type = NavType.StringType
-                }
-            )
-        ) { backEntryState ->
-            PictureSearchCapsScreen(
-                categoryIds = backEntryState.arguments?.getString("id")?.split(",")
-                    ?.map { it.toInt() }
-                    ?: listOf(),
                 name = backEntryState.arguments?.getString("name") ?: "",
                 onBack = { navController.popBackStack() },
                 onCapClick = {
