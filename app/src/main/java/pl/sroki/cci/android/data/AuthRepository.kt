@@ -27,6 +27,11 @@ class AuthRepository @Inject constructor(
             .loadForRequest("https://crowncaps.info/".toHttpUrl())
             .any { it.name == "crowncapsinfo-session" }
         sessionRepository.setLoggedIn(hasSession)
+        // Przywróć Bearer token z cache po restarcie (fetch mógł nie powieść się przy ostatnim logowaniu)
+        if (hasSession) {
+            val cached = sessionRepository.loadCachedToken()
+            if (cached != null) sessionRepository.setToken(cached)
+        }
     }
 
     suspend fun login(email: String, password: String): Result<Unit> {

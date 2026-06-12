@@ -69,6 +69,15 @@ class CapsRepository @Inject constructor(private val capApiService: CapApiServic
         )
     }
 
+    suspend fun getCollection(countryId: Int? = null, producer: String? = null, page: Int = 1): Page<Cap> {
+        return capApiService.getCollection(
+            countryId = countryId,
+            producer = producer,
+            page = page,
+            perPage = perPage
+        )
+    }
+
     suspend fun addToCollection(id: Int) {
         val resp = capApiService.addToCollection(id)
         Log.d("CCI_COLLECTION", "addToCollection id=$id code=${resp.code()}")

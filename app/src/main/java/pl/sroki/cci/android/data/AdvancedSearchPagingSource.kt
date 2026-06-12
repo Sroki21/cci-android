@@ -12,7 +12,6 @@ private const val STARTING_KEY = 1
 class AdvancedSearchPagingSource(
     private val filter: AdvancedSearchFilter,
     private val capsRepository: CapsRepository,
-    // apiTotal != null tylko gdy API total jest dokładny (brak client-side filtrowania)
     private val onPageLoaded: (filteredCount: Int, apiTotal: Int?) -> Unit
 ) : PagingSource<Int, Cap>() {
 
@@ -34,10 +33,30 @@ class AdvancedSearchPagingSource(
                 return LoadResult.Page(data = filtered, prevKey = null, nextKey = null)
             }
 
+            // Kolekcja → własny endpoint; client-side filtr tekstu i kraju
+            if (filter.onlyInCollection) {
+                val result = capsRepository.getCollection(
+                    countryId = filter.countryId,
+                    producer = filter.producerName.takeIf { it.isNotBlank() },
+                    page = page
+                )
+                val filteredData = applyTextAndCountryFilter(result.data)
+                val hasExtraFilters = filter.textValue.isNotBlank() || filter.countryId != null
+                if (page == STARTING_KEY) {
+                    onPageLoaded(filteredData.size, if (!hasExtraFilters) result.total else null)
+                } else if (hasExtraFilters) {
+                    onPageLoaded(filteredData.size, null)
+                }
+                return LoadResult.Page(
+                    data = filteredData,
+                    prevKey = if (page == STARTING_KEY) null else page - 1,
+                    nextKey = if (result.currentPage == result.lastPage) null else page + 1
+                )
+            }
+
             val hasTextFilter = filter.textValue.isNotBlank()
-            // Czysto krajowy: brak tekstu, producenta i kolekcji → dedykowany endpoint
-            val isPureCountry = filter.countryId != null && !hasTextFilter
-                && filter.producerName.isBlank() && !filter.onlyInCollection
+            // Czysto krajowy: brak tekstu i producenta → dedykowany endpoint
+            val isPureCountry = filter.countryId != null && !hasTextFilter && filter.producerName.isBlank()
 
             val result = if (isPureCountry) {
                 capsRepository.getByCountryId(filter.countryId!!, page)
@@ -46,18 +65,16 @@ class AdvancedSearchPagingSource(
                     query = filter.textValue.trim().takeIf { it.isNotBlank() },
                     countryId = filter.countryId,
                     producer = filter.producerName.takeIf { it.isNotBlank() },
-                    inCollection = if (filter.onlyInCollection) 1 else null,
+                    inCollection = null,
                     page = page
                 )
             }
 
             val filteredData = applyClientFilters(result.data, isPureCountry)
 
-            // Licznik: jeśli stosujemy client-side filtrowanie → akumuluj; inaczej → API total
             val isClientFiltered = !isPureCountry && (
                 (filter.textValue.isNotBlank() && filter.textOperator != SearchOperator.CONTAINS) ||
-                filter.countryId != null ||
-                filter.onlyInCollection
+                filter.countryId != null
             )
             if (page == STARTING_KEY) {
                 onPageLoaded(filteredData.size, if (!isClientFiltered) result.total else null)
@@ -75,10 +92,32 @@ class AdvancedSearchPagingSource(
         }
     }
 
-    // Client-side filtry na wynikach z API (fallback gdy API ignoruje parametry)
+    // Filtr tekstu + kraju dla wyników z endpointu kolekcji
+    private fun applyTextAndCountryFilter(data: List<Cap>): List<Cap> {
+        var result = data
+        if (filter.textValue.isNotBlank()) {
+            val text = filter.textValue.trim()
+            result = when (filter.textOperator) {
+                SearchOperator.CONTAINS -> result.filter {
+                    it.description?.contains(text, ignoreCase = true) == true
+                }
+                SearchOperator.EQUALS -> result.filter {
+                    it.description?.equals(text, ignoreCase = true) == true
+                }
+                SearchOperator.STARTS_WITH -> result.filter {
+                    it.description?.startsWith(text, ignoreCase = true) == true
+                }
+            }
+        }
+        if (filter.countryId != null && filter.countryName.isNotBlank()) {
+            result = result.filter { it.country.equals(filter.countryName, ignoreCase = true) }
+        }
+        return result
+    }
+
+    // Client-side filtry dla ścieżki advancedSearch
     private fun applyClientFilters(data: List<Cap>, isPureCountry: Boolean): List<Cap> {
         var result = data
-        // Operator tekstowy (EQUALS/STARTS_WITH na description)
         if (filter.textValue.isNotBlank()) {
             val text = filter.textValue.trim()
             result = when (filter.textOperator) {
@@ -91,13 +130,8 @@ class AdvancedSearchPagingSource(
                 }
             }
         }
-        // Kraj (client-side fallback gdy API ignoruje country_id w advancedSearch)
         if (!isPureCountry && filter.countryId != null && filter.countryName.isNotBlank()) {
             result = result.filter { it.country.equals(filter.countryName, ignoreCase = true) }
-        }
-        // Kolekcja (client-side fallback gdy API ignoruje in_collection)
-        if (filter.onlyInCollection) {
-            result = result.filter { it.isInCollection }
         }
         return result
     }
