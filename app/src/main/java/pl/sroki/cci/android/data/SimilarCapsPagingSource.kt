@@ -18,16 +18,14 @@ class SimilarCapsPagingSource(
     override fun getRefreshKey(state: PagingState<Int, Cap>): Int? = state.anchorPosition
 
     override suspend fun load(params: LoadParams<Int>): LoadResult<Int, Cap> {
+        if (params.key != null && params.key != STARTING_KEY) return LoadResult.Page(
+            data = emptyList(), prevKey = null, nextKey = null
+        )
         return try {
-            val page = params.key ?: STARTING_KEY
             val requestBody = imageBytes.toRequestBody(mimeType.toMediaType())
             val part = MultipartBody.Part.createFormData("image", "photo.jpg", requestBody)
-            val result = capsRepository.searchSimilar(part, page)
-            LoadResult.Page(
-                data = result.data,
-                prevKey = if (page == STARTING_KEY) null else page - 1,
-                nextKey = if (result.currentPage == result.lastPage) null else page + 1
-            )
+            val response = capsRepository.searchSimilar(part)
+            LoadResult.Page(data = response.caps, prevKey = null, nextKey = null)
         } catch (e: Exception) {
             LoadResult.Error(e)
         }

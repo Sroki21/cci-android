@@ -9,6 +9,7 @@ import pl.sroki.cci.android.model.Cap
 import pl.sroki.cci.android.model.CapExtended
 import pl.sroki.cci.android.model.CapsSearchRequest
 import pl.sroki.cci.android.model.Page
+import pl.sroki.cci.android.model.SimilarCapsResponse
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -29,8 +30,8 @@ class CapsRepository @Inject constructor(private val capApiService: CapApiServic
     fun similarCapsPagingSource(imageBytes: ByteArray, mimeType: String) =
         SimilarCapsPagingSource(imageBytes, mimeType, this)
 
-    suspend fun searchSimilar(image: MultipartBody.Part, page: Int = 1): Page<Cap> {
-        return capApiService.searchSimilar(image, page, perPage)
+    suspend fun searchSimilar(image: MultipartBody.Part): SimilarCapsResponse {
+        return capApiService.searchSimilar(image)
     }
     fun advancedSearchPagingSource(
         filter: pl.sroki.cci.android.model.AdvancedSearchFilter,

@@ -2,8 +2,8 @@ package pl.sroki.cci.android.ui.catalog.picturesearch
 
 import android.Manifest
 import android.content.Context
-import android.net.Uri
 import android.content.pm.PackageManager
+import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CameraAlt
@@ -62,11 +63,24 @@ fun PictureSearch(
     val caps = viewModel.caps.collectAsLazyPagingItems()
 
     var cameraImageUri by remember { mutableStateOf<Uri?>(null) }
+    var cropSourceUri by remember { mutableStateOf<Uri?>(null) }
+
+    if (cropSourceUri != null) {
+        CropScreen(
+            sourceUri = cropSourceUri!!,
+            onConfirm = { croppedUri ->
+                viewModel.onImageSelected(croppedUri)
+                cropSourceUri = null
+            },
+            onDismiss = { cropSourceUri = null }
+        )
+        return
+    }
 
     val cameraLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.TakePicture()
     ) { success ->
-        if (success) cameraImageUri?.let { viewModel.onImageSelected(it) }
+        if (success) cameraImageUri?.let { cropSourceUri = it }
     }
 
     val cameraPermissionLauncher = rememberLauncherForActivityResult(
@@ -82,7 +96,7 @@ fun PictureSearch(
     val galleryLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.PickVisualMedia()
     ) { uri ->
-        uri?.let { viewModel.onImageSelected(it) }
+        uri?.let { cropSourceUri = it }
     }
 
     Scaffold(
@@ -154,7 +168,7 @@ fun PictureSearch(
                     contentScale = ContentScale.Crop,
                     modifier = Modifier
                         .size(200.dp)
-                        .clip(MaterialTheme.shapes.medium)
+                        .clip(CircleShape)
                 )
                 Spacer(Modifier.height(12.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

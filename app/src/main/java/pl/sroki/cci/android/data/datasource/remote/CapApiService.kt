@@ -15,6 +15,7 @@ import pl.sroki.cci.android.model.Cap
 import pl.sroki.cci.android.model.CapExtended
 import pl.sroki.cci.android.model.CapsSearchRequest
 import pl.sroki.cci.android.model.Page
+import pl.sroki.cci.android.model.SimilarCapsResponse
 
 interface CapApiService {
     @GET("api/v1/countries/{countryId}/caps")
@@ -60,10 +61,8 @@ interface CapApiService {
     @Multipart
     @POST("data/catalog/caps/similar")
     suspend fun searchSimilar(
-        @Part image: MultipartBody.Part,
-        @Query("page") page: Int,
-        @Query("perPage") perPage: Int
-    ): Page<Cap>
+        @Part image: MultipartBody.Part
+    ): SimilarCapsResponse
 
     @POST("data/catalog/caps/search")
     suspend fun searchCapsByFilter(

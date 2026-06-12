@@ -60,9 +60,9 @@ class PictureSearchViewModel @Inject constructor(
     fun search() {
         val uri = selectedImageUri ?: return
         viewModelScope.launch(Dispatchers.IO) {
-            val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() } ?: return@launch
-            val mimeType = context.contentResolver.getType(uri) ?: "image/jpeg"
-            searchTrigger.value = ImageData(bytes, mimeType)
+            val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                ?: return@launch
+            searchTrigger.value = ImageData(bytes, "image/jpeg")
             withContext(Dispatchers.Main) { hasSearched = true }
         }
     }
