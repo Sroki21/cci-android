@@ -16,6 +16,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
@@ -31,7 +32,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.AlertDialog
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -110,18 +110,20 @@ private fun FilterForm(
     onSearch: () -> Unit
 ) {
     Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-        SimpleFilterRow(
-            label = "ID",
-            value = filter.idValue,
-            onValueChange = { onFilterChange(filter.copy(idValue = it)) },
-            keyboardType = KeyboardType.Number
-        )
+        // Kolejność: Tekst, Producent, Kraj, ID
         OperatorFilterRow(
             label = "Tekst",
             value = filter.textValue,
             operator = filter.textOperator,
             onValueChange = { onFilterChange(filter.copy(textValue = it)) },
             onOperatorChange = { onFilterChange(filter.copy(textOperator = it)) }
+        )
+        OperatorFilterRow(
+            label = "Producent",
+            value = filter.producerValue,
+            operator = filter.producerOperator,
+            onValueChange = { onFilterChange(filter.copy(producerValue = it)) },
+            onOperatorChange = { onFilterChange(filter.copy(producerOperator = it)) }
         )
         CountryFilterRow(
             countryName = filter.countryName,
@@ -134,12 +136,11 @@ private fun FilterForm(
                 }
             }
         )
-        OperatorFilterRow(
-            label = "Producent",
-            value = filter.producerValue,
-            operator = filter.producerOperator,
-            onValueChange = { onFilterChange(filter.copy(producerValue = it)) },
-            onOperatorChange = { onFilterChange(filter.copy(producerOperator = it)) }
+        SimpleFilterRow(
+            label = "ID",
+            value = filter.idValue,
+            onValueChange = { onFilterChange(filter.copy(idValue = it)) },
+            keyboardType = KeyboardType.Number
         )
         if (isLoggedIn) {
             Row(
@@ -240,24 +241,27 @@ private fun CountryFilterRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp)
+            .padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
+        // TextField z transparentną nakładką do otwierania dialogu
         Box(modifier = Modifier.weight(1f)) {
             OutlinedTextField(
                 value = countryName,
                 onValueChange = {},
                 label = { Text("Kraj") },
                 readOnly = true,
-                trailingIcon = {
-                    if (countryName.isNotEmpty()) {
-                        IconButton(onClick = { onCountrySelected(null) }) {
-                            Icon(Icons.Default.Clear, contentDescription = "Wyczyść")
-                        }
-                    }
-                },
                 modifier = Modifier.fillMaxWidth()
             )
             Box(modifier = Modifier.matchParentSize().clickable { showDialog = true })
+        }
+        // Przycisk X poza nakładką — dostaje kliknięcia bezpośrednio
+        if (countryName.isNotEmpty()) {
+            IconButton(onClick = { onCountrySelected(null) }) {
+                Icon(Icons.Default.Clear, contentDescription = "Wyczyść kraj")
+            }
+        } else {
+            Spacer(Modifier.width(48.dp))
         }
     }
 
