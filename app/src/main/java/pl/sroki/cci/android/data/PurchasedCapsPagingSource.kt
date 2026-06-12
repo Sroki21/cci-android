@@ -24,7 +24,7 @@ class PurchasedCapsPagingSource(
                 page = page
             )
             LoadResult.Page(
-                data = result.data,
+                data = result.data.filter { it.isInCollection },
                 prevKey = if (page == 1) null else page - 1,
                 nextKey = if (result.currentPage == result.lastPage) null else page + 1
             )
