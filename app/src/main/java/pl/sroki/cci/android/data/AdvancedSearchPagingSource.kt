@@ -38,9 +38,14 @@ class AdvancedSearchPagingSource(
             val isPureCountry = filter.countryId != null && !hasTextFilter
                 && filter.producerName.isBlank() && !filter.onlyInCollection
 
-            // advancedSearch wymaga ?query= w URL (nawet pustego) żeby API przetworzyło
-            // pozostałe filtry (producer, in_collection). Bez ?query= API zwraca 0 wyników.
-            val queryParam = if (filter.textValue.isNotBlank()) filter.textValue.trim() else ""
+            // api/v1/caps ignoruje ?producer= — scalamy nazwę producenta z ?query=
+            // jako fallback (zwraca częściowe wyniki z opisu). Wymaga znalezienia
+            // prawidłowego endpointu przez DevTools na crowncaps.info.
+            val queryParts = buildList {
+                if (filter.textValue.isNotBlank()) add(filter.textValue.trim())
+                if (filter.producerName.isNotBlank()) add(filter.producerName.trim())
+            }
+            val queryParam = queryParts.joinToString(" ").takeIf { it.isNotBlank() }
 
             val result = if (isPureCountry) {
                 capsRepository.getByCountryId(filter.countryId!!, page)
@@ -48,7 +53,7 @@ class AdvancedSearchPagingSource(
                 capsRepository.advancedSearch(
                     query = queryParam,
                     countryId = filter.countryId,
-                    producer = filter.producerName.takeIf { it.isNotBlank() },
+                    producer = null,
                     inCollection = if (filter.onlyInCollection) 1 else null,
                     page = page
                 )
