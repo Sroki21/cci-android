@@ -119,7 +119,7 @@ private fun FilterForm(
     onProducerSuggestionsDismiss: () -> Unit,
     onSearch: () -> Unit
 ) {
-    Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+    Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
         OperatorFilterRow(
             label = "Tekst",
             value = filter.textValue,
@@ -157,7 +157,7 @@ private fun FilterForm(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable { onFilterChange(filter.copy(onlyInCollection = !filter.onlyInCollection)) }
-                    .padding(vertical = 4.dp)
+                    .padding(vertical = 2.dp)
             ) {
                 Checkbox(
                     checked = filter.onlyInCollection,
@@ -166,7 +166,7 @@ private fun FilterForm(
                 Text("Tylko kapsle w kolekcji")
             }
         }
-        Spacer(Modifier.height(4.dp))
+        Spacer(Modifier.height(2.dp))
         Button(
             onClick = onSearch,
             enabled = !filter.isEmpty(),
@@ -199,7 +199,7 @@ private fun SimpleFilterRow(
         },
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp)
+            .padding(vertical = 2.dp)
     )
 }
 
@@ -215,7 +215,7 @@ private fun OperatorFilterRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp),
+            .padding(vertical = 2.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(modifier = Modifier.width(95.dp)) {
@@ -273,7 +273,7 @@ private fun ProducerFilterRow(
 
     Box(modifier = Modifier
         .fillMaxWidth()
-        .padding(vertical = 4.dp)
+        .padding(vertical = 2.dp)
     ) {
         OutlinedTextField(
             value = inputText,
@@ -349,7 +349,7 @@ private fun CountryFilterRow(
         },
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp)
+            .padding(vertical = 2.dp)
     )
 
     if (showDialog) {

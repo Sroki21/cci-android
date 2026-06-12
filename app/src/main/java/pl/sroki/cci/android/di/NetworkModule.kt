@@ -70,11 +70,27 @@ object NetworkModule {
         authenticator: Authenticator,
         sessionRepository: SessionRepository
     ): OkHttpClient {
+        val capsDetailRegex = Regex("/api/v1/caps/\\d+$")
         val builder = OkHttpClient.Builder()
             .cookieJar(cookieJar)
             .addInterceptor(AcceptJsonInterceptor())
             .addInterceptor(BearerTokenInterceptor(sessionRepository))
             .addInterceptor(CsrfInterceptor(cookieJar))
+            .addInterceptor { chain ->
+                val req = chain.request()
+                val path = req.url.encodedPath
+                val isCapsListPath = req.method == "GET" &&
+                    (path == "/api/v1/caps" || path.endsWith("/caps")) &&
+                    !capsDetailRegex.matches(path)
+                if (isCapsListPath) {
+                    val newUrl = req.url.newBuilder()
+                        .addQueryParameter("product_id", "2")
+                        .build()
+                    chain.proceed(req.newBuilder().url(newUrl).build())
+                } else {
+                    chain.proceed(req)
+                }
+            }
             .authenticator(authenticator)
         builder.addNetworkInterceptor { chain ->
             val req = chain.request()
