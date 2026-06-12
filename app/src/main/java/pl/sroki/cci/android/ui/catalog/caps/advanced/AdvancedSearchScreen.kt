@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.LocalMinimumInteractiveComponentSize
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -35,6 +36,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -119,7 +121,7 @@ private fun FilterForm(
     onProducerSuggestionsDismiss: () -> Unit,
     onSearch: () -> Unit
 ) {
-    Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
+    Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp)) {
         OperatorFilterRow(
             label = "Tekst",
             value = filter.textValue,
@@ -152,21 +154,22 @@ private fun FilterForm(
             keyboardType = KeyboardType.Number
         )
         if (isLoggedIn) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { onFilterChange(filter.copy(onlyInCollection = !filter.onlyInCollection)) }
-                    .padding(vertical = 2.dp)
-            ) {
-                Checkbox(
-                    checked = filter.onlyInCollection,
-                    onCheckedChange = { onFilterChange(filter.copy(onlyInCollection = it)) }
-                )
-                Text("Tylko kapsle w kolekcji")
+            CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides 0.dp) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onFilterChange(filter.copy(onlyInCollection = !filter.onlyInCollection)) }
+                        .padding(vertical = 1.dp)
+                ) {
+                    Checkbox(
+                        checked = filter.onlyInCollection,
+                        onCheckedChange = { onFilterChange(filter.copy(onlyInCollection = it)) }
+                    )
+                    Text("Tylko kapsle w kolekcji")
+                }
             }
         }
-        Spacer(Modifier.height(2.dp))
         Button(
             onClick = onSearch,
             enabled = !filter.isEmpty(),
@@ -199,7 +202,7 @@ private fun SimpleFilterRow(
         },
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 2.dp)
+            .padding(vertical = 1.dp)
     )
 }
 
@@ -215,7 +218,7 @@ private fun OperatorFilterRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 2.dp),
+            .padding(vertical = 1.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(modifier = Modifier.width(95.dp)) {
@@ -273,7 +276,7 @@ private fun ProducerFilterRow(
 
     Box(modifier = Modifier
         .fillMaxWidth()
-        .padding(vertical = 2.dp)
+        .padding(vertical = 1.dp)
     ) {
         OutlinedTextField(
             value = inputText,
@@ -349,7 +352,7 @@ private fun CountryFilterRow(
         },
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 2.dp)
+            .padding(vertical = 1.dp)
     )
 
     if (showDialog) {
