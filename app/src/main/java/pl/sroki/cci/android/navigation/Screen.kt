@@ -27,6 +27,7 @@ sealed class Screen(val route: String) {
     }
 
     object AdvancedSearch : Screen("advanced-search")
+    object Purchased : Screen("purchased")
     object Login : Screen("login")
     object Binders : Screen("binders")
 }

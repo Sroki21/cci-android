@@ -30,6 +30,7 @@ import pl.sroki.cci.android.ui.auth.LoginScreen
 import pl.sroki.cci.android.ui.binders.BindersScreen
 import pl.sroki.cci.android.ui.catalog.caps.advanced.AdvancedSearchScreen
 import pl.sroki.cci.android.ui.catalog.picturesearch.PictureSearch
+import pl.sroki.cci.android.ui.catalog.purchased.PurchasedScreen
 import pl.sroki.cci.android.ui.theme.CCITheme
 
 @AndroidEntryPoint
@@ -165,6 +166,12 @@ fun Navigation(
         }
         composable(route = Screen.Login.route) {
             LoginScreen(onLoginSuccess = { navController.popBackStack() })
+        }
+        composable(route = Screen.Purchased.route) {
+            PurchasedScreen(
+                onBack = { navController.popBackStack() },
+                onCapClick = { navController.navigate(Screen.CapDetail.createUrl(it.id)) }
+            )
         }
         composable(route = Screen.Binders.route) {
             BindersScreen(onBack = { navController.popBackStack() })

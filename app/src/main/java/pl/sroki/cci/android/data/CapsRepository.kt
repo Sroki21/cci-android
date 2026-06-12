@@ -33,6 +33,8 @@ class CapsRepository @Inject constructor(private val capApiService: CapApiServic
     suspend fun searchSimilar(image: MultipartBody.Part): SimilarCapsResponse {
         return capApiService.searchSimilar(image)
     }
+    fun purchasedCapsPagingSource() = PurchasedCapsPagingSource(this)
+
     fun advancedSearchPagingSource(
         filter: pl.sroki.cci.android.model.AdvancedSearchFilter,
         onPageLoaded: (filteredCount: Int, apiTotal: Int?) -> Unit

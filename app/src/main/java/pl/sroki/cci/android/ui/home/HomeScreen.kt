@@ -80,6 +80,11 @@ fun HomeScreen(
             NavigationItem(text = "Szukanie zaawansowane", icon = Icons.Filled.FilterList) {
                 onClick(Screen.AdvancedSearch)
             }
+            if (uiState.isLoggedIn) {
+                NavigationItem(text = "Zakupione", icon = Icons.Filled.ShoppingCart) {
+                    onClick(Screen.Purchased)
+                }
+            }
             NavigationItem(
                 text = "Statystyki",
                 icon = Icons.Filled.BarChart,
