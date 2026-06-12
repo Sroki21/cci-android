@@ -1,9 +1,9 @@
 package pl.sroki.cci.android.data.datasource.remote
 
-import pl.sroki.cci.android.model.Producer
 import retrofit2.http.GET
+import retrofit2.http.Query
 
 interface ProducerApiService {
-    @GET("data/catalog/caps/producers")
-    suspend fun getAll(): List<Producer>
+    @GET("data/catalog/producers/names")
+    suspend fun searchNames(@Query("name") name: String): List<String>
 }

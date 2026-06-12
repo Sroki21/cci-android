@@ -12,6 +12,8 @@ import androidx.paging.PagingSource
 import androidx.paging.cachedIn
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -26,7 +28,6 @@ import pl.sroki.cci.android.data.SessionRepository
 import pl.sroki.cci.android.data.model.Country
 import pl.sroki.cci.android.model.AdvancedSearchFilter
 import pl.sroki.cci.android.model.Cap
-import pl.sroki.cci.android.model.Producer
 import javax.inject.Inject
 
 @HiltViewModel
@@ -43,8 +44,8 @@ class AdvancedSearchViewModel @Inject constructor(
     var countries by mutableStateOf<List<Country>>(emptyList())
         private set
 
-    var producers by mutableStateOf<List<Producer>>(emptyList())
-        private set
+    private val _producerSuggestions = MutableStateFlow<List<String>>(emptyList())
+    val producerSuggestions: StateFlow<List<String>> = _producerSuggestions.asStateFlow()
 
     private val _totalResults = MutableStateFlow<Int?>(null)
     val totalResults: StateFlow<Int?> = _totalResults.asStateFlow()
@@ -56,6 +57,7 @@ class AdvancedSearchViewModel @Inject constructor(
 
     private var pagingSource: PagingSource<Int, Cap>? = null
     private val _filterTrigger = MutableStateFlow(0)
+    private var producerSearchJob: Job? = null
 
     @OptIn(ExperimentalCoroutinesApi::class)
     val caps: Flow<PagingData<Cap>> = _filterTrigger
@@ -83,12 +85,27 @@ class AdvancedSearchViewModel @Inject constructor(
         viewModelScope.launch {
             countries = try { countriesRepository.getCountries() } catch (e: Exception) { emptyList() }
         }
-        viewModelScope.launch {
-            producers = try { producersRepository.getProducers() } catch (e: Exception) { emptyList() }
-        }
     }
 
     fun updateFilter(updated: AdvancedSearchFilter) { filter = updated }
+
+    fun searchProducers(query: String) {
+        producerSearchJob?.cancel()
+        if (query.length < 2) {
+            _producerSuggestions.value = emptyList()
+            return
+        }
+        producerSearchJob = viewModelScope.launch {
+            delay(300)
+            _producerSuggestions.value = try {
+                producersRepository.searchProducers(query)
+            } catch (e: Exception) { emptyList() }
+        }
+    }
+
+    fun clearProducerSuggestions() {
+        _producerSuggestions.value = emptyList()
+    }
 
     fun search() {
         _hasSearched.value = true

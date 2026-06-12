@@ -50,7 +50,6 @@ import androidx.paging.compose.collectAsLazyPagingItems
 import pl.sroki.cci.android.data.model.Country
 import pl.sroki.cci.android.model.AdvancedSearchFilter
 import pl.sroki.cci.android.model.Cap
-import pl.sroki.cci.android.model.Producer
 import pl.sroki.cci.android.model.SearchOperator
 import pl.sroki.cci.android.ui.catalog.caps.CapsView
 
@@ -64,6 +63,7 @@ fun AdvancedSearchScreen(
     val hasSearched by viewModel.hasSearched.collectAsState()
     val totalResults by viewModel.totalResults.collectAsState()
     val isLoggedIn by viewModel.isLoggedIn.collectAsState()
+    val producerSuggestions by viewModel.producerSuggestions.collectAsState()
     val caps = viewModel.caps.collectAsLazyPagingItems()
 
     Scaffold(topBar = {
@@ -84,9 +84,11 @@ fun AdvancedSearchScreen(
             FilterForm(
                 filter = viewModel.filter,
                 countries = viewModel.countries,
-                producers = viewModel.producers,
+                producerSuggestions = producerSuggestions,
                 isLoggedIn = isLoggedIn,
                 onFilterChange = viewModel::updateFilter,
+                onProducerSearch = viewModel::searchProducers,
+                onProducerSuggestionsDismiss = viewModel::clearProducerSuggestions,
                 onSearch = viewModel::search
             )
             HorizontalDivider()
@@ -110,9 +112,11 @@ fun AdvancedSearchScreen(
 private fun FilterForm(
     filter: AdvancedSearchFilter,
     countries: List<Country>,
-    producers: List<Producer>,
+    producerSuggestions: List<String>,
     isLoggedIn: Boolean,
     onFilterChange: (AdvancedSearchFilter) -> Unit,
+    onProducerSearch: (String) -> Unit,
+    onProducerSuggestionsDismiss: () -> Unit,
     onSearch: () -> Unit
 ) {
     Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
@@ -125,14 +129,10 @@ private fun FilterForm(
         )
         ProducerFilterRow(
             producerName = filter.producerName,
-            producers = producers,
-            onProducerSelected = { producer ->
-                if (producer == null) {
-                    onFilterChange(filter.copy(producerId = null, producerName = ""))
-                } else {
-                    onFilterChange(filter.copy(producerId = producer.id, producerName = producer.name))
-                }
-            }
+            suggestions = producerSuggestions,
+            onProducerChange = { name -> onFilterChange(filter.copy(producerName = name ?: "")) },
+            onQuerySearch = onProducerSearch,
+            onDismiss = onProducerSuggestionsDismiss
         )
         CountryFilterRow(
             countryName = filter.countryName,
@@ -255,73 +255,66 @@ private fun OperatorFilterRow(
 @Composable
 private fun ProducerFilterRow(
     producerName: String,
-    producers: List<Producer>,
-    onProducerSelected: (Producer?) -> Unit
+    suggestions: List<String>,
+    onProducerChange: (String?) -> Unit,
+    onQuerySearch: (String) -> Unit,
+    onDismiss: () -> Unit
 ) {
-    var showDialog by remember { mutableStateOf(false) }
-    var dialogSearch by remember { mutableStateOf("") }
-    val interactionSource = remember { MutableInteractionSource() }
+    var inputText by remember { mutableStateOf(producerName) }
+    var showSuggestions by remember { mutableStateOf(false) }
 
-    LaunchedEffect(interactionSource) {
-        interactionSource.interactions.collect { interaction ->
-            if (interaction is PressInteraction.Release) showDialog = true
+    // Sync gdy producent wyczyszczony zewnętrznie (np. przycisk X)
+    LaunchedEffect(producerName) {
+        if (producerName.isEmpty() && inputText.isNotEmpty()) {
+            inputText = ""
+            showSuggestions = false
         }
     }
 
-    OutlinedTextField(
-        value = producerName,
-        onValueChange = {},
-        label = { Text("Producent") },
-        readOnly = true,
-        interactionSource = interactionSource,
-        trailingIcon = {
-            if (producerName.isNotEmpty()) {
-                IconButton(onClick = { onProducerSelected(null) }) {
-                    Icon(Icons.Default.Clear, contentDescription = "Wyczyść producenta")
-                }
-            }
-        },
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp)
-    )
-
-    if (showDialog) {
-        val filtered = remember(dialogSearch, producers) {
-            if (dialogSearch.isBlank()) producers
-            else producers.filter { it.name.contains(dialogSearch, ignoreCase = true) }
-        }
-        AlertDialog(
-            onDismissRequest = { showDialog = false; dialogSearch = "" },
-            title = { Text("Wybierz producenta") },
-            text = {
-                Column {
-                    OutlinedTextField(
-                        value = dialogSearch,
-                        onValueChange = { dialogSearch = it },
-                        label = { Text("Szukaj") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    LazyColumn {
-                        items(filtered, key = { it.id }) { producer ->
-                            ListItem(
-                                headlineContent = { Text(producer.name) },
-                                supportingContent = producer.city?.takeIf { it.isNotBlank() }
-                                    ?.let { { Text(it) } },
-                                modifier = Modifier.clickable {
-                                    onProducerSelected(producer)
-                                    showDialog = false
-                                    dialogSearch = ""
-                                }
-                            )
-                        }
+    Box(modifier = Modifier
+        .fillMaxWidth()
+        .padding(vertical = 4.dp)
+    ) {
+        OutlinedTextField(
+            value = inputText,
+            onValueChange = { value ->
+                inputText = value
+                onQuerySearch(value)
+                onProducerChange(value.takeIf { it.isNotBlank() })
+                showSuggestions = value.length >= 2
+            },
+            label = { Text("Producent") },
+            singleLine = true,
+            trailingIcon = {
+                if (inputText.isNotEmpty()) {
+                    IconButton(onClick = {
+                        inputText = ""
+                        onProducerChange(null)
+                        onDismiss()
+                        showSuggestions = false
+                    }) {
+                        Icon(Icons.Default.Clear, contentDescription = "Wyczyść producenta")
                     }
                 }
             },
-            confirmButton = {}
+            modifier = Modifier.fillMaxWidth()
         )
+        DropdownMenu(
+            expanded = showSuggestions && suggestions.isNotEmpty(),
+            onDismissRequest = { showSuggestions = false; onDismiss() }
+        ) {
+            suggestions.forEach { name ->
+                DropdownMenuItem(
+                    text = { Text(name) },
+                    onClick = {
+                        inputText = name
+                        onProducerChange(name)
+                        onDismiss()
+                        showSuggestions = false
+                    }
+                )
+            }
+        }
     }
 }
 
