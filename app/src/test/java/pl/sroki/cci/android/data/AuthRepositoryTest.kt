@@ -1,5 +1,7 @@
 package pl.sroki.cci.android.data
 
+import android.content.Context
+import android.content.SharedPreferences
 import com.franmontiel.persistentcookiejar.PersistentCookieJar
 import io.mockk.coEvery
 import io.mockk.every
@@ -27,7 +29,20 @@ class AuthRepositoryTest {
     fun setUp() {
         authApiService = mockk()
         cookieJar = mockk(relaxed = true)
-        sessionRepository = SessionRepository()
+        sessionRepository = SessionRepository(mockContext())
+        coEvery { authApiService.apiToken(any()) } returns mockk(relaxed = true)
+    }
+
+    private fun mockContext(): Context {
+        val editor = mockk<SharedPreferences.Editor>(relaxed = true)
+        every { editor.putString(any(), any()) } returns editor
+        every { editor.remove(any()) } returns editor
+        val prefs = mockk<SharedPreferences>()
+        every { prefs.getString("api_token", null) } returns null
+        every { prefs.edit() } returns editor
+        val context = mockk<Context>()
+        every { context.getSharedPreferences("session", Context.MODE_PRIVATE) } returns prefs
+        return context
     }
 
     @Test

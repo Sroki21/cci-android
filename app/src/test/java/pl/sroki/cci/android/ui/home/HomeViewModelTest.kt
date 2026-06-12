@@ -1,5 +1,9 @@
 package pl.sroki.cci.android.ui.home
 
+import android.content.Context
+import android.content.SharedPreferences
+import io.mockk.every
+import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -25,8 +29,20 @@ class HomeViewModelTest {
     @Before
     fun setUp() {
         Dispatchers.setMain(testDispatcher)
-        sessionRepository = SessionRepository()
+        sessionRepository = SessionRepository(mockContext())
         viewModel = HomeViewModel(sessionRepository)
+    }
+
+    private fun mockContext(): Context {
+        val editor = mockk<SharedPreferences.Editor>(relaxed = true)
+        every { editor.putString(any(), any()) } returns editor
+        every { editor.remove(any()) } returns editor
+        val prefs = mockk<SharedPreferences>()
+        every { prefs.getString("api_token", null) } returns null
+        every { prefs.edit() } returns editor
+        val context = mockk<Context>()
+        every { context.getSharedPreferences("session", Context.MODE_PRIVATE) } returns prefs
+        return context
     }
 
     @After

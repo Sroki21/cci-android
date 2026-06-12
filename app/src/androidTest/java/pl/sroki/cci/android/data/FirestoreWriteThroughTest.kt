@@ -45,6 +45,7 @@ class FirestoreWriteThroughTest {
             authManager = authManager
         )
         binderPageRepository = BinderPageRepository(
+            db = db,
             dao = db.binderPageDao(),
             binderDao = db.binderDao(),
             capPositionDao = db.capPositionDao(),

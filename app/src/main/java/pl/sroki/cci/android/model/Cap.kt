@@ -13,6 +13,7 @@ data class Cap(
     val liner: String,
     val purpose: String,
     val imageUrl: String,
+    @kotlinx.serialization.Serializable(with = IsInCollectionSerializer::class)
     val isInCollection: Boolean = false
 ) {
     companion object {

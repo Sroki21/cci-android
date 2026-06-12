@@ -30,6 +30,7 @@ data class CapExtended(
     val insideImages: List<InsideImage> = listOf(),
     val images: List<AdditionalImage> = listOf(),
     val usersCount: Int,
+    @kotlinx.serialization.Serializable(with = IsInCollectionSerializer::class)
     val isInCollection: Boolean = false,
     val createdBy: UserPublic? = null,
     @Serializable(with = InstantSerializer::class)
