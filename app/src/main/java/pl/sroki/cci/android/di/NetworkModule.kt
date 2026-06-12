@@ -84,7 +84,7 @@ object NetworkModule {
                     !capsDetailRegex.matches(path)
                 if (isCapsListPath) {
                     val newUrl = req.url.newBuilder()
-                        .addQueryParameter("product_id", "2")
+                        .addQueryParameter("productId", "1")
                         .build()
                     chain.proceed(req.newBuilder().url(newUrl).build())
                 } else {
