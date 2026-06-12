@@ -5,9 +5,11 @@ import androidx.lifecycle.viewModelScope
 import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.PagingData
+import androidx.paging.PagingSource
 import androidx.paging.cachedIn
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.launch
 import pl.sroki.cci.android.data.CapsRepository
 import pl.sroki.cci.android.model.Cap
 import javax.inject.Inject
@@ -17,10 +19,17 @@ class QuickSearchViewModel @Inject constructor(private val repository: CapsRepos
     ViewModel() {
 
     var query: String = ""
+    private var pagingSource: PagingSource<Int, Cap>? = null
+
     // API /api/v1/caps?query= ignores perPage — always returns 20 items per page
     val caps: Flow<PagingData<Cap>> = Pager(
-        pagingSourceFactory = { repository.quickSearchCapsPagingSource(query) },
+        pagingSourceFactory = { repository.quickSearchCapsPagingSource(query).also { pagingSource = it } },
         config = PagingConfig(pageSize = 20)
     ).flow.cachedIn(viewModelScope)
 
+    init {
+        viewModelScope.launch {
+            repository.collectionChanged.collect { pagingSource?.invalidate() }
+        }
+    }
 }

@@ -1,14 +1,22 @@
 package pl.sroki.cci.android.data
 
+import android.util.Log
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
 import pl.sroki.cci.android.data.datasource.remote.CapApiService
 import pl.sroki.cci.android.model.Cap
 import pl.sroki.cci.android.model.CapExtended
 import pl.sroki.cci.android.model.Page
 import javax.inject.Inject
+import javax.inject.Singleton
 
+@Singleton
 class CapsRepository @Inject constructor(private val capApiService: CapApiService) {
 
     private val perPage = Cap.PER_PAGE
+
+    private val _collectionChanged = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val collectionChanged: SharedFlow<Unit> = _collectionChanged
 
     fun countryCapsPagingSource(id: Int) = CountryCapsPagingSource(id, this)
     fun latestCapsPagingSource() = LatestCapsPagingSource(this)
@@ -38,5 +46,17 @@ class CapsRepository @Inject constructor(private val capApiService: CapApiServic
 
     suspend fun getByQuery(query: String, page: Int = 1): Page<Cap> {
         return capApiService.getByQuery(query = query, page = page, perPage = perPage)
+    }
+
+    suspend fun addToCollection(id: Int) {
+        val resp = capApiService.addToCollection(id)
+        Log.d("CCI_COLLECTION", "addToCollection id=$id code=${resp.code()}")
+        if (resp.isSuccessful) _collectionChanged.tryEmit(Unit)
+    }
+
+    suspend fun removeFromCollection(id: Int) {
+        val resp = capApiService.removeFromCollection(id)
+        Log.d("CCI_COLLECTION", "removeFromCollection id=$id code=${resp.code()}")
+        if (resp.isSuccessful) _collectionChanged.tryEmit(Unit)
     }
 }

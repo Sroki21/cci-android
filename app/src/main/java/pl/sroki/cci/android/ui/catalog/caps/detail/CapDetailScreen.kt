@@ -14,6 +14,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -29,6 +30,7 @@ fun CapDetailScreen(
 ) {
     val viewModel = hiltViewModel<CapDetailViewModel>()
     val uiState = viewModel.capDetailUiState
+    val isLoggedIn by viewModel.isLoggedIn.collectAsState()
     var statusMenuExpanded by remember { mutableStateOf(false) }
 
     LaunchedEffect(true) {
@@ -44,7 +46,7 @@ fun CapDetailScreen(
                 ) {
                     Text(text = "#$id")
                     Spacer(Modifier.weight(1f))
-                    if (uiState is CapDetailUiState.Success) {
+                    if (uiState is CapDetailUiState.Success && isLoggedIn) {
                         val (label, color) = when (uiState.status) {
                             CapStatus.IN_COLLECTION -> "W kolekcji" to Color(0xFF4CAF50)
                             CapStatus.PURCHASED -> "Zakupiony" to Color(0xFF2196F3)
