@@ -35,6 +35,11 @@ class CapDetailViewModel @Inject constructor(
     var capDetailUiState: CapDetailUiState by mutableStateOf(CapDetailUiState.Loading)
         private set
 
+    fun setStatus(status: CapStatus) {
+        val current = capDetailUiState as? CapDetailUiState.Success ?: return
+        capDetailUiState = current.copy(status = status)
+    }
+
     fun getCap(id: Int) {
         viewModelScope.launch {
             capDetailUiState = try {
