@@ -58,8 +58,12 @@ class AdvancedSearchViewModel @Inject constructor(
             else Pager(
                 config = PagingConfig(pageSize = Cap.PER_PAGE),
                 pagingSourceFactory = {
-                    capsRepository.advancedSearchPagingSource(filter) { total ->
-                        _totalResults.value = total
+                    capsRepository.advancedSearchPagingSource(filter) { pageCount, apiTotal ->
+                        _totalResults.value = if (apiTotal != null) {
+                            apiTotal
+                        } else {
+                            (_totalResults.value ?: 0) + pageCount
+                        }
                     }.also { pagingSource = it }
                 }
             ).flow

@@ -12,7 +12,8 @@ private const val STARTING_KEY = 1
 class AdvancedSearchPagingSource(
     private val filter: AdvancedSearchFilter,
     private val capsRepository: CapsRepository,
-    private val onTotalLoaded: (Int) -> Unit
+    // apiTotal non-null only when API total is accurate (no client-side filtering)
+    private val onPageLoaded: (filteredCount: Int, apiTotal: Int?) -> Unit
 ) : PagingSource<Int, Cap>() {
 
     override fun getRefreshKey(state: PagingState<Int, Cap>): Int? = state.anchorPosition
@@ -21,34 +22,37 @@ class AdvancedSearchPagingSource(
         return try {
             val page = params.key ?: STARTING_KEY
 
-            // ID — zawsze dokładne wyszukiwanie przez dedykowany endpoint
+            // ID — dokładne wyszukiwanie: pozostałe filtry stosowane client-side na CapExtended
             val idInt = filter.idValue.trim().toIntOrNull()
             if (idInt != null) {
                 if (page != STARTING_KEY) return LoadResult.Page(emptyList(), null, null)
-                val cap = try { capsRepository.getById(idInt).toCap() } catch (e: Exception) { null }
-                val data = listOfNotNull(cap)
-                onTotalLoaded(data.size)
-                return LoadResult.Page(data = data, prevKey = null, nextKey = null)
+                val capExtended = try { capsRepository.getById(idInt) } catch (e: Exception) { null }
+                val filtered = if (capExtended != null && matchesExtendedFilters(capExtended)) {
+                    listOf(capExtended.toCap())
+                } else {
+                    emptyList()
+                }
+                onPageLoaded(filtered.size, null)
+                return LoadResult.Page(data = filtered, prevKey = null, nextKey = null)
             }
 
             val hasTextFilter = filter.textValue.isNotBlank() || filter.producerValue.isNotBlank()
 
             val result = when {
-                // Wyłącznie kraj → dedykowany endpoint
+                // Wyłącznie kraj (bez tekstu i kolekcji) → dedykowany endpoint
                 filter.countryId != null && !hasTextFilter && !filter.onlyInCollection ->
                     capsRepository.getByCountryId(filter.countryId, page)
 
-                // Wszystkie pozostałe kombinacje → endpoint tekstowy
+                // Wszystkie pozostałe kombinacje → advancedSearch z countryId
                 else -> {
                     val queryParts = buildList {
                         if (filter.textValue.isNotBlank()) add(filter.textValue.trim())
                         if (filter.producerValue.isNotBlank()) add(filter.producerValue.trim())
-                        if (filter.countryId != null && hasTextFilter) add(filter.countryName)
                     }
                     val query = queryParts.joinToString(" ").takeIf { it.isNotBlank() }
                     capsRepository.advancedSearch(
                         query = query,
-                        countryId = null,
+                        countryId = filter.countryId,
                         producer = null,
                         inCollection = if (filter.onlyInCollection) 1 else null,
                         page = page
@@ -56,8 +60,16 @@ class AdvancedSearchPagingSource(
                 }
             }
 
-            val filteredData = applyOperatorFilter(result.data)
-            if (page == STARTING_KEY) onTotalLoaded(result.total)
+            val filteredData = applyTextFilter(result.data)
+
+            // Licznik: CONTAINS → użyj API total (dokładny); EQUALS/STARTS_WITH → akumuluj
+            val isClientFiltered = filter.textValue.isNotBlank() &&
+                filter.textOperator != SearchOperator.CONTAINS
+            if (page == STARTING_KEY) {
+                onPageLoaded(filteredData.size, if (!isClientFiltered) result.total else null)
+            } else if (isClientFiltered) {
+                onPageLoaded(filteredData.size, null)
+            }
 
             LoadResult.Page(
                 data = filteredData,
@@ -69,17 +81,47 @@ class AdvancedSearchPagingSource(
         }
     }
 
-    private fun applyOperatorFilter(data: List<Cap>): List<Cap> {
+    // Client-side filtr operatora tekstowego na polu description
+    private fun applyTextFilter(data: List<Cap>): List<Cap> {
         if (filter.textValue.isBlank()) return data
+        val text = filter.textValue.trim()
         return when (filter.textOperator) {
             SearchOperator.CONTAINS -> data
             SearchOperator.EQUALS -> data.filter {
-                it.description?.equals(filter.textValue.trim(), ignoreCase = true) == true
+                it.description?.equals(text, ignoreCase = true) == true
             }
             SearchOperator.STARTS_WITH -> data.filter {
-                it.description?.startsWith(filter.textValue.trim(), ignoreCase = true) == true
+                it.description?.startsWith(text, ignoreCase = true) == true
             }
         }
+    }
+
+    // Pełne filtry AND na CapExtended (używane gdy ID jest ustawione)
+    private fun matchesExtendedFilters(cap: CapExtended): Boolean {
+        if (filter.textValue.isNotBlank()) {
+            val text = filter.textValue.trim()
+            val desc = cap.description ?: ""
+            val ok = when (filter.textOperator) {
+                SearchOperator.CONTAINS -> desc.contains(text, ignoreCase = true)
+                SearchOperator.EQUALS -> desc.equals(text, ignoreCase = true)
+                SearchOperator.STARTS_WITH -> desc.startsWith(text, ignoreCase = true)
+            }
+            if (!ok) return false
+        }
+        if (filter.producerValue.isNotBlank()) {
+            val prod = filter.producerValue.trim()
+            val anyMatch = cap.producers.any { p ->
+                when (filter.producerOperator) {
+                    SearchOperator.CONTAINS -> p.name.contains(prod, ignoreCase = true)
+                    SearchOperator.EQUALS -> p.name.equals(prod, ignoreCase = true)
+                    SearchOperator.STARTS_WITH -> p.name.startsWith(prod, ignoreCase = true)
+                }
+            }
+            if (!anyMatch) return false
+        }
+        if (filter.countryId != null && cap.country.id.toInt() != filter.countryId) return false
+        if (filter.onlyInCollection && !cap.isInCollection) return false
+        return true
     }
 }
 
