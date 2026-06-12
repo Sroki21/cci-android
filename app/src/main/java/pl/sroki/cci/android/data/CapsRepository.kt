@@ -6,6 +6,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import pl.sroki.cci.android.data.datasource.remote.CapApiService
 import pl.sroki.cci.android.model.Cap
 import pl.sroki.cci.android.model.CapExtended
+import pl.sroki.cci.android.model.CapsSearchRequest
 import pl.sroki.cci.android.model.Page
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -67,6 +68,10 @@ class CapsRepository @Inject constructor(private val capApiService: CapApiServic
             page = page,
             perPage = perPage
         )
+    }
+
+    suspend fun searchByFilter(request: CapsSearchRequest, page: Int = 1): Page<Cap> {
+        return capApiService.searchCapsByFilter(request, page, perPage)
     }
 
     suspend fun addToCollection(id: Int) {

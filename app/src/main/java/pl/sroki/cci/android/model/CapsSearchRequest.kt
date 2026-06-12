@@ -1,0 +1,48 @@
+package pl.sroki.cci.android.model
+
+import kotlinx.serialization.Serializable
+
+@Serializable
+data class CapsSearchRequest(
+    val sortOrder1: Int = 0,
+    val sortOrder2: Int = 0,
+    val description: String? = null,
+    val descriptionMethod: Int = 4,
+    val countryId: Int? = null,
+    val countryMethod: Int? = null,
+    val creatorId: Int? = null,
+    val additionalImages: Boolean? = null,
+    val brandId: Int? = null,
+    val capListId: Int? = null,
+    val capListsType: String? = null,
+    val categories: List<Int> = emptyList(),
+    val endYear: Int? = null,
+    val generic: Boolean? = null,
+    val id: Int? = null,
+    val inCollection: Boolean? = null,
+    val includeSeries: Boolean? = null,
+    val info: String? = null,
+    val infoMethod: Int = 4,
+    val insideImages: Boolean? = null,
+    val linerId: Int? = null,
+    val onlySelectedCategories: Boolean = false,
+    val picture: Boolean? = null,
+    val producer: String? = null,
+    val producerCity: String? = null,
+    val producerCityMethod: Int = 4,
+    val producerMethod: Int = 4,
+    val producerProvince: String? = null,
+    val producerProvinceMethod: Int = 4,
+    val productId: Int? = null,
+    val productMethod: Int? = null,
+    val propertyId: Int? = null,
+    val purposeId: Int? = null,
+    val purposeMethod: Int? = null,
+    val scripts: List<Int> = emptyList(),
+    val seriesId: Int? = null,
+    val signs: List<Int> = emptyList(),
+    val skirtText: String? = null,
+    val skirtTextMethod: Int = 4,
+    val startYear: Int? = null,
+    val userId: Int? = null
+)

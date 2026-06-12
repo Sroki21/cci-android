@@ -5,6 +5,7 @@ import androidx.paging.PagingState
 import pl.sroki.cci.android.model.AdvancedSearchFilter
 import pl.sroki.cci.android.model.Cap
 import pl.sroki.cci.android.model.CapExtended
+import pl.sroki.cci.android.model.CapsSearchRequest
 import pl.sroki.cci.android.model.SearchOperator
 
 private const val STARTING_KEY = 1
@@ -34,34 +35,49 @@ class AdvancedSearchPagingSource(
             }
 
             val hasTextFilter = filter.textValue.isNotBlank()
+            val hasProducer = filter.producerName.isNotBlank()
             // Czysto krajowy (bez tekstu, producenta i kolekcji) → dedykowany endpoint
             val isPureCountry = filter.countryId != null && !hasTextFilter
-                && filter.producerName.isBlank() && !filter.onlyInCollection
+                && !hasProducer && !filter.onlyInCollection
 
-            // api/v1/caps ignoruje ?producer= — scalamy nazwę producenta z ?query=
-            // jako fallback (zwraca częściowe wyniki z opisu). Wymaga znalezienia
-            // prawidłowego endpointu przez DevTools na crowncaps.info.
-            val queryParts = buildList {
-                if (filter.textValue.isNotBlank()) add(filter.textValue.trim())
-                if (filter.producerName.isNotBlank()) add(filter.producerName.trim())
-            }
-            val queryParam = queryParts.joinToString(" ").takeIf { it.isNotBlank() }
-
-            val result = if (isPureCountry) {
-                capsRepository.getByCountryId(filter.countryId!!, page)
-            } else {
-                capsRepository.advancedSearch(
-                    query = queryParam,
-                    countryId = filter.countryId,
-                    producer = null,
-                    inCollection = if (filter.onlyInCollection) 1 else null,
-                    page = page
-                )
+            val result = when {
+                isPureCountry -> {
+                    capsRepository.getByCountryId(filter.countryId ?: 0, page)
+                }
+                hasProducer -> {
+                    // POST /data/catalog/caps/search obsługuje pole producer bezpośrednio
+                    val descMethod = when (filter.textOperator) {
+                        SearchOperator.CONTAINS -> 4
+                        SearchOperator.EQUALS -> 1
+                        SearchOperator.STARTS_WITH -> 2
+                    }
+                    capsRepository.searchByFilter(
+                        CapsSearchRequest(
+                            producer = filter.producerName.trim(),
+                            description = filter.textValue.trim().takeIf { it.isNotBlank() },
+                            descriptionMethod = if (hasTextFilter) descMethod else 4,
+                            countryId = filter.countryId,
+                            inCollection = if (filter.onlyInCollection) true else null,
+                            productId = 1
+                        ),
+                        page = page
+                    )
+                }
+                else -> {
+                    capsRepository.advancedSearch(
+                        query = filter.textValue.trim().takeIf { it.isNotBlank() },
+                        countryId = filter.countryId,
+                        producer = null,
+                        inCollection = if (filter.onlyInCollection) 1 else null,
+                        page = page
+                    )
+                }
             }
 
             val filteredData = applyClientFilters(result.data, isPureCountry)
 
-            // Licznik: filtry client-side → akumuluj; czyste CONTAINS bez kraju → API total
+            // CONTAINS bez innych filtrów → licznik z API od razu (może być nieścisły gdy API
+            // ignoruje productId=1, ale lepsze niż rosnący licznik dla normalnych wyszukiwań)
             val isClientFiltered = !isPureCountry && (
                 filter.onlyInCollection ||
                 (filter.textValue.isNotBlank() && filter.textOperator != SearchOperator.CONTAINS) ||

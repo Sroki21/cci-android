@@ -5,6 +5,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -15,6 +16,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Clear
@@ -122,7 +127,7 @@ private fun FilterForm(
     onProducerSuggestionsDismiss: () -> Unit,
     onSearch: () -> Unit
 ) {
-    Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 1.dp)) {
+    Column(modifier = Modifier.padding(horizontal = 16.dp)) {
         OperatorFilterRow(
             label = "Tekst",
             value = filter.textValue,
@@ -130,6 +135,7 @@ private fun FilterForm(
             onValueChange = { onFilterChange(filter.copy(textValue = it)) },
             onOperatorChange = { onFilterChange(filter.copy(textOperator = it)) }
         )
+        Spacer(Modifier.height(6.dp))
         ProducerFilterRow(
             producerName = filter.producerName,
             suggestions = producerSuggestions,
@@ -137,6 +143,7 @@ private fun FilterForm(
             onQuerySearch = onProducerSearch,
             onDismiss = onProducerSuggestionsDismiss
         )
+        Spacer(Modifier.height(6.dp))
         CountryFilterRow(
             countryName = filter.countryName,
             countries = countries,
@@ -148,6 +155,7 @@ private fun FilterForm(
                 }
             }
         )
+        Spacer(Modifier.height(6.dp))
         SimpleFilterRow(
             label = "ID",
             value = filter.idValue,
@@ -155,13 +163,13 @@ private fun FilterForm(
             keyboardType = KeyboardType.Number
         )
         if (isLoggedIn) {
+            Spacer(Modifier.height(4.dp))
             CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides 0.dp) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable { onFilterChange(filter.copy(onlyInCollection = !filter.onlyInCollection)) }
-                        .padding(bottom = 1.dp)
                 ) {
                     Checkbox(
                         checked = filter.onlyInCollection,
@@ -171,6 +179,7 @@ private fun FilterForm(
                 }
             }
         }
+        Spacer(Modifier.height(4.dp))
         Button(
             onClick = onSearch,
             enabled = !filter.isEmpty(),
@@ -188,22 +197,33 @@ private fun SimpleFilterRow(
     onValueChange: (String) -> Unit,
     keyboardType: KeyboardType = KeyboardType.Text
 ) {
+    val state = rememberTextFieldState(value)
+    val currentValue by rememberUpdatedState(value)
+    val currentOnChange by rememberUpdatedState(onValueChange)
+
+    LaunchedEffect(value) {
+        if (state.text.toString() != value) state.edit { replace(0, length, value) }
+    }
+    LaunchedEffect(state) {
+        snapshotFlow { state.text.toString() }.collect { t ->
+            if (t != currentValue) currentOnChange(t)
+        }
+    }
+
     OutlinedTextField(
-        value = value,
-        onValueChange = onValueChange,
-        label = { Text(label) },
-        singleLine = true,
+        state = state,
+        placeholder = { Text(label) },
+        lineLimits = TextFieldLineLimits.SingleLine,
         keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
+        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
         trailingIcon = {
-            if (value.isNotEmpty()) {
-                IconButton(onClick = { onValueChange("") }) {
+            if (state.text.isNotEmpty()) {
+                IconButton(onClick = { state.edit { replace(0, length, "") } }) {
                     Icon(Icons.Default.Clear, contentDescription = "Wyczyść")
                 }
             }
         },
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(bottom = 1.dp)
+        modifier = Modifier.fillMaxWidth()
     )
 }
 
@@ -215,11 +235,22 @@ private fun OperatorFilterRow(
     onValueChange: (String) -> Unit,
     onOperatorChange: (SearchOperator) -> Unit
 ) {
+    val state = rememberTextFieldState(value)
+    val currentValue by rememberUpdatedState(value)
+    val currentOnChange by rememberUpdatedState(onValueChange)
+
+    LaunchedEffect(value) {
+        if (state.text.toString() != value) state.edit { replace(0, length, value) }
+    }
+    LaunchedEffect(state) {
+        snapshotFlow { state.text.toString() }.collect { t ->
+            if (t != currentValue) currentOnChange(t)
+        }
+    }
+
     var expanded by remember { mutableStateOf(false) }
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(bottom = 1.dp),
+        modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(modifier = Modifier.width(95.dp)) {
@@ -240,13 +271,13 @@ private fun OperatorFilterRow(
         }
         Spacer(Modifier.width(8.dp))
         OutlinedTextField(
-            value = value,
-            onValueChange = onValueChange,
-            label = { Text(label) },
-            singleLine = true,
+            state = state,
+            placeholder = { Text(label) },
+            lineLimits = TextFieldLineLimits.SingleLine,
+            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
             trailingIcon = {
-                if (value.isNotEmpty()) {
-                    IconButton(onClick = { onValueChange("") }) {
+                if (state.text.isNotEmpty()) {
+                    IconButton(onClick = { state.edit { replace(0, length, "") } }) {
                         Icon(Icons.Default.Clear, contentDescription = "Wyczyść")
                     }
                 }
@@ -264,35 +295,35 @@ private fun ProducerFilterRow(
     onQuerySearch: (String) -> Unit,
     onDismiss: () -> Unit
 ) {
-    var inputText by remember { mutableStateOf(producerName) }
+    val state = rememberTextFieldState(producerName)
     var showSuggestions by remember { mutableStateOf(false) }
+    val currentOnQuerySearch by rememberUpdatedState(onQuerySearch)
+    val currentOnProducerChange by rememberUpdatedState(onProducerChange)
 
-    // Sync gdy producent wyczyszczony zewnętrznie (np. przycisk X)
     LaunchedEffect(producerName) {
-        if (producerName.isEmpty() && inputText.isNotEmpty()) {
-            inputText = ""
+        if (producerName.isEmpty() && state.text.isNotEmpty()) {
+            state.edit { replace(0, length, "") }
             showSuggestions = false
         }
     }
+    LaunchedEffect(state) {
+        snapshotFlow { state.text.toString() }.collect { value ->
+            currentOnQuerySearch(value)
+            currentOnProducerChange(value.takeIf { it.isNotBlank() })
+            showSuggestions = value.length >= 2
+        }
+    }
 
-    Box(modifier = Modifier
-        .fillMaxWidth()
-        .padding(bottom = 1.dp)
-    ) {
+    Box(modifier = Modifier.fillMaxWidth()) {
         OutlinedTextField(
-            value = inputText,
-            onValueChange = { value ->
-                inputText = value
-                onQuerySearch(value)
-                onProducerChange(value.takeIf { it.isNotBlank() })
-                showSuggestions = value.length >= 2
-            },
-            label = { Text("Producent") },
-            singleLine = true,
+            state = state,
+            placeholder = { Text("Producent") },
+            lineLimits = TextFieldLineLimits.SingleLine,
+            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
             trailingIcon = {
-                if (inputText.isNotEmpty()) {
+                if (state.text.isNotEmpty()) {
                     IconButton(onClick = {
-                        inputText = ""
+                        state.edit { replace(0, length, "") }
                         onProducerChange(null)
                         onDismiss()
                         showSuggestions = false
@@ -311,7 +342,7 @@ private fun ProducerFilterRow(
                 DropdownMenuItem(
                     text = { Text(name) },
                     onClick = {
-                        inputText = name
+                        state.edit { replace(0, length, name) }
                         onProducerChange(name)
                         onDismiss()
                         showSuggestions = false
@@ -338,12 +369,19 @@ private fun CountryFilterRow(
         }
     }
 
+    val countryState = rememberTextFieldState(countryName)
+    LaunchedEffect(countryName) {
+        if (countryState.text.toString() != countryName)
+            countryState.edit { replace(0, length, countryName) }
+    }
+
     OutlinedTextField(
-        value = countryName,
-        onValueChange = {},
-        label = { Text("Kraj") },
+        state = countryState,
+        placeholder = { Text("Kraj") },
         readOnly = true,
+        lineLimits = TextFieldLineLimits.SingleLine,
         interactionSource = interactionSource,
+        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
         trailingIcon = {
             if (countryName.isNotEmpty()) {
                 IconButton(onClick = { onCountrySelected(null) }) {
@@ -351,9 +389,7 @@ private fun CountryFilterRow(
                 }
             }
         },
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(bottom = 1.dp)
+        modifier = Modifier.fillMaxWidth()
     )
 
     if (showDialog) {

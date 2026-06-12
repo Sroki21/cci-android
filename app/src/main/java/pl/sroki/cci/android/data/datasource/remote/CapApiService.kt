@@ -2,6 +2,7 @@ package pl.sroki.cci.android.data.datasource.remote
 
 import okhttp3.ResponseBody
 import retrofit2.Response
+import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.POST
@@ -9,6 +10,7 @@ import retrofit2.http.Path
 import retrofit2.http.Query
 import pl.sroki.cci.android.model.Cap
 import pl.sroki.cci.android.model.CapExtended
+import pl.sroki.cci.android.model.CapsSearchRequest
 import pl.sroki.cci.android.model.Page
 
 interface CapApiService {
@@ -48,6 +50,13 @@ interface CapApiService {
         @Query("country_id") countryId: Int? = null,
         @Query("producer") producer: String? = null,
         @Query("in_collection") inCollection: Int? = null,
+        @Query("page") page: Int,
+        @Query("perPage") perPage: Int
+    ): Page<Cap>
+
+    @POST("data/catalog/caps/search")
+    suspend fun searchCapsByFilter(
+        @Body request: CapsSearchRequest,
         @Query("page") page: Int,
         @Query("perPage") perPage: Int
     ): Page<Cap>
