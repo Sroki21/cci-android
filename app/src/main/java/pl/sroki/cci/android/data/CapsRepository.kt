@@ -25,9 +25,8 @@ class CapsRepository @Inject constructor(private val capApiService: CapApiServic
         PictureSearchCapsPagingSource(categoryIds, this)
     fun advancedSearchPagingSource(
         filter: pl.sroki.cci.android.model.AdvancedSearchFilter,
-        collectionCapIds: List<Long>?,
         onPageLoaded: (filteredCount: Int, apiTotal: Int?) -> Unit
-    ) = AdvancedSearchPagingSource(filter, this, collectionCapIds, onPageLoaded)
+    ) = AdvancedSearchPagingSource(filter, this, onPageLoaded)
 
     suspend fun getByCountryId(id: Int, page: Int = 1): Page<Cap> {
         return capApiService.getByCountryId(countryId = id, page = page, perPage = perPage)

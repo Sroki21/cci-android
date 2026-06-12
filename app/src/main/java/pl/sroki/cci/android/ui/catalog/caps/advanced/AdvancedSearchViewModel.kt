@@ -21,7 +21,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
-import pl.sroki.cci.android.data.CapPositionRepository
 import pl.sroki.cci.android.data.CapsRepository
 import pl.sroki.cci.android.data.CountriesRepository
 import pl.sroki.cci.android.data.ProducersRepository
@@ -36,8 +35,7 @@ class AdvancedSearchViewModel @Inject constructor(
     private val capsRepository: CapsRepository,
     private val countriesRepository: CountriesRepository,
     private val producersRepository: ProducersRepository,
-    private val sessionRepository: SessionRepository,
-    private val capPositionRepository: CapPositionRepository
+    private val sessionRepository: SessionRepository
 ) : ViewModel() {
 
     var filter by mutableStateOf(AdvancedSearchFilter())
@@ -60,8 +58,6 @@ class AdvancedSearchViewModel @Inject constructor(
     private var pagingSource: PagingSource<Int, Cap>? = null
     private val _filterTrigger = MutableStateFlow(0)
     private var producerSearchJob: Job? = null
-    private var searchJob: Job? = null
-    private var collectionCapIds: List<Long>? = null
 
     @OptIn(ExperimentalCoroutinesApi::class)
     val caps: Flow<PagingData<Cap>> = _filterTrigger
@@ -70,7 +66,7 @@ class AdvancedSearchViewModel @Inject constructor(
             else Pager(
                 config = PagingConfig(pageSize = Cap.PER_PAGE),
                 pagingSourceFactory = {
-                    capsRepository.advancedSearchPagingSource(filter, collectionCapIds) { pageCount, apiTotal ->
+                    capsRepository.advancedSearchPagingSource(filter) { pageCount, apiTotal ->
                         _totalResults.value = if (apiTotal != null) {
                             apiTotal
                         } else {
@@ -112,14 +108,8 @@ class AdvancedSearchViewModel @Inject constructor(
     }
 
     fun search() {
-        searchJob?.cancel()
         _hasSearched.value = true
         _totalResults.value = null
-        searchJob = viewModelScope.launch {
-            collectionCapIds = if (filter.onlyInCollection) {
-                try { capPositionRepository.getAllCapIds() } catch (e: Exception) { emptyList() }
-            } else null
-            _filterTrigger.value++
-        }
+        _filterTrigger.value++
     }
 }

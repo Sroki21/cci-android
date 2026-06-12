@@ -12,7 +12,6 @@ private const val STARTING_KEY = 1
 class AdvancedSearchPagingSource(
     private val filter: AdvancedSearchFilter,
     private val capsRepository: CapsRepository,
-    private val collectionCapIds: List<Long>?,
     private val onPageLoaded: (filteredCount: Int, apiTotal: Int?) -> Unit
 ) : PagingSource<Int, Cap>() {
 
@@ -34,48 +33,18 @@ class AdvancedSearchPagingSource(
                 return LoadResult.Page(data = filtered, prevKey = null, nextKey = null)
             }
 
-            // Kolekcja — paginacja po ID-kach z lokalnej bazy Room
-            if (filter.onlyInCollection && collectionCapIds != null) {
-                val pageSize = Cap.PER_PAGE
-                val startIndex = (page - 1) * pageSize
-                if (startIndex >= collectionCapIds.size) {
-                    onPageLoaded(0, null)
-                    return LoadResult.Page(emptyList(), null, null)
-                }
-                val endIndex = minOf(startIndex + pageSize, collectionCapIds.size)
-                val batch = collectionCapIds.subList(startIndex, endIndex)
-                val caps = batch.mapNotNull { id ->
-                    try { capsRepository.getById(id.toInt()) } catch (e: Exception) { null }
-                }.filter { matchesExtendedFilters(it) }
-                    .map { it.toCap() }
-                onPageLoaded(caps.size, null)
-                val nextKey = if (endIndex >= collectionCapIds.size) null else page + 1
-                return LoadResult.Page(
-                    data = caps,
-                    prevKey = if (page == STARTING_KEY) null else page - 1,
-                    nextKey = nextKey
-                )
-            }
-
             val hasTextFilter = filter.textValue.isNotBlank()
             // Czysto krajowy (bez tekstu, producenta i kolekcji) → dedykowany endpoint
             val isPureCountry = filter.countryId != null && !hasTextFilter
                 && filter.producerName.isBlank() && !filter.onlyInCollection
 
-            // API ignoruje ?producer= — scalamy producenta z polem query
-            val queryParts = buildList {
-                if (filter.textValue.isNotBlank()) add(filter.textValue.trim())
-                if (filter.producerName.isNotBlank()) add(filter.producerName.trim())
-            }
-            val mergedQuery = queryParts.joinToString(" ").takeIf { it.isNotBlank() }
-
             val result = if (isPureCountry) {
                 capsRepository.getByCountryId(filter.countryId!!, page)
             } else {
                 capsRepository.advancedSearch(
-                    query = mergedQuery,
+                    query = filter.textValue.trim().takeIf { it.isNotBlank() },
                     countryId = filter.countryId,
-                    producer = null,
+                    producer = filter.producerName.takeIf { it.isNotBlank() },
                     inCollection = if (filter.onlyInCollection) 1 else null,
                     page = page
                 )
@@ -85,6 +54,7 @@ class AdvancedSearchPagingSource(
 
             // Licznik: filtry client-side → akumuluj; czyste CONTAINS bez kraju → API total
             val isClientFiltered = !isPureCountry && (
+                filter.onlyInCollection ||
                 (filter.textValue.isNotBlank() && filter.textOperator != SearchOperator.CONTAINS) ||
                 filter.countryId != null
             )
@@ -120,6 +90,9 @@ class AdvancedSearchPagingSource(
         }
         if (!isPureCountry && filter.countryId != null && filter.countryName.isNotBlank()) {
             result = result.filter { it.country.equals(filter.countryName, ignoreCase = true) }
+        }
+        if (filter.onlyInCollection) {
+            result = result.filter { it.isInCollection }
         }
         return result
     }
