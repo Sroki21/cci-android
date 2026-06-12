@@ -23,6 +23,10 @@ class CapsRepository @Inject constructor(private val capApiService: CapApiServic
     fun quickSearchCapsPagingSource(query: String) = QuickSearchCapsPagingSource(query, this)
     fun pictureSearchCapsPagingSource(categoryIds: List<Int>) =
         PictureSearchCapsPagingSource(categoryIds, this)
+    fun advancedSearchPagingSource(
+        filter: pl.sroki.cci.android.model.AdvancedSearchFilter,
+        onTotalLoaded: (Int) -> Unit
+    ) = AdvancedSearchPagingSource(filter, this, onTotalLoaded)
 
     suspend fun getByCountryId(id: Int, page: Int = 1): Page<Cap> {
         return capApiService.getByCountryId(countryId = id, page = page, perPage = perPage)
@@ -46,6 +50,23 @@ class CapsRepository @Inject constructor(private val capApiService: CapApiServic
 
     suspend fun getByQuery(query: String, page: Int = 1): Page<Cap> {
         return capApiService.getByQuery(query = query, page = page, perPage = perPage)
+    }
+
+    suspend fun advancedSearch(
+        query: String?,
+        countryId: Int?,
+        producer: String?,
+        inCollection: Int?,
+        page: Int = 1
+    ): Page<Cap> {
+        return capApiService.advancedSearch(
+            query = query,
+            countryId = countryId,
+            producer = producer,
+            inCollection = inCollection,
+            page = page,
+            perPage = perPage
+        )
     }
 
     suspend fun addToCollection(id: Int) {

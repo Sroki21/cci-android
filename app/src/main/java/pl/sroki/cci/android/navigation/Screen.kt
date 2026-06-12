@@ -26,6 +26,7 @@ sealed class Screen(val route: String) {
         fun createUrl(query: String) = "caps/search?query=$query"
     }
 
+    object AdvancedSearch : Screen("advanced-search")
     object Login : Screen("login")
     object Binders : Screen("binders")
 }

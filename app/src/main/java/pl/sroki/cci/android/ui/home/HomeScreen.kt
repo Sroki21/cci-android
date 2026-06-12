@@ -77,11 +77,9 @@ fun HomeScreen(
             NavigationItem(text = "Szukaj wg zdjęcia", icon = Icons.Filled.CameraAlt) {
                 onClick(Screen.PictureSearch)
             }
-            NavigationItem(
-                text = "Szukanie zaawansowane",
-                icon = Icons.Filled.FilterList,
-                enabled = false
-            ) {}
+            NavigationItem(text = "Szukanie zaawansowane", icon = Icons.Filled.FilterList) {
+                onClick(Screen.AdvancedSearch)
+            }
             NavigationItem(
                 text = "Statystyki",
                 icon = Icons.Filled.BarChart,

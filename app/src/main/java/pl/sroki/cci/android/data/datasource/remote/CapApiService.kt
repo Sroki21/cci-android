@@ -42,6 +42,16 @@ interface CapApiService {
         @Query("perPage") perPage: Int
     ): Page<Cap>
 
+    @GET("api/v1/caps")
+    suspend fun advancedSearch(
+        @Query("query") query: String? = null,
+        @Query("country_id") countryId: Int? = null,
+        @Query("producer") producer: String? = null,
+        @Query("in_collection") inCollection: Int? = null,
+        @Query("page") page: Int,
+        @Query("perPage") perPage: Int
+    ): Page<Cap>
+
     @POST("data/catalog/caps/{id}/collection")
     suspend fun addToCollection(@Path("id") id: Int): Response<ResponseBody>
 
