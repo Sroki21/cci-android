@@ -142,20 +142,18 @@ private fun FilterForm(
             onValueChange = { onFilterChange(filter.copy(idValue = it)) },
             keyboardType = KeyboardType.Number
         )
-        if (isLoggedIn) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { onFilterChange(filter.copy(onlyInCollection = !filter.onlyInCollection)) }
-                    .padding(vertical = 4.dp)
-            ) {
-                Checkbox(
-                    checked = filter.onlyInCollection,
-                    onCheckedChange = { onFilterChange(filter.copy(onlyInCollection = it)) }
-                )
-                Text("Tylko kapsle w kolekcji")
-            }
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onFilterChange(filter.copy(onlyInCollection = !filter.onlyInCollection)) }
+                .padding(vertical = 4.dp)
+        ) {
+            Checkbox(
+                checked = filter.onlyInCollection,
+                onCheckedChange = { onFilterChange(filter.copy(onlyInCollection = it)) }
+            )
+            Text("Tylko kapsle w kolekcji")
         }
         Spacer(Modifier.height(4.dp))
         Button(
