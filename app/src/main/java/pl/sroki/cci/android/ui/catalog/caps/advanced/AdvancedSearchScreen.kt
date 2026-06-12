@@ -1,6 +1,8 @@
 package pl.sroki.cci.android.ui.catalog.caps.advanced
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -33,6 +35,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -142,18 +145,20 @@ private fun FilterForm(
             onValueChange = { onFilterChange(filter.copy(idValue = it)) },
             keyboardType = KeyboardType.Number
         )
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable { onFilterChange(filter.copy(onlyInCollection = !filter.onlyInCollection)) }
-                .padding(vertical = 4.dp)
-        ) {
-            Checkbox(
-                checked = filter.onlyInCollection,
-                onCheckedChange = { onFilterChange(filter.copy(onlyInCollection = it)) }
-            )
-            Text("Tylko kapsle w kolekcji")
+        if (isLoggedIn) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onFilterChange(filter.copy(onlyInCollection = !filter.onlyInCollection)) }
+                    .padding(vertical = 4.dp)
+            ) {
+                Checkbox(
+                    checked = filter.onlyInCollection,
+                    onCheckedChange = { onFilterChange(filter.copy(onlyInCollection = it)) }
+                )
+                Text("Tylko kapsle w kolekcji")
+            }
         }
         Spacer(Modifier.height(4.dp))
         Button(
@@ -200,7 +205,7 @@ private fun OperatorFilterRow(
             .padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(modifier = Modifier.width(130.dp)) {
+        Box(modifier = Modifier.width(95.dp)) {
             OutlinedButton(
                 onClick = { expanded = true },
                 modifier = Modifier.fillMaxWidth()
@@ -235,33 +240,31 @@ private fun CountryFilterRow(
 ) {
     var showDialog by remember { mutableStateOf(false) }
     var dialogSearch by remember { mutableStateOf("") }
+    val interactionSource = remember { MutableInteractionSource() }
 
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        // TextField z transparentną nakładką do otwierania dialogu
-        Box(modifier = Modifier.weight(1f)) {
-            OutlinedTextField(
-                value = countryName,
-                onValueChange = {},
-                label = { Text("Kraj") },
-                readOnly = true,
-                modifier = Modifier.fillMaxWidth()
-            )
-            Box(modifier = Modifier.matchParentSize().clickable { showDialog = true })
-        }
-        // Przycisk X poza nakładką — dostaje kliknięcia bezpośrednio
-        if (countryName.isNotEmpty()) {
-            IconButton(onClick = { onCountrySelected(null) }) {
-                Icon(Icons.Default.Clear, contentDescription = "Wyczyść kraj")
-            }
-        } else {
-            Spacer(Modifier.width(48.dp))
+    LaunchedEffect(interactionSource) {
+        interactionSource.interactions.collect { interaction ->
+            if (interaction is PressInteraction.Release) showDialog = true
         }
     }
+
+    OutlinedTextField(
+        value = countryName,
+        onValueChange = {},
+        label = { Text("Kraj") },
+        readOnly = true,
+        interactionSource = interactionSource,
+        trailingIcon = {
+            if (countryName.isNotEmpty()) {
+                IconButton(onClick = { onCountrySelected(null) }) {
+                    Icon(Icons.Default.Clear, contentDescription = "Wyczyść kraj")
+                }
+            }
+        },
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp)
+    )
 
     if (showDialog) {
         val filtered = remember(dialogSearch, countries) {

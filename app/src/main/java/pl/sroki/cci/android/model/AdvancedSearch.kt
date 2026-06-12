@@ -3,7 +3,7 @@ package pl.sroki.cci.android.model
 enum class SearchOperator(val label: String) {
     CONTAINS("Zawiera"),
     EQUALS("Równe"),
-    STARTS_WITH("Zaczyna się od")
+    STARTS_WITH("Od")
 }
 
 data class AdvancedSearchFilter(
