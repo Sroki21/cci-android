@@ -84,7 +84,10 @@ class AdvancedSearchPagingSource(
     }
 
     private fun applyClientFilters(data: List<Cap>, isPureCountry: Boolean): List<Cap> {
-        var result = data.filter { it.product.equals("Beer", ignoreCase = true) }
+        var result = data.filter {
+            it.product.equals("Piwo", ignoreCase = true) ||
+            it.product.equals("Beer", ignoreCase = true)
+        }
         if (filter.textValue.isNotBlank()) {
             val text = filter.textValue.trim()
             result = when (filter.textOperator) {
