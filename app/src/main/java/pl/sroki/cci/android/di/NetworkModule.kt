@@ -20,6 +20,7 @@ import pl.sroki.cci.android.data.SessionRepository
 import pl.sroki.cci.android.data.datasource.remote.CapApiService
 import pl.sroki.cci.android.data.datasource.remote.CategoryApiService
 import pl.sroki.cci.android.data.datasource.remote.CountryApiService
+import pl.sroki.cci.android.data.datasource.remote.ProducerApiService
 import pl.sroki.cci.android.data.datasource.remote.auth.AcceptJsonInterceptor
 import pl.sroki.cci.android.data.datasource.remote.auth.AuthApiService
 import pl.sroki.cci.android.data.datasource.remote.auth.BearerTokenInterceptor
@@ -122,6 +123,12 @@ object NetworkModule {
     @Provides
     fun provideCapApiService(retrofit: Retrofit): CapApiService {
         return retrofit.create(CapApiService::class.java)
+    }
+
+    @Singleton
+    @Provides
+    fun provideProducerApiService(retrofit: Retrofit): ProducerApiService {
+        return retrofit.create(ProducerApiService::class.java)
     }
 
     // Osobny klient dla endpointów auth — nie śledzi redirectów (302 po POST /auth/login

@@ -21,16 +21,19 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import pl.sroki.cci.android.data.CapsRepository
 import pl.sroki.cci.android.data.CountriesRepository
+import pl.sroki.cci.android.data.ProducersRepository
 import pl.sroki.cci.android.data.SessionRepository
 import pl.sroki.cci.android.data.model.Country
 import pl.sroki.cci.android.model.AdvancedSearchFilter
 import pl.sroki.cci.android.model.Cap
+import pl.sroki.cci.android.model.Producer
 import javax.inject.Inject
 
 @HiltViewModel
 class AdvancedSearchViewModel @Inject constructor(
     private val capsRepository: CapsRepository,
     private val countriesRepository: CountriesRepository,
+    private val producersRepository: ProducersRepository,
     private val sessionRepository: SessionRepository
 ) : ViewModel() {
 
@@ -38,6 +41,9 @@ class AdvancedSearchViewModel @Inject constructor(
         private set
 
     var countries by mutableStateOf<List<Country>>(emptyList())
+        private set
+
+    var producers by mutableStateOf<List<Producer>>(emptyList())
         private set
 
     private val _totalResults = MutableStateFlow<Int?>(null)
@@ -75,11 +81,10 @@ class AdvancedSearchViewModel @Inject constructor(
             capsRepository.collectionChanged.collect { pagingSource?.invalidate() }
         }
         viewModelScope.launch {
-            countries = try {
-                countriesRepository.getCountries()
-            } catch (e: Exception) {
-                emptyList()
-            }
+            countries = try { countriesRepository.getCountries() } catch (e: Exception) { emptyList() }
+        }
+        viewModelScope.launch {
+            producers = try { producersRepository.getProducers() } catch (e: Exception) { emptyList() }
         }
     }
 

@@ -50,6 +50,7 @@ import androidx.paging.compose.collectAsLazyPagingItems
 import pl.sroki.cci.android.data.model.Country
 import pl.sroki.cci.android.model.AdvancedSearchFilter
 import pl.sroki.cci.android.model.Cap
+import pl.sroki.cci.android.model.Producer
 import pl.sroki.cci.android.model.SearchOperator
 import pl.sroki.cci.android.ui.catalog.caps.CapsView
 
@@ -83,6 +84,7 @@ fun AdvancedSearchScreen(
             FilterForm(
                 filter = viewModel.filter,
                 countries = viewModel.countries,
+                producers = viewModel.producers,
                 isLoggedIn = isLoggedIn,
                 onFilterChange = viewModel::updateFilter,
                 onSearch = viewModel::search
@@ -108,12 +110,12 @@ fun AdvancedSearchScreen(
 private fun FilterForm(
     filter: AdvancedSearchFilter,
     countries: List<Country>,
+    producers: List<Producer>,
     isLoggedIn: Boolean,
     onFilterChange: (AdvancedSearchFilter) -> Unit,
     onSearch: () -> Unit
 ) {
     Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-        // Kolejność: Tekst, Producent, Kraj, ID
         OperatorFilterRow(
             label = "Tekst",
             value = filter.textValue,
@@ -121,12 +123,16 @@ private fun FilterForm(
             onValueChange = { onFilterChange(filter.copy(textValue = it)) },
             onOperatorChange = { onFilterChange(filter.copy(textOperator = it)) }
         )
-        OperatorFilterRow(
-            label = "Producent",
-            value = filter.producerValue,
-            operator = filter.producerOperator,
-            onValueChange = { onFilterChange(filter.copy(producerValue = it)) },
-            onOperatorChange = { onFilterChange(filter.copy(producerOperator = it)) }
+        ProducerFilterRow(
+            producerName = filter.producerName,
+            producers = producers,
+            onProducerSelected = { producer ->
+                if (producer == null) {
+                    onFilterChange(filter.copy(producerId = null, producerName = ""))
+                } else {
+                    onFilterChange(filter.copy(producerId = producer.id, producerName = producer.name))
+                }
+            }
         )
         CountryFilterRow(
             countryName = filter.countryName,
@@ -184,6 +190,13 @@ private fun SimpleFilterRow(
         label = { Text(label) },
         singleLine = true,
         keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
+        trailingIcon = {
+            if (value.isNotEmpty()) {
+                IconButton(onClick = { onValueChange("") }) {
+                    Icon(Icons.Default.Clear, contentDescription = "Wyczyść")
+                }
+            }
+        },
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp)
@@ -227,7 +240,87 @@ private fun OperatorFilterRow(
             onValueChange = onValueChange,
             label = { Text(label) },
             singleLine = true,
+            trailingIcon = {
+                if (value.isNotEmpty()) {
+                    IconButton(onClick = { onValueChange("") }) {
+                        Icon(Icons.Default.Clear, contentDescription = "Wyczyść")
+                    }
+                }
+            },
             modifier = Modifier.weight(1f)
+        )
+    }
+}
+
+@Composable
+private fun ProducerFilterRow(
+    producerName: String,
+    producers: List<Producer>,
+    onProducerSelected: (Producer?) -> Unit
+) {
+    var showDialog by remember { mutableStateOf(false) }
+    var dialogSearch by remember { mutableStateOf("") }
+    val interactionSource = remember { MutableInteractionSource() }
+
+    LaunchedEffect(interactionSource) {
+        interactionSource.interactions.collect { interaction ->
+            if (interaction is PressInteraction.Release) showDialog = true
+        }
+    }
+
+    OutlinedTextField(
+        value = producerName,
+        onValueChange = {},
+        label = { Text("Producent") },
+        readOnly = true,
+        interactionSource = interactionSource,
+        trailingIcon = {
+            if (producerName.isNotEmpty()) {
+                IconButton(onClick = { onProducerSelected(null) }) {
+                    Icon(Icons.Default.Clear, contentDescription = "Wyczyść producenta")
+                }
+            }
+        },
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp)
+    )
+
+    if (showDialog) {
+        val filtered = remember(dialogSearch, producers) {
+            if (dialogSearch.isBlank()) producers
+            else producers.filter { it.name.contains(dialogSearch, ignoreCase = true) }
+        }
+        AlertDialog(
+            onDismissRequest = { showDialog = false; dialogSearch = "" },
+            title = { Text("Wybierz producenta") },
+            text = {
+                Column {
+                    OutlinedTextField(
+                        value = dialogSearch,
+                        onValueChange = { dialogSearch = it },
+                        label = { Text("Szukaj") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    LazyColumn {
+                        items(filtered, key = { it.id }) { producer ->
+                            ListItem(
+                                headlineContent = { Text(producer.name) },
+                                supportingContent = producer.city?.takeIf { it.isNotBlank() }
+                                    ?.let { { Text(it) } },
+                                modifier = Modifier.clickable {
+                                    onProducerSelected(producer)
+                                    showDialog = false
+                                    dialogSearch = ""
+                                }
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {}
         )
     }
 }

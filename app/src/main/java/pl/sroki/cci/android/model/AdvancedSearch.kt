@@ -12,10 +12,10 @@ data class AdvancedSearchFilter(
     val textOperator: SearchOperator = SearchOperator.CONTAINS,
     val countryId: Int? = null,
     val countryName: String = "",
-    val producerValue: String = "",
-    val producerOperator: SearchOperator = SearchOperator.CONTAINS,
+    val producerId: Int? = null,
+    val producerName: String = "",
     val onlyInCollection: Boolean = false
 ) {
     fun isEmpty() = idValue.isBlank() && textValue.isBlank()
-        && countryId == null && producerValue.isBlank() && !onlyInCollection
+        && countryId == null && producerId == null && !onlyInCollection
 }
