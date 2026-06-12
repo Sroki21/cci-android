@@ -85,8 +85,10 @@ fun HomeScreen(
                 icon = Icons.Filled.BarChart,
                 enabled = false
             ) {}
-            NavigationItem(text = "Klasery", icon = Icons.Filled.FolderOpen) {
-                onClick(Screen.Binders)
+            if (uiState.isLoggedIn) {
+                NavigationItem(text = "Klasery", icon = Icons.Filled.FolderOpen) {
+                    onClick(Screen.Binders)
+                }
             }
         }
     }

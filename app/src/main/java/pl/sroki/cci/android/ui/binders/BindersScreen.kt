@@ -4,17 +4,17 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
@@ -35,8 +35,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
+import coil.compose.AsyncImage
+import androidx.compose.material3.MaterialTheme
 import pl.sroki.cci.android.data.datasource.local.entity.Binder
 import pl.sroki.cci.android.data.datasource.local.entity.BinderPage
+import pl.sroki.cci.android.data.datasource.local.entity.CapPosition
+import pl.sroki.cci.android.model.Cap
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -67,27 +73,38 @@ fun BindersScreen(onBack: () -> Unit) {
                 }
             )
         },
-        floatingActionButton = {
-            FloatingActionButton(onClick = vm::showCreateDialog) {
-                Icon(imageVector = Icons.Filled.Add, contentDescription = "Dodaj klaser")
-            }
-        },
         snackbarHost = { SnackbarHost(snackbarState) }
     ) { innerPadding ->
         LazyColumn(modifier = Modifier.padding(innerPadding)) {
             items(uiState.binders, key = { it.id }) { binder ->
                 val expanded = binder.id in uiState.expandedBinderIds
                 val pages = uiState.binderPages[binder.id] ?: emptyList()
+                val totalCaps = pages.sumOf { uiState.capPositions[it.id]?.size ?: 0 }
                 ExpandableBinderRow(
                     binder = binder,
                     expanded = expanded,
                     pages = pages,
+                    expandedPageIds = uiState.expandedPageIds,
+                    capPositions = uiState.capPositions,
+                    capInfo = uiState.capInfo,
+                    totalCaps = totalCaps,
                     isLoading = uiState.isLoading,
                     onToggle = { vm.toggleExpand(binder.id) },
+                    onTogglePage = { vm.togglePageExpand(it) },
                     onDeleteBinder = { vm.requestDeleteBinder(binder.id) },
                     onAddPage = { vm.addPage(binder.id) },
                     onDeletePage = { vm.requestDeletePage(it) }
                 )
+            }
+            item {
+                Button(
+                    onClick = vm::showCreateDialog,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp)
+                ) {
+                    Text("Dodaj klaser")
+                }
             }
         }
     }
@@ -134,8 +151,13 @@ private fun ExpandableBinderRow(
     binder: Binder,
     expanded: Boolean,
     pages: List<BinderPage>,
+    expandedPageIds: Set<Long>,
+    capPositions: Map<Long, List<CapPosition>>,
+    capInfo: Map<Long, Cap>,
+    totalCaps: Int,
     isLoading: Boolean,
     onToggle: () -> Unit,
+    onTogglePage: (Long) -> Unit,
     onDeleteBinder: () -> Unit,
     onAddPage: () -> Unit,
     onDeletePage: (Long) -> Unit,
@@ -144,10 +166,11 @@ private fun ExpandableBinderRow(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
+                .padding(horizontal = 16.dp, vertical = 2.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(text = binder.name, modifier = Modifier.weight(1f))
+            val binderLabel = if (totalCaps > 0) "${binder.name} - $totalCaps" else binder.name
+            Text(text = binderLabel, modifier = Modifier.weight(1f))
             IconButton(onClick = onToggle) {
                 Icon(
                     imageVector = if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
@@ -160,15 +183,62 @@ private fun ExpandableBinderRow(
         }
         if (expanded) {
             pages.forEach { page ->
+                val pageExpanded = page.id in expandedPageIds
+                val caps = capPositions[page.id]?.sortedBy { it.position } ?: emptyList()
+                val countries = caps.mapNotNull { capInfo[it.capId]?.country }.distinct().sorted()
+                val countriesSuffix = if (countries.isEmpty()) "" else " (${countries.joinToString(", ")})"
+                val pageCaps = caps.size
+                val pageLabel = "Strona ${page.pageNumber}$countriesSuffix${if (pageCaps > 0) " - $pageCaps" else ""}"
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(start = 32.dp, end = 16.dp, top = 4.dp, bottom = 4.dp),
+                        .padding(start = 32.dp, end = 16.dp, top = 2.dp, bottom = 2.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(text = "Strona ${page.pageNumber}", modifier = Modifier.weight(1f))
+                    Text(
+                        text = pageLabel,
+                        modifier = Modifier.weight(1f)
+                    )
+                    IconButton(onClick = { onTogglePage(page.id) }) {
+                        Icon(
+                            imageVector = if (pageExpanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                            contentDescription = if (pageExpanded) "Zwiń stronę" else "Rozwiń stronę"
+                        )
+                    }
                     IconButton(onClick = { onDeletePage(page.id) }) {
                         Icon(imageVector = Icons.Filled.Delete, contentDescription = "Usuń stronę")
+                    }
+                }
+                if (pageExpanded) {
+                    caps.forEach { cap ->
+                        val info = capInfo[cap.capId]
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(start = 48.dp, end = 16.dp, top = 2.dp, bottom = 2.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            AsyncImage(
+                                model = info?.imageUrl,
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .clip(CircleShape)
+                            )
+                            Column(modifier = Modifier.padding(start = 8.dp)) {
+                                Text(
+                                    text = "Pozycja ${cap.position}: ${cap.capId}",
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                                if (info != null) {
+                                    Text(
+                                        text = info.country,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }
