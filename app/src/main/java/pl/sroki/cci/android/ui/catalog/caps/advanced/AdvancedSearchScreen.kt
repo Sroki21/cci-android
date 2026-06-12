@@ -161,7 +161,7 @@ private fun FilterForm(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable { onFilterChange(filter.copy(onlyInCollection = !filter.onlyInCollection)) }
-                        .padding(vertical = 1.dp)
+                        .padding(bottom = 1.dp)
                 ) {
                     Checkbox(
                         checked = filter.onlyInCollection,
@@ -203,7 +203,7 @@ private fun SimpleFilterRow(
         },
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 1.dp)
+            .padding(bottom = 1.dp)
     )
 }
 
@@ -219,7 +219,7 @@ private fun OperatorFilterRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 1.dp),
+            .padding(bottom = 1.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(modifier = Modifier.width(95.dp)) {
@@ -277,7 +277,7 @@ private fun ProducerFilterRow(
 
     Box(modifier = Modifier
         .fillMaxWidth()
-        .padding(vertical = 1.dp)
+        .padding(bottom = 1.dp)
     ) {
         OutlinedTextField(
             value = inputText,
@@ -353,7 +353,7 @@ private fun CountryFilterRow(
         },
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 1.dp)
+            .padding(bottom = 1.dp)
     )
 
     if (showDialog) {
