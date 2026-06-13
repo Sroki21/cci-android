@@ -10,6 +10,7 @@ import dagger.hilt.components.SingletonComponent
 import pl.sroki.cci.android.data.datasource.local.CciDatabase
 import pl.sroki.cci.android.data.datasource.local.dao.BinderDao
 import pl.sroki.cci.android.data.datasource.local.dao.BinderPageDao
+import pl.sroki.cci.android.data.datasource.local.dao.CapCacheDao
 import pl.sroki.cci.android.data.datasource.local.dao.CapPositionDao
 import pl.sroki.cci.android.data.datasource.local.dao.PendingCapDao
 import javax.inject.Singleton
@@ -22,7 +23,7 @@ object DatabaseModule {
     @Provides
     fun provideDatabase(@ApplicationContext context: Context): CciDatabase =
         Room.databaseBuilder(context, CciDatabase::class.java, "cci.db")
-            .addMigrations(CciDatabase.MIGRATION_1_2, CciDatabase.MIGRATION_2_3)
+            .addMigrations(CciDatabase.MIGRATION_1_2, CciDatabase.MIGRATION_2_3, CciDatabase.MIGRATION_3_4)
             .fallbackToDestructiveMigration(dropAllTables = true)
             .build()
 
@@ -37,4 +38,7 @@ object DatabaseModule {
 
     @Provides
     fun provideCapPositionDao(db: CciDatabase): CapPositionDao = db.capPositionDao()
+
+    @Provides
+    fun provideCapCacheDao(db: CciDatabase): CapCacheDao = db.capCacheDao()
 }

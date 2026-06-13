@@ -6,16 +6,18 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import pl.sroki.cci.android.data.datasource.local.dao.BinderDao
 import pl.sroki.cci.android.data.datasource.local.dao.BinderPageDao
+import pl.sroki.cci.android.data.datasource.local.dao.CapCacheDao
 import pl.sroki.cci.android.data.datasource.local.dao.CapPositionDao
 import pl.sroki.cci.android.data.datasource.local.dao.PendingCapDao
 import pl.sroki.cci.android.data.datasource.local.entity.Binder
 import pl.sroki.cci.android.data.datasource.local.entity.BinderPage
+import pl.sroki.cci.android.data.datasource.local.entity.CapCache
 import pl.sroki.cci.android.data.datasource.local.entity.CapPosition
 import pl.sroki.cci.android.data.datasource.local.entity.PendingCap
 
 @Database(
-    entities = [PendingCap::class, Binder::class, BinderPage::class, CapPosition::class],
-    version = 3,
+    entities = [PendingCap::class, Binder::class, BinderPage::class, CapPosition::class, CapCache::class],
+    version = 4,
     exportSchema = false
 )
 abstract class CciDatabase : RoomDatabase() {
@@ -23,6 +25,7 @@ abstract class CciDatabase : RoomDatabase() {
     abstract fun binderDao(): BinderDao
     abstract fun binderPageDao(): BinderPageDao
     abstract fun capPositionDao(): CapPositionDao
+    abstract fun capCacheDao(): CapCacheDao
 
     companion object {
         val MIGRATION_1_2 = object : Migration(1, 2) {
@@ -35,6 +38,44 @@ abstract class CciDatabase : RoomDatabase() {
         val MIGRATION_2_3 = object : Migration(2, 3) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE cap_position ADD COLUMN country TEXT NOT NULL DEFAULT ''")
+            }
+        }
+        val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Nowa tabela na metadane API
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `cap_cache` (
+                        `cap_id` INTEGER PRIMARY KEY NOT NULL,
+                        `country` TEXT NOT NULL DEFAULT ''
+                    )
+                """.trimIndent())
+
+                // Migracja istniejących danych kraju z cap_position
+                db.execSQL("""
+                    INSERT OR IGNORE INTO `cap_cache` (`cap_id`, `country`)
+                    SELECT `cap_id`, `country` FROM `cap_position` WHERE `country` != ''
+                """.trimIndent())
+
+                // Przebudowa cap_position bez kolumny country (SQLite nie obsługuje DROP COLUMN w starszych wersjach)
+                db.execSQL("""
+                    CREATE TABLE `cap_position_new` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `binder_page_id` INTEGER NOT NULL,
+                        `position` INTEGER NOT NULL,
+                        `cap_id` INTEGER NOT NULL,
+                        `firestore_id` TEXT,
+                        FOREIGN KEY(`binder_page_id`) REFERENCES `binder_page`(`id`)
+                            ON UPDATE NO ACTION ON DELETE CASCADE
+                    )
+                """.trimIndent())
+                db.execSQL("""
+                    INSERT INTO `cap_position_new` (`id`, `binder_page_id`, `position`, `cap_id`, `firestore_id`)
+                    SELECT `id`, `binder_page_id`, `position`, `cap_id`, `firestore_id` FROM `cap_position`
+                """.trimIndent())
+                db.execSQL("DROP TABLE `cap_position`")
+                db.execSQL("ALTER TABLE `cap_position_new` RENAME TO `cap_position`")
+                db.execSQL("CREATE UNIQUE INDEX `index_cap_position_binder_page_id_position` ON `cap_position` (`binder_page_id`, `position`)")
+                db.execSQL("CREATE INDEX `index_cap_position_binder_page_id` ON `cap_position` (`binder_page_id`)")
             }
         }
     }

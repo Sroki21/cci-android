@@ -14,6 +14,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withTimeoutOrNull
+import pl.sroki.cci.android.data.CapCacheRepository
 import pl.sroki.cci.android.data.CapPositionRepository
 import pl.sroki.cci.android.data.CapsRepository
 import javax.inject.Inject
@@ -34,7 +35,8 @@ sealed interface StatisticsUiState {
 @HiltViewModel
 class StatisticsViewModel @Inject constructor(
     private val capsRepository: CapsRepository,
-    private val capPositionRepository: CapPositionRepository
+    private val capPositionRepository: CapPositionRepository,
+    private val capCacheRepository: CapCacheRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<StatisticsUiState>(StatisticsUiState.Loading)
@@ -46,15 +48,11 @@ class StatisticsViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.value = StatisticsUiState.Loading
             try {
-                // Pokaż co jest w Room od razu
                 showCurrentStats(isRefreshing = true)
-
-                // Wypełnij brakujące kraje w tle (partiami po 30)
-                val missingIds = capPositionRepository.getCapIdsWithoutCountry()
+                val missingIds = capCacheRepository.getMissingForPositioned()
                 if (missingIds.isNotEmpty()) {
                     fillMissingCountries(missingIds)
                 }
-
                 showCurrentStats(isRefreshing = false)
             } catch (e: CancellationException) {
                 throw e
@@ -66,7 +64,7 @@ class StatisticsViewModel @Inject constructor(
 
     private suspend fun showCurrentStats(isRefreshing: Boolean) {
         val total = capPositionRepository.getTotalCount()
-        val countryRows = capPositionRepository.getCountryStats()
+        val countryRows = capCacheRepository.getCountryStats()
         val allCountries = countryRows.map { CountryStat(it.country, it.count) }
         _uiState.value = StatisticsUiState.Success(
             totalCaps = total,
@@ -87,13 +85,12 @@ class StatisticsViewModel @Inject constructor(
                                 runCatching { capsRepository.getById(id.toInt()).country.name }
                                     .getOrNull()
                                     ?.takeIf { it.isNotBlank() }
-                                    ?.let { country -> capPositionRepository.updateCountry(id, country) }
+                                    ?.let { country -> capCacheRepository.upsert(id, country) }
                             }
                         }
                     }
                 }.awaitAll()
             }
-            // Odśwież UI po każdej partii — użytkownik widzi postęp
             showCurrentStats(isRefreshing = true)
         }
     }

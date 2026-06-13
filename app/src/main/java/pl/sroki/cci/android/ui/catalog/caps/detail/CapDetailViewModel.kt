@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import pl.sroki.cci.android.data.BinderPageRepository
 import pl.sroki.cci.android.data.BinderRepository
+import pl.sroki.cci.android.data.CapCacheRepository
 import pl.sroki.cci.android.data.CapsRepository
 import pl.sroki.cci.android.data.CapPositionRepository
 import pl.sroki.cci.android.data.PurchasedCapsLocalStore
@@ -43,6 +44,7 @@ sealed interface CapDetailUiState {
 class CapDetailViewModel @Inject constructor(
     private val repository: CapsRepository,
     private val capPositionRepository: CapPositionRepository,
+    private val capCacheRepository: CapCacheRepository,
     private val sessionRepository: SessionRepository,
     private val binderRepository: BinderRepository,
     private val binderPageRepository: BinderPageRepository,
@@ -73,7 +75,6 @@ class CapDetailViewModel @Inject constructor(
 
     private var pagesJob: Job? = null
     private var suggestionJob: Job? = null
-    private val capCountryCache = mutableMapOf<Long, String?>()
 
     init {
         viewModelScope.launch {
@@ -119,7 +120,8 @@ class CapDetailViewModel @Inject constructor(
                     if (!current.cap.isInCollection) {
                         repository.addToCollection(current.cap.id)
                     }
-                    capPositionRepository.assign(pageId, position, capId, country = current.cap.country.name)
+                    capCacheRepository.upsert(capId, current.cap.country.name)
+                    capPositionRepository.assign(pageId, position, capId)
                 }
                 val newBinderInfo = capPositionRepository.getBinderInfoByCapId(capId)
                 capDetailUiState = current.copy(
@@ -218,15 +220,20 @@ class CapDetailViewModel @Inject constructor(
         val assignedIds = capPositionRepository.getAllCapIds().toSet()
         val priorIds = (purchasedCapsLocalStore.getIds() - assignedIds).filter { it > capId }
         if (priorIds.isNotEmpty()) {
-            val uncached = priorIds.filter { it !in capCountryCache }
+            val countryForId = mutableMapOf<Long, String?>()
+            priorIds.forEach { id -> countryForId[id] = capCacheRepository.getCountry(id) }
+            val uncached = priorIds.filter { countryForId[it] == null }
             if (uncached.isNotEmpty()) {
                 coroutineScope {
                     uncached.map { id ->
                         async { id to runCatching { repository.getById(id.toInt()).country.name }.getOrNull() }
                     }.awaitAll()
-                }.forEach { (id, c) -> capCountryCache[id] = c }
+                }.forEach { (id, c) ->
+                    countryForId[id] = c
+                    if (c != null) capCacheRepository.upsert(id, c)
+                }
             }
-            val offset = priorIds.count { capCountryCache[it] == country }
+            val offset = priorIds.count { countryForId[it] == country }
             if (offset > 0) return applyOffset(base, offset)
         }
         return base
@@ -259,19 +266,25 @@ class CapDetailViewModel @Inject constructor(
             }.awaitAll()
         }.mapNotNull { (page, pos) -> if (pos != null) page to pos else null }
 
-        // Batch-fetch all uncached countries in parallel (no sequential API calls).
-        val uncachedRepIds = pageLastPos.map { (_, pos) -> pos.capId }.filter { it !in capCountryCache }.toSet()
+        // Batch-fetch all uncached countries: Room first, API for unknowns.
+        val repIds = pageLastPos.map { (_, pos) -> pos.capId }.toSet()
+        val countryForId = mutableMapOf<Long, String?>()
+        repIds.forEach { id -> countryForId[id] = capCacheRepository.getCountry(id) }
+        val uncachedRepIds = repIds.filter { countryForId[it] == null }
         if (uncachedRepIds.isNotEmpty()) {
             coroutineScope {
                 uncachedRepIds.map { id ->
                     async { id to runCatching { repository.getById(id.toInt()).country.name }.getOrNull() }
                 }.awaitAll()
-            }.forEach { (id, c) -> capCountryCache[id] = c }
+            }.forEach { (id, c) ->
+                countryForId[id] = c
+                if (c != null) capCacheRepository.upsert(id, c)
+            }
         }
 
         val binderBestPage = mutableMapOf<Long, Pair<Int, Int>>() // binderId -> (pageNumber, maxPos)
         for ((page, repPos) in pageLastPos) {
-            if (capCountryCache[repPos.capId] == country) {
+            if (countryForId[repPos.capId] == country) {
                 val maxPos = capPositionRepository.getByPage(page.id).first().maxOf { it.position }
                 val existing = binderBestPage[page.binderId]
                 if (existing == null || page.pageNumber > existing.first) {
