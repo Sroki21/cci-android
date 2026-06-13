@@ -48,7 +48,8 @@ class AuthRepository @Inject constructor(
                     sessionRepository.setLoggedIn(true)
                     sessionRepository.setUserName(email)
                     fetchApiToken(email, password)
-                    try { firebaseAuthManager.signInWithEmail(email, password) } catch (_: Exception) {}
+                    runCatching { firebaseAuthManager.signInWithEmail(email, password) }
+                        .onFailure { Log.w("CCI_AUTH", "Firebase signInWithEmail failed: ${it.message}") }
                     try { firestoreRestoreUseCase.restoreIfEmpty() } catch (_: Exception) {}
                     Result.success(Unit)
                 }
