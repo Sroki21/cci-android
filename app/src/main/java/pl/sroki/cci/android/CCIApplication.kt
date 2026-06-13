@@ -23,6 +23,7 @@ class CCIApplication : Application() {
         applicationScope.launch {
             try {
                 firebaseAuthManager.ensureSignedIn()
+                firestoreRestoreUseCase.deduplicateRoomData()
                 firestoreRestoreUseCase.restoreIfEmpty()
             } catch (e: Exception) {
                 // Restore failure is non-fatal — app works offline without it

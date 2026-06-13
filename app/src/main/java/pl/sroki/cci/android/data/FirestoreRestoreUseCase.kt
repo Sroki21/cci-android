@@ -22,25 +22,47 @@ class FirestoreRestoreUseCase @Inject constructor(
     private val binderPageService: BinderPageFirestoreService,
     private val capPositionService: CapPositionFirestoreService
 ) {
+    suspend fun deduplicateRoomData() {
+        binderDao.deduplicateByName()
+    }
+
     suspend fun restoreIfEmpty() {
         val uid = authManager.uid.value ?: return
         if (binderDao.countAll() > 0) return
+
+        val allBinders = binderService.fetchAll(uid)
+        val allPages = binderPageService.fetchAll(uid)
+        val allCaps = capPositionService.fetchAll(uid)
+
+        // Deduplikacja po nazwie: na nazwę zostaje kopia z największą liczbą kapsli
+        // (najpełniejsza). Nie polegamy na kolejności z Firestore, bo migracje mogły
+        // zostawić chude duplikaty — wybranie złego osierociłoby strony i kapsle.
+        val capsByPageFsId = allCaps.groupingBy { it.binderPageFirestoreId }.eachCount()
+        val pagesByBinderFsId = allPages.groupBy { it.binderFirestoreId }
+        fun capCount(binderFsId: String): Int =
+            pagesByBinderFsId[binderFsId].orEmpty().sumOf { capsByPageFsId[it.firestoreId] ?: 0 }
+
+        val chosenBinders = allBinders
+            .groupBy { it.name }
+            .values
+            .map { dups -> dups.maxByOrNull { capCount(it.firestoreId) }!! }
+
         val fsIdToRoomId = mutableMapOf<String, Long>()
-        binderService.fetchAll(uid).forEach { doc ->
+        chosenBinders.forEach { doc ->
             val id = binderDao.insert(Binder(name = doc.name, firestoreId = doc.firestoreId))
             fsIdToRoomId[doc.firestoreId] = id
         }
         val pageIdToRoomId = mutableMapOf<String, Long>()
-        binderPageService.fetchAll(uid).forEach { doc ->
+        allPages.forEach { doc ->
             val parentRoomId = fsIdToRoomId[doc.binderFirestoreId] ?: return@forEach
             val id = binderPageDao.insert(
                 BinderPage(binderId = parentRoomId, pageNumber = doc.pageNumber, firestoreId = doc.firestoreId)
             )
             pageIdToRoomId[doc.firestoreId] = id
         }
-        capPositionService.fetchAll(uid).forEach { doc ->
+        allCaps.forEach { doc ->
             val parentRoomId = pageIdToRoomId[doc.binderPageFirestoreId] ?: return@forEach
-            capPositionDao.insert(
+            capPositionDao.insertOrIgnore(
                 CapPosition(
                     binderPageId = parentRoomId,
                     position = doc.position,

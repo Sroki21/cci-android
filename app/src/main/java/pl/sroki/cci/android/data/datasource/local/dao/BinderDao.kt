@@ -23,4 +23,7 @@ interface BinderDao {
 
     @Query("SELECT COUNT(*) FROM binder")
     suspend fun countAll(): Int
+
+    @Query("DELETE FROM binder WHERE id NOT IN (SELECT MAX(id) FROM binder GROUP BY name)")
+    suspend fun deduplicateByName()
 }
