@@ -23,7 +23,7 @@ class FirestoreRestoreUseCase @Inject constructor(
     private val capPositionService: CapPositionFirestoreService
 ) {
     suspend fun migrateFromUid(oldUid: String): Int {
-        val newUid = authManager.uid.value ?: error("Nie jesteś zalogowany do Firebase")
+        val newUid = authManager.currentUid() ?: error("Nie jesteś zalogowany do Firebase")
         require(newUid != oldUid) { "Stary i nowy UID są identyczne" }
 
         // oldFsId → (nowy Room ID, nowy Firestore ID)
