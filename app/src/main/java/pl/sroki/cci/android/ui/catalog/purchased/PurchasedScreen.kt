@@ -55,6 +55,7 @@ fun PurchasedScreen(
                             .groupBy { it.country }
                             .entries
                             .sortedBy { it.key }
+                            .map { (country, caps) -> country to caps.sortedByDescending { it.id } }
                     }
                     LazyVerticalGrid(
                         columns = GridCells.Fixed(2),

@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.Alignment
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
@@ -49,6 +50,7 @@ fun CapDetailView(
     selectedPageId: Long? = null,
     selectedPosition: Int? = null,
     isSaving: Boolean = false,
+    binderSuggestion: BinderSuggestion? = null,
     onBinderSelected: (Long) -> Unit = {},
     onPageSelected: (Long) -> Unit = {},
     onPositionSelected: (Int) -> Unit = {},
@@ -79,11 +81,26 @@ fun CapDetailView(
                 CapDetailTextView(label = "Producent", text = cap.producers.joinToString { it.name })
             }
             if (status == CapStatus.PURCHASED || status == CapStatus.IN_COLLECTION) {
-                Text(
-                    text = "Lokalizacja w klaserze",
-                    style = MaterialTheme.typography.titleSmall,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
-                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Lokalizacja w klaserze",
+                        style = MaterialTheme.typography.titleSmall
+                    )
+                    if (binderSuggestion != null && status == CapStatus.PURCHASED) {
+                        Text(
+                            text = "${binderSuggestion.binderName} / S.${binderSuggestion.pageNumber} / P.${binderSuggestion.nextPosition}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            textAlign = TextAlign.End
+                        )
+                    }
+                }
                 CapDetailSelectView(
                     label = "Klaser",
                     value = binders.firstOrNull { it.id == selectedBinderId }?.name,
@@ -137,7 +154,7 @@ private fun CapDetailSelectView(
     ) {
         Text(
             text = label,
-            color = if (enabled) MaterialTheme.colorScheme.primary
+            color = if (enabled) MaterialTheme.colorScheme.onSurface
                     else MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(end = 8.dp)
         )

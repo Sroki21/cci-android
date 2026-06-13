@@ -119,6 +119,7 @@ fun CapDetailScreen(
                     selectedPageId = viewModel.selectedPageId,
                     selectedPosition = viewModel.selectedPosition,
                     isSaving = viewModel.isSaving,
+                    binderSuggestion = viewModel.binderSuggestion,
                     onBinderSelected = viewModel::onBinderSelected,
                     onPageSelected = viewModel::onPageSelected,
                     onPositionSelected = viewModel::onPositionSelected,
