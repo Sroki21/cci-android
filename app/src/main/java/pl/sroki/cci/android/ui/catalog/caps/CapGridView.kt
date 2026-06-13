@@ -27,8 +27,8 @@ fun CapGridCard(cap: Cap, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val assignedCapIds = LocalAssignedCapIds.current
     val border = when {
         !cap.isInCollection -> null
-        cap.id in assignedCapIds -> BorderStroke(3.dp, Color(0xFF000000)) // W kolekcji → czarna
-        else -> BorderStroke(3.dp, Color(0xFFF44336))                     // Zakupiony → czerwona
+        cap.id in assignedCapIds -> BorderStroke(6.dp, Color(0xFF00FF00)) // W kolekcji → zielona
+        else -> BorderStroke(6.dp, Color(0xFF2196F3))                    // Zakupiony → niebieska
     }
     Card(
         border = border

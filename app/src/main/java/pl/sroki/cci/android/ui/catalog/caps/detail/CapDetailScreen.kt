@@ -57,7 +57,7 @@ fun CapDetailScreen(
                         Spacer(Modifier.weight(1f))
                         if (uiState is CapDetailUiState.Success && isLoggedIn) {
                             val (label, color) = when (uiState.status) {
-                                CapStatus.IN_COLLECTION -> "W kolekcji" to Color(0xFF4CAF50)
+                                CapStatus.IN_COLLECTION -> "W kolekcji" to Color(0xFF00FF00)
                                 CapStatus.PURCHASED -> "Zakupiony" to Color(0xFF2196F3)
                                 CapStatus.MISSING -> "Brak" to Color(0xFFF44336)
                             }
