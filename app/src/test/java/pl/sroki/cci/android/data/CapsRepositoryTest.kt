@@ -14,6 +14,7 @@ import pl.sroki.cci.android.model.Page
 class CapsRepositoryTest {
 
     private lateinit var capApiService: CapApiService
+    private lateinit var purchasedCapsLocalStore: PurchasedCapsLocalStore
     private lateinit var repository: CapsRepository
 
     private val fakePage = Page(
@@ -30,7 +31,8 @@ class CapsRepositoryTest {
     @Before
     fun setUp() {
         capApiService = mockk()
-        repository = CapsRepository(capApiService)
+        purchasedCapsLocalStore = mockk()
+        repository = CapsRepository(capApiService, purchasedCapsLocalStore)
     }
 
     @Test

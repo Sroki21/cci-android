@@ -19,6 +19,9 @@ import org.junit.Before
 import org.junit.Test
 import pl.sroki.cci.android.data.BinderPageRepository
 import pl.sroki.cci.android.data.BinderRepository
+import pl.sroki.cci.android.data.CapPositionRepository
+import pl.sroki.cci.android.data.CapsRepository
+import pl.sroki.cci.android.data.CountriesRepository
 import pl.sroki.cci.android.data.datasource.local.entity.Binder
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -27,6 +30,9 @@ class BindersViewModelTest {
     private val testDispatcher = UnconfinedTestDispatcher()
     private lateinit var binderRepository: BinderRepository
     private lateinit var binderPageRepository: BinderPageRepository
+    private lateinit var capPositionRepository: CapPositionRepository
+    private lateinit var capsRepository: CapsRepository
+    private lateinit var countriesRepository: CountriesRepository
     private lateinit var viewModel: BindersViewModel
 
     @Before
@@ -34,8 +40,13 @@ class BindersViewModelTest {
         Dispatchers.setMain(testDispatcher)
         binderRepository = mockk()
         binderPageRepository = mockk()
+        capPositionRepository = mockk()
+        capsRepository = mockk()
+        countriesRepository = mockk()
         every { binderRepository.getAll() } returns flowOf(emptyList())
-        viewModel = BindersViewModel(binderRepository, binderPageRepository)
+        every { binderPageRepository.getByBinder(any()) } returns flowOf(emptyList())
+        coEvery { countriesRepository.getCountries() } returns emptyList()
+        viewModel = BindersViewModel(binderRepository, binderPageRepository, capPositionRepository, capsRepository, countriesRepository)
     }
 
     @After
@@ -48,7 +59,7 @@ class BindersViewModelTest {
         val binder = Binder(id = 1L, name = "Europa 1")
         every { binderRepository.getAll() } returns flowOf(listOf(binder))
         coEvery { binderRepository.create("Europa 1") } returns 1L
-        viewModel = BindersViewModel(binderRepository, binderPageRepository)
+        viewModel = BindersViewModel(binderRepository, binderPageRepository, capPositionRepository, capsRepository, countriesRepository)
 
         viewModel.createBinder("Europa 1")
 
