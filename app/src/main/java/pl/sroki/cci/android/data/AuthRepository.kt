@@ -16,7 +16,9 @@ import javax.inject.Singleton
 class AuthRepository @Inject constructor(
     private val authApiService: AuthApiService,
     private val sessionRepository: SessionRepository,
-    private val cookieJar: PersistentCookieJar
+    private val cookieJar: PersistentCookieJar,
+    private val firebaseAuthManager: FirebaseAuthManager,
+    private val firestoreRestoreUseCase: FirestoreRestoreUseCase
 ) {
     companion object {
         private val json = Json { ignoreUnknownKeys = true }
@@ -42,18 +44,14 @@ class AuthRepository @Inject constructor(
             val cookies = cookieJar.loadForRequest("https://crowncaps.info/".toHttpUrl())
             Log.d("CCI_AUTH", "cookies: ${cookies.map { it.name }}")
             when (response.code()) {
-                200 -> {
-                    sessionRepository.setLoggedIn(true)
-                    sessionRepository.setUserName(email)
-                    fetchApiToken(email, password)
-                    Result.success(Unit)
-                }
-                302 -> {
-                    // Serwer zwraca redirect po udanym logowaniu webowym;
+                200, 302 -> {
+                    // 302: serwer zwraca redirect po udanym logowaniu webowym;
                     // CookieJar zapisał już uwierzytelnioną sesję z tej odpowiedzi.
                     sessionRepository.setLoggedIn(true)
                     sessionRepository.setUserName(email)
                     fetchApiToken(email, password)
+                    try { firebaseAuthManager.signInWithEmail(email, password) } catch (_: Exception) {}
+                    try { firestoreRestoreUseCase.restoreIfEmpty() } catch (_: Exception) {}
                     Result.success(Unit)
                 }
                 422 -> {

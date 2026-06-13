@@ -1,6 +1,7 @@
 package pl.sroki.cci.android.data
 
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseAuthInvalidUserException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -21,5 +22,14 @@ class FirebaseAuthManager @Inject constructor(private val auth: FirebaseAuth) {
         }
         val result = auth.signInAnonymously().await()
         _uid.value = result.user?.uid
+    }
+
+    suspend fun signInWithEmail(email: String, password: String) {
+        try {
+            auth.signInWithEmailAndPassword(email, password).await()
+        } catch (e: FirebaseAuthInvalidUserException) {
+            auth.createUserWithEmailAndPassword(email, password).await()
+        }
+        _uid.value = auth.currentUser?.uid
     }
 }
