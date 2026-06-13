@@ -36,9 +36,8 @@ class AdvancedSearchPagingSource(
 
             val hasTextFilter = filter.textValue.isNotBlank()
             val hasProducer = filter.producerName.isNotBlank()
-            // Czysto krajowy (bez tekstu, producenta i kolekcji) → dedykowany endpoint
-            val isPureCountry = filter.countryId != null && !hasTextFilter
-                && !hasProducer && !filter.onlyInCollection
+            // Kraj (bez tekstu i producenta) → dedykowany endpoint; kolekcja obsługiwana client-side
+            val isPureCountry = filter.countryId != null && !hasTextFilter && !hasProducer
 
             val result = when {
                 isPureCountry -> {
@@ -78,11 +77,10 @@ class AdvancedSearchPagingSource(
 
             // CONTAINS bez innych filtrów → licznik z API od razu (może być nieścisły gdy API
             // ignoruje productId=1, ale lepsze niż rosnący licznik dla normalnych wyszukiwań)
-            val isClientFiltered = !isPureCountry && (
-                filter.onlyInCollection ||
+            val isClientFiltered = filter.onlyInCollection || (!isPureCountry && (
                 (filter.textValue.isNotBlank() && filter.textOperator != SearchOperator.CONTAINS) ||
                 filter.countryId != null
-            )
+            ))
             if (page == STARTING_KEY) {
                 onPageLoaded(filteredData.size, if (!isClientFiltered) result.total else null)
             } else if (isClientFiltered) {
