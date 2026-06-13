@@ -37,3 +37,14 @@ data class CapExtended(
     val createdAt: Instant
 )
 
+fun CapExtended.toCap() = Cap(
+    id = id.toLong(),
+    description = description,
+    country = country.name,
+    product = product.name,
+    liner = liner.name,
+    purpose = purpose.name,
+    imageUrl = imageUrl,
+    isInCollection = isInCollection
+)
+

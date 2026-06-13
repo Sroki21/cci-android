@@ -14,6 +14,7 @@ import pl.sroki.cci.android.data.BinderPageRepository
 import pl.sroki.cci.android.data.BinderRepository
 import pl.sroki.cci.android.data.CapsRepository
 import pl.sroki.cci.android.data.CapPositionRepository
+import pl.sroki.cci.android.data.PurchasedCapsLocalStore
 import pl.sroki.cci.android.data.SessionRepository
 import pl.sroki.cci.android.data.datasource.local.entity.Binder
 import pl.sroki.cci.android.data.datasource.local.entity.BinderPage
@@ -40,7 +41,8 @@ class CapDetailViewModel @Inject constructor(
     private val capPositionRepository: CapPositionRepository,
     private val sessionRepository: SessionRepository,
     private val binderRepository: BinderRepository,
-    private val binderPageRepository: BinderPageRepository
+    private val binderPageRepository: BinderPageRepository,
+    private val purchasedCapsLocalStore: PurchasedCapsLocalStore
 ) : ViewModel() {
 
     var capDetailUiState: CapDetailUiState by mutableStateOf(CapDetailUiState.Loading)
@@ -170,6 +172,11 @@ class CapDetailViewModel @Inject constructor(
                     binderInfo != null -> CapStatus.IN_COLLECTION
                     cap.isInCollection -> CapStatus.PURCHASED
                     else -> CapStatus.MISSING
+                }
+                when (status) {
+                    CapStatus.PURCHASED -> purchasedCapsLocalStore.add(id.toLong())
+                    CapStatus.MISSING -> purchasedCapsLocalStore.remove(id.toLong())
+                    else -> Unit
                 }
                 if (binderInfo != null) initBinderPreFill(binderInfo)
                 CapDetailUiState.Success(cap = cap, status = status, binderInfo = binderInfo)

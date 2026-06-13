@@ -14,7 +14,10 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class CapsRepository @Inject constructor(private val capApiService: CapApiService) {
+class CapsRepository @Inject constructor(
+    private val capApiService: CapApiService,
+    private val purchasedCapsLocalStore: PurchasedCapsLocalStore
+) {
 
     private val perPage = Cap.PER_PAGE
 
@@ -33,7 +36,6 @@ class CapsRepository @Inject constructor(private val capApiService: CapApiServic
     suspend fun searchSimilar(image: MultipartBody.Part): SimilarCapsResponse {
         return capApiService.searchSimilar(image)
     }
-    fun purchasedCapsPagingSource() = PurchasedCapsPagingSource(this)
 
     fun advancedSearchPagingSource(
         filter: pl.sroki.cci.android.model.AdvancedSearchFilter,
@@ -89,6 +91,7 @@ class CapsRepository @Inject constructor(private val capApiService: CapApiServic
         val resp = capApiService.addToCollection(id)
         Log.d("CCI_COLLECTION", "addToCollection id=$id code=${resp.code()}")
         if (!resp.isSuccessful) throw java.io.IOException("HTTP ${resp.code()}")
+        purchasedCapsLocalStore.add(id.toLong())
         _collectionChanged.tryEmit(Unit)
     }
 
@@ -96,6 +99,7 @@ class CapsRepository @Inject constructor(private val capApiService: CapApiServic
         val resp = capApiService.removeFromCollection(id)
         Log.d("CCI_COLLECTION", "removeFromCollection id=$id code=${resp.code()}")
         if (!resp.isSuccessful) throw java.io.IOException("HTTP ${resp.code()}")
+        purchasedCapsLocalStore.remove(id.toLong())
         _collectionChanged.tryEmit(Unit)
     }
 }
