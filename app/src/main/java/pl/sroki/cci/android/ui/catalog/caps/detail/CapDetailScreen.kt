@@ -53,7 +53,7 @@ fun CapDetailScreen(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text(text = "#$id")
+                        Text(text = "$id")
                         Spacer(Modifier.weight(1f))
                         if (uiState is CapDetailUiState.Success && isLoggedIn) {
                             val (label, color) = when (uiState.status) {
