@@ -50,7 +50,7 @@ class FirestoreRestoreUseCase @Inject constructor(
         capPositionService.fetchAll(oldUid).forEach { doc ->
             val (parentRoomId, newPageFsId) = pageFsIdMap[doc.binderPageFirestoreId] ?: return@forEach
             val newFsId = capPositionService.scheduleCreate(newUid, newPageFsId, doc.position, doc.capId)
-            capPositionDao.insert(CapPosition(binderPageId = parentRoomId, position = doc.position, capId = doc.capId, firestoreId = newFsId))
+            capPositionDao.insertOrIgnore(CapPosition(binderPageId = parentRoomId, position = doc.position, capId = doc.capId, firestoreId = newFsId))
             count++
         }
 
