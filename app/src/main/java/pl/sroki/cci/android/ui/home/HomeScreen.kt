@@ -44,11 +44,24 @@ fun HomeScreen(
             },
             actions = {
                 if (uiState.isLoggedIn) {
-                    Text(
-                        text = uiState.userName ?: "",
-                        modifier = Modifier.padding(end = 16.dp),
-                        style = MaterialTheme.typography.bodyMedium
-                    )
+                    var menuExpanded by remember { mutableStateOf(false) }
+                    Box {
+                        TextButton(onClick = { menuExpanded = true }) {
+                            Text(uiState.userName ?: "Konto")
+                        }
+                        DropdownMenu(
+                            expanded = menuExpanded,
+                            onDismissRequest = { menuExpanded = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("Wyloguj") },
+                                onClick = {
+                                    menuExpanded = false
+                                    vm.logout()
+                                }
+                            )
+                        }
+                    }
                 } else {
                     TextButton(onClick = onLoginClick) {
                         Text("Zaloguj")

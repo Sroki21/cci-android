@@ -28,12 +28,10 @@ class AuthRepository @Inject constructor(
         val hasSession = cookieJar
             .loadForRequest("https://crowncaps.info/".toHttpUrl())
             .any { it.name == "crowncapsinfo-session" }
-        sessionRepository.setLoggedIn(hasSession)
-        // Przywróć Bearer token z cache po restarcie (fetch mógł nie powieść się przy ostatnim logowaniu)
-        if (hasSession) {
-            val cached = sessionRepository.loadCachedToken()
-            if (cached != null) sessionRepository.setToken(cached)
-        }
+        val cachedToken = sessionRepository.loadCachedToken()
+        // Sesja aktywna jeśli jest cookie LUB zapisany Bearer token (cookie to session cookie — nie przeżywa restartu)
+        sessionRepository.setLoggedIn(hasSession || cachedToken != null)
+        if (cachedToken != null) sessionRepository.setToken(cachedToken)
     }
 
     suspend fun login(email: String, password: String): Result<Unit> {

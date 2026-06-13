@@ -1,6 +1,5 @@
 package pl.sroki.cci.android.ui.auth
 
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -55,7 +54,6 @@ fun LoginScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
                 .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.Center
         ) {
             OutlinedTextField(
                 value = email,

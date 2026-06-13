@@ -18,9 +18,15 @@ class SessionRepository @Inject constructor(
     val isLoggedIn: StateFlow<Boolean> = _isLoggedIn.asStateFlow()
     fun setLoggedIn(value: Boolean) { _isLoggedIn.value = value }
 
-    private val _userName = MutableStateFlow<String?>(null)
+    private val _userName = MutableStateFlow<String?>(prefs.getString("user_name", null))
     val userName: StateFlow<String?> = _userName.asStateFlow()
-    fun setUserName(value: String?) { _userName.value = value }
+    fun setUserName(value: String?) {
+        _userName.value = value
+        prefs.edit().apply {
+            if (value != null) putString("user_name", value) else remove("user_name")
+            apply()
+        }
+    }
 
     private val _token = MutableStateFlow<String?>(null)
     val token: StateFlow<String?> = _token.asStateFlow()

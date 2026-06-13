@@ -7,6 +7,8 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
+import pl.sroki.cci.android.data.AuthRepository
 import pl.sroki.cci.android.data.SessionRepository
 import javax.inject.Inject
 
@@ -17,7 +19,8 @@ data class HomeUiState(
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
-    private val sessionRepository: SessionRepository
+    private val sessionRepository: SessionRepository,
+    private val authRepository: AuthRepository
 ) : ViewModel() {
 
     val uiState: StateFlow<HomeUiState> = combine(
@@ -30,4 +33,10 @@ class HomeViewModel @Inject constructor(
         started = SharingStarted.Eagerly,
         initialValue = HomeUiState()
     )
+
+    fun logout() {
+        viewModelScope.launch {
+            authRepository.logout()
+        }
+    }
 }
