@@ -91,7 +91,7 @@ fun HomeScreen(
                 enabled = false
             ) {}
             if (uiState.isLoggedIn) {
-                NavigationItem(text = "Klasery", icon = Icons.Filled.FolderOpen) {
+                NavigationItem(text = "Klasery", icon = Icons.Filled.LibraryBooks) {
                     onClick(Screen.Binders)
                 }
             }
