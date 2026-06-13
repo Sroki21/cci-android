@@ -2,8 +2,11 @@ package pl.sroki.cci.android.ui.home
 
 import android.content.Context
 import android.content.SharedPreferences
+import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
+import pl.sroki.cci.android.data.AuthRepository
+import pl.sroki.cci.android.data.FirestoreRestoreUseCase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -24,13 +27,18 @@ class HomeViewModelTest {
 
     private val testDispatcher = UnconfinedTestDispatcher()
     private lateinit var sessionRepository: SessionRepository
+    private lateinit var authRepository: AuthRepository
+    private lateinit var firestoreRestoreUseCase: FirestoreRestoreUseCase
     private lateinit var viewModel: HomeViewModel
 
     @Before
     fun setUp() {
         Dispatchers.setMain(testDispatcher)
         sessionRepository = SessionRepository(mockContext())
-        viewModel = HomeViewModel(sessionRepository)
+        authRepository = mockk(relaxed = true)
+        firestoreRestoreUseCase = mockk(relaxed = true)
+        coEvery { authRepository.logout() } returns Unit
+        viewModel = HomeViewModel(sessionRepository, authRepository, firestoreRestoreUseCase)
     }
 
     private fun mockContext(): Context {
@@ -39,6 +47,7 @@ class HomeViewModelTest {
         every { editor.remove(any()) } returns editor
         val prefs = mockk<SharedPreferences>()
         every { prefs.getString("api_token", null) } returns null
+        every { prefs.getString("user_name", null) } returns null
         every { prefs.edit() } returns editor
         val context = mockk<Context>()
         every { context.getSharedPreferences("session", Context.MODE_PRIVATE) } returns prefs
