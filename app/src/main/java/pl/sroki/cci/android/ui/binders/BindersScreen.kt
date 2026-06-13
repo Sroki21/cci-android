@@ -1,14 +1,20 @@
 package pl.sroki.cci.android.ui.binders
 
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
@@ -17,6 +23,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -33,15 +41,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.ui.draw.clip
 import coil.compose.AsyncImage
-import androidx.compose.material3.MaterialTheme
 import pl.sroki.cci.android.data.datasource.local.entity.Binder
 import pl.sroki.cci.android.data.datasource.local.entity.BinderPage
 import pl.sroki.cci.android.data.datasource.local.entity.CapPosition
+import pl.sroki.cci.android.data.model.Country
 import pl.sroki.cci.android.model.Cap
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -55,6 +63,17 @@ fun BindersScreen(onBack: () -> Unit) {
         vm.events.collect { event ->
             when (event) {
                 is BindersEvent.ShowSnackbar -> snackbarState.showSnackbar(event.message)
+            }
+        }
+    }
+
+    val selectedCountry = vm.selectedCountryName
+    val filteredBinders = if (selectedCountry.isEmpty()) uiState.binders
+    else uiState.binders.filter { binder ->
+        val pages = uiState.binderPages[binder.id] ?: emptyList()
+        pages.any { page ->
+            (uiState.capPositions[page.id] ?: emptyList()).any { pos ->
+                uiState.capInfo[pos.capId]?.country == selectedCountry
             }
         }
     }
@@ -76,18 +95,36 @@ fun BindersScreen(onBack: () -> Unit) {
         snackbarHost = { SnackbarHost(snackbarState) }
     ) { innerPadding ->
         LazyColumn(modifier = Modifier.padding(innerPadding)) {
-            items(uiState.binders, key = { it.id }) { binder ->
+            item {
+                CountryFilterRow(
+                    countryName = selectedCountry,
+                    countries = vm.countries,
+                    onCountrySelected = vm::setCountry
+                )
+            }
+            items(filteredBinders, key = { it.id }) { binder ->
                 val expanded = binder.id in uiState.expandedBinderIds
                 val pages = uiState.binderPages[binder.id] ?: emptyList()
-                val totalCaps = pages.sumOf { uiState.capPositions[it.id]?.size ?: 0 }
+                val filteredPages = if (selectedCountry.isEmpty()) pages
+                else pages.filter { page ->
+                    (uiState.capPositions[page.id] ?: emptyList()).any { pos ->
+                        uiState.capInfo[pos.capId]?.country == selectedCountry
+                    }
+                }
+                val totalCaps = filteredPages.sumOf { page ->
+                    val positions = uiState.capPositions[page.id] ?: emptyList()
+                    if (selectedCountry.isEmpty()) positions.size
+                    else positions.count { pos -> uiState.capInfo[pos.capId]?.country == selectedCountry }
+                }
                 ExpandableBinderRow(
                     binder = binder,
                     expanded = expanded,
-                    pages = pages,
+                    pages = filteredPages,
                     expandedPageIds = uiState.expandedPageIds,
                     capPositions = uiState.capPositions,
                     capInfo = uiState.capInfo,
                     totalCaps = totalCaps,
+                    selectedCountry = selectedCountry,
                     isLoading = uiState.isLoading,
                     onToggle = { vm.toggleExpand(binder.id) },
                     onTogglePage = { vm.togglePageExpand(it) },
@@ -147,6 +184,78 @@ fun BindersScreen(onBack: () -> Unit) {
 }
 
 @Composable
+private fun CountryFilterRow(
+    countryName: String,
+    countries: List<Country>,
+    onCountrySelected: (Country?) -> Unit
+) {
+    var showDialog by remember { mutableStateOf(false) }
+    var dialogSearch by remember { mutableStateOf("") }
+    val interactionSource = remember { MutableInteractionSource() }
+
+    LaunchedEffect(interactionSource) {
+        interactionSource.interactions.collect { interaction ->
+            if (interaction is PressInteraction.Release) showDialog = true
+        }
+    }
+
+    OutlinedTextField(
+        value = countryName,
+        onValueChange = {},
+        placeholder = { Text("Kraj") },
+        readOnly = true,
+        singleLine = true,
+        interactionSource = interactionSource,
+        trailingIcon = {
+            if (countryName.isNotEmpty()) {
+                IconButton(onClick = { onCountrySelected(null) }) {
+                    Icon(Icons.Default.Clear, contentDescription = "Wyczyść kraj")
+                }
+            }
+        },
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+    )
+
+    if (showDialog) {
+        val filtered = remember(dialogSearch, countries) {
+            if (dialogSearch.isBlank()) countries
+            else countries.filter { it.name.contains(dialogSearch, ignoreCase = true) }
+        }
+        AlertDialog(
+            onDismissRequest = { showDialog = false; dialogSearch = "" },
+            title = { Text("Wybierz kraj") },
+            text = {
+                Column {
+                    OutlinedTextField(
+                        value = dialogSearch,
+                        onValueChange = { dialogSearch = it },
+                        label = { Text("Szukaj") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    LazyColumn {
+                        items(filtered, key = { it.id }) { country ->
+                            ListItem(
+                                headlineContent = { Text(country.name) },
+                                modifier = Modifier.clickable {
+                                    onCountrySelected(country)
+                                    showDialog = false
+                                    dialogSearch = ""
+                                }
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {}
+        )
+    }
+}
+
+@Composable
 private fun ExpandableBinderRow(
     binder: Binder,
     expanded: Boolean,
@@ -155,6 +264,7 @@ private fun ExpandableBinderRow(
     capPositions: Map<Long, List<CapPosition>>,
     capInfo: Map<Long, Cap>,
     totalCaps: Int,
+    selectedCountry: String,
     isLoading: Boolean,
     onToggle: () -> Unit,
     onTogglePage: (Long) -> Unit,
@@ -184,21 +294,19 @@ private fun ExpandableBinderRow(
         if (expanded) {
             pages.forEach { page ->
                 val pageExpanded = page.id in expandedPageIds
-                val caps = capPositions[page.id]?.sortedBy { it.position } ?: emptyList()
+                val allCaps = capPositions[page.id]?.sortedBy { it.position } ?: emptyList()
+                val caps = if (selectedCountry.isEmpty()) allCaps
+                else allCaps.filter { capInfo[it.capId]?.country == selectedCountry }
                 val countries = caps.mapNotNull { capInfo[it.capId]?.country }.distinct().sorted()
                 val countriesSuffix = if (countries.isEmpty()) "" else " (${countries.joinToString(", ")})"
-                val pageCaps = caps.size
-                val pageLabel = "Strona ${page.pageNumber}$countriesSuffix${if (pageCaps > 0) " - $pageCaps" else ""}"
+                val pageLabel = "Strona ${page.pageNumber}$countriesSuffix${if (caps.isNotEmpty()) " - ${caps.size}" else ""}"
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(start = 32.dp, end = 16.dp, top = 2.dp, bottom = 2.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = pageLabel,
-                        modifier = Modifier.weight(1f)
-                    )
+                    Text(text = pageLabel, modifier = Modifier.weight(1f))
                     IconButton(onClick = { onTogglePage(page.id) }) {
                         Icon(
                             imageVector = if (pageExpanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,

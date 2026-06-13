@@ -1,5 +1,8 @@
 package pl.sroki.cci.android.ui.binders
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -19,9 +22,11 @@ import pl.sroki.cci.android.data.BinderPageRepository
 import pl.sroki.cci.android.data.BinderRepository
 import pl.sroki.cci.android.data.CapPositionRepository
 import pl.sroki.cci.android.data.CapsRepository
+import pl.sroki.cci.android.data.CountriesRepository
 import pl.sroki.cci.android.data.datasource.local.entity.Binder
 import pl.sroki.cci.android.data.datasource.local.entity.BinderPage
 import pl.sroki.cci.android.data.datasource.local.entity.CapPosition
+import pl.sroki.cci.android.data.model.Country
 import pl.sroki.cci.android.model.Cap
 import pl.sroki.cci.android.model.CapsSearchRequest
 import javax.inject.Inject
@@ -48,8 +53,19 @@ class BindersViewModel @Inject constructor(
     private val binderRepository: BinderRepository,
     private val binderPageRepository: BinderPageRepository,
     private val capPositionRepository: CapPositionRepository,
-    private val capsRepository: CapsRepository
+    private val capsRepository: CapsRepository,
+    private val countriesRepository: CountriesRepository
 ) : ViewModel() {
+
+    var countries by mutableStateOf<List<Country>>(emptyList())
+        private set
+
+    var selectedCountryName by mutableStateOf("")
+        private set
+
+    fun setCountry(country: Country?) {
+        selectedCountryName = country?.name ?: ""
+    }
 
     private val capInfoCache = mutableMapOf<Long, Cap>()
 
@@ -64,6 +80,9 @@ class BindersViewModel @Inject constructor(
     private val binderToPageIds = mutableMapOf<Long, Set<Long>>()
 
     init {
+        viewModelScope.launch {
+            countries = try { countriesRepository.getCountries() } catch (e: Exception) { emptyList() }
+        }
         var previousIds = emptySet<Long>()
         viewModelScope.launch {
             binderRepository.getAll().collect { binders ->
@@ -84,6 +103,47 @@ class BindersViewModel @Inject constructor(
                     )
                 }
                 previousIds = newIds
+                binders.forEach { ensurePagesLoaded(it.id) }
+            }
+        }
+    }
+
+    private fun ensurePagesLoaded(binderId: Long) {
+        if (binderId in pageJobs) return
+        pageJobs[binderId] = viewModelScope.launch {
+            binderPageRepository.getByBinder(binderId).collect { pages ->
+                val newPageIds = pages.map { it.id }.toSet()
+                val oldPageIds = binderToPageIds[binderId] ?: emptySet()
+                val removedPageIds = oldPageIds - newPageIds
+                removedPageIds.forEach { pageId -> capJobs.remove(pageId)?.cancel() }
+                newPageIds.filter { it !in capJobs }.forEach { pageId ->
+                    capJobs[pageId] = viewModelScope.launch {
+                        capPositionRepository.getByPage(pageId).collect { caps ->
+                            _uiState.update { it.copy(capPositions = it.capPositions + (pageId to caps)) }
+                            val uncachedIds = caps.map { it.capId }.filter { it !in capInfoCache }
+                            if (uncachedIds.isNotEmpty()) {
+                                coroutineScope {
+                                    uncachedIds.map { capId ->
+                                        async {
+                                            runCatching {
+                                                capsRepository.searchByFilter(
+                                                    CapsSearchRequest(id = capId.toInt()),
+                                                    page = 1
+                                                ).data.firstOrNull()
+                                            }.getOrNull()?.let { cap -> capInfoCache[capId] = cap }
+                                        }
+                                    }.awaitAll()
+                                }
+                                _uiState.update { it.copy(capInfo = capInfoCache.toMap()) }
+                            }
+                        }
+                    }
+                }
+                binderToPageIds[binderId] = newPageIds
+                _uiState.update { it.copy(
+                    binderPages = it.binderPages + (binderId to pages),
+                    capPositions = it.capPositions - removedPageIds
+                ) }
             }
         }
     }
@@ -94,44 +154,7 @@ class BindersViewModel @Inject constructor(
             _uiState.update { it.copy(expandedBinderIds = expanded - binderId) }
         } else {
             _uiState.update { it.copy(expandedBinderIds = expanded + binderId) }
-            if (binderId !in pageJobs) {
-                pageJobs[binderId] = viewModelScope.launch {
-                    binderPageRepository.getByBinder(binderId).collect { pages ->
-                        val newPageIds = pages.map { it.id }.toSet()
-                        val oldPageIds = binderToPageIds[binderId] ?: emptySet()
-                        val removedPageIds = oldPageIds - newPageIds
-                        removedPageIds.forEach { pageId -> capJobs.remove(pageId)?.cancel() }
-                        newPageIds.filter { it !in capJobs }.forEach { pageId ->
-                            capJobs[pageId] = viewModelScope.launch {
-                                capPositionRepository.getByPage(pageId).collect { caps ->
-                                    _uiState.update { it.copy(capPositions = it.capPositions + (pageId to caps)) }
-                                    val uncachedIds = caps.map { it.capId }.filter { it !in capInfoCache }
-                                    if (uncachedIds.isNotEmpty()) {
-                                        coroutineScope {
-                                            uncachedIds.map { capId ->
-                                                async {
-                                                    runCatching {
-                                                        capsRepository.searchByFilter(
-                                                            CapsSearchRequest(id = capId.toInt()),
-                                                            page = 1
-                                                        ).data.firstOrNull()
-                                                    }.getOrNull()?.let { cap -> capInfoCache[capId] = cap }
-                                                }
-                                            }.awaitAll()
-                                        }
-                                        _uiState.update { it.copy(capInfo = capInfoCache.toMap()) }
-                                    }
-                                }
-                            }
-                        }
-                        binderToPageIds[binderId] = newPageIds
-                        _uiState.update { it.copy(
-                            binderPages = it.binderPages + (binderId to pages),
-                            capPositions = it.capPositions - removedPageIds
-                        ) }
-                    }
-                }
-            }
+            ensurePagesLoaded(binderId)
         }
     }
 

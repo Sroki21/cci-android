@@ -102,7 +102,7 @@ fun PictureSearch(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Szukaj podobnych") },
+                title = { Text("Szukaj wg zdjęcia") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Wstecz")
