@@ -8,6 +8,7 @@ import androidx.room.Transaction
 import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
 import pl.sroki.cci.android.data.model.CapBinderInfo
+import pl.sroki.cci.android.data.model.CountryStatRow
 import pl.sroki.cci.android.data.datasource.local.entity.CapPosition
 
 @Dao
@@ -54,6 +55,24 @@ interface CapPositionDao {
 
     @Query("SELECT cap_id FROM cap_position")
     fun getAllCapIdsFlow(): Flow<List<Long>>
+
+    @Query("SELECT COUNT(*) FROM cap_position")
+    suspend fun countAll(): Int
+
+    @Query("SELECT cap_id FROM cap_position WHERE country = ''")
+    suspend fun getCapIdsWithoutCountry(): List<Long>
+
+    @Query("UPDATE cap_position SET country = :country WHERE cap_id = :capId")
+    suspend fun updateCountry(capId: Long, country: String)
+
+    @Query("""
+        SELECT country, COUNT(*) as count
+        FROM cap_position
+        WHERE country != ''
+        GROUP BY country
+        ORDER BY count DESC
+    """)
+    suspend fun getCountryStats(): List<CountryStatRow>
 
     @Transaction
     suspend fun reassign(capId: Long, newBinderPageId: Long, newPosition: Int) {

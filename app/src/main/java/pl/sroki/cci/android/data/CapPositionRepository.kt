@@ -6,6 +6,7 @@ import pl.sroki.cci.android.data.datasource.local.dao.BinderPageDao
 import pl.sroki.cci.android.data.datasource.local.dao.CapPositionDao
 import pl.sroki.cci.android.data.datasource.local.entity.CapPosition
 import pl.sroki.cci.android.data.model.CapBinderInfo
+import pl.sroki.cci.android.data.model.CountryStatRow
 import pl.sroki.cci.android.data.datasource.remote.firestore.CapPositionFirestoreService
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -27,14 +28,14 @@ class CapPositionRepository @Inject constructor(
 
     fun getAllCapIdsFlow(): Flow<Set<Long>> = dao.getAllCapIdsFlow().map { it.toSet() }
 
-    suspend fun assign(binderPageId: Long, position: Int, capId: Long): Long {
+    suspend fun assign(binderPageId: Long, position: Int, capId: Long, country: String = ""): Long {
         require(position in 1..35) { "Pozycja musi być w zakresie 1-35" }
         val uid = authManager.uid.value
         val firestoreId = if (uid != null) {
             val page = binderPageDao.getById(binderPageId)
             page?.firestoreId?.let { capPositionFirestoreService.scheduleCreate(uid, it, position, capId) }
         } else null
-        return dao.insert(CapPosition(binderPageId = binderPageId, position = position, capId = capId, firestoreId = firestoreId))
+        return dao.insert(CapPosition(binderPageId = binderPageId, position = position, capId = capId, firestoreId = firestoreId, country = country))
     }
 
     suspend fun reassign(capId: Long, newBinderPageId: Long, newPosition: Int) {
@@ -46,8 +47,16 @@ class CapPositionRepository @Inject constructor(
             val newPage = binderPageDao.getById(newBinderPageId)
             newPage?.firestoreId?.let { capPositionFirestoreService.scheduleCreate(uid, it, newPosition, capId) }
         } else null
-        dao.reassignFull(capId, CapPosition(binderPageId = newBinderPageId, position = newPosition, capId = capId, firestoreId = newFirestoreId))
+        dao.reassignFull(capId, CapPosition(binderPageId = newBinderPageId, position = newPosition, capId = capId, firestoreId = newFirestoreId, country = oldPos?.country ?: ""))
     }
+
+    suspend fun getTotalCount(): Int = dao.countAll()
+
+    suspend fun getCapIdsWithoutCountry(): List<Long> = dao.getCapIdsWithoutCountry()
+
+    suspend fun updateCountry(capId: Long, country: String) = dao.updateCountry(capId, country)
+
+    suspend fun getCountryStats(): List<CountryStatRow> = dao.getCountryStats()
 
     suspend fun unassign(capId: Long) {
         val uid = authManager.uid.value

@@ -85,11 +85,11 @@ fun HomeScreen(
                     onClick(Screen.Purchased)
                 }
             }
-            NavigationItem(
-                text = "Statystyki",
-                icon = Icons.Filled.BarChart,
-                enabled = false
-            ) {}
+            if (uiState.isLoggedIn) {
+                NavigationItem(text = "Statystyki", icon = Icons.Filled.BarChart) {
+                    onClick(Screen.Statistics)
+                }
+            }
             if (uiState.isLoggedIn) {
                 NavigationItem(text = "Klasery", icon = Icons.Filled.LibraryBooks) {
                     onClick(Screen.Binders)

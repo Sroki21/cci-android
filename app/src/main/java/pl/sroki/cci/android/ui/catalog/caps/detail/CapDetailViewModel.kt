@@ -119,7 +119,7 @@ class CapDetailViewModel @Inject constructor(
                     if (!current.cap.isInCollection) {
                         repository.addToCollection(current.cap.id)
                     }
-                    capPositionRepository.assign(pageId, position, capId)
+                    capPositionRepository.assign(pageId, position, capId, country = current.cap.country.name)
                 }
                 val newBinderInfo = capPositionRepository.getBinderInfoByCapId(capId)
                 capDetailUiState = current.copy(

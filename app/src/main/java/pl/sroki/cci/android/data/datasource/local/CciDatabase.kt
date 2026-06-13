@@ -15,7 +15,7 @@ import pl.sroki.cci.android.data.datasource.local.entity.PendingCap
 
 @Database(
     entities = [PendingCap::class, Binder::class, BinderPage::class, CapPosition::class],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 abstract class CciDatabase : RoomDatabase() {
@@ -30,6 +30,11 @@ abstract class CciDatabase : RoomDatabase() {
                 db.execSQL("ALTER TABLE binder ADD COLUMN firestore_id TEXT")
                 db.execSQL("ALTER TABLE binder_page ADD COLUMN firestore_id TEXT")
                 db.execSQL("ALTER TABLE cap_position ADD COLUMN firestore_id TEXT")
+            }
+        }
+        val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE cap_position ADD COLUMN country TEXT NOT NULL DEFAULT ''")
             }
         }
     }

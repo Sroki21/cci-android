@@ -35,6 +35,7 @@ import pl.sroki.cci.android.ui.catalog.latest.LatestCapsScreen
 import pl.sroki.cci.android.ui.auth.LoginScreen
 import pl.sroki.cci.android.ui.binders.BindersScreen
 import pl.sroki.cci.android.ui.catalog.caps.advanced.AdvancedSearchScreen
+import pl.sroki.cci.android.ui.statistics.StatisticsScreen
 import pl.sroki.cci.android.ui.catalog.picturesearch.PictureSearch
 import pl.sroki.cci.android.ui.catalog.purchased.PurchasedScreen
 import pl.sroki.cci.android.ui.theme.CCITheme
@@ -184,6 +185,9 @@ fun Navigation(
         }
         composable(route = Screen.Binders.route) {
             BindersScreen(onBack = { navController.popBackStack() })
+        }
+        composable(route = Screen.Statistics.route) {
+            StatisticsScreen(onBack = { navController.popBackStack() })
         }
     }
     } // CompositionLocalProvider
