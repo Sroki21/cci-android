@@ -6,7 +6,6 @@ import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
 import pl.sroki.cci.android.data.AuthRepository
-import pl.sroki.cci.android.data.FirestoreRestoreUseCase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -28,7 +27,6 @@ class HomeViewModelTest {
     private val testDispatcher = UnconfinedTestDispatcher()
     private lateinit var sessionRepository: SessionRepository
     private lateinit var authRepository: AuthRepository
-    private lateinit var firestoreRestoreUseCase: FirestoreRestoreUseCase
     private lateinit var viewModel: HomeViewModel
 
     @Before
@@ -36,9 +34,8 @@ class HomeViewModelTest {
         Dispatchers.setMain(testDispatcher)
         sessionRepository = SessionRepository(mockContext())
         authRepository = mockk(relaxed = true)
-        firestoreRestoreUseCase = mockk(relaxed = true)
         coEvery { authRepository.logout() } returns Unit
-        viewModel = HomeViewModel(sessionRepository, authRepository, firestoreRestoreUseCase)
+        viewModel = HomeViewModel(sessionRepository, authRepository)
     }
 
     private fun mockContext(): Context {

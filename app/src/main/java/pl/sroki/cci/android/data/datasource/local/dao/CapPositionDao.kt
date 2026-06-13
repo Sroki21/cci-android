@@ -3,7 +3,6 @@ package pl.sroki.cci.android.data.datasource.local.dao
 import androidx.room.Dao
 import androidx.room.Delete
 import androidx.room.Insert
-import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
 import androidx.room.Update
@@ -16,9 +15,6 @@ interface CapPositionDao {
 
     @Insert
     suspend fun insert(pos: CapPosition): Long
-
-    @Insert(onConflict = OnConflictStrategy.IGNORE)
-    suspend fun insertOrIgnore(pos: CapPosition): Long
 
     @Delete
     suspend fun delete(pos: CapPosition)
