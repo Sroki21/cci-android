@@ -24,13 +24,19 @@ class AuthRepositoryTest {
     private lateinit var authApiService: AuthApiService
     private lateinit var cookieJar: PersistentCookieJar
     private lateinit var sessionRepository: SessionRepository
+    private lateinit var firebaseAuthManager: FirebaseAuthManager
+    private lateinit var firestoreRestoreUseCase: FirestoreRestoreUseCase
 
     @Before
     fun setUp() {
         authApiService = mockk()
         cookieJar = mockk(relaxed = true)
         sessionRepository = SessionRepository(mockContext())
+        firebaseAuthManager = mockk(relaxed = true)
+        firestoreRestoreUseCase = mockk(relaxed = true)
         coEvery { authApiService.apiToken(any()) } returns mockk(relaxed = true)
+        coEvery { firebaseAuthManager.signInWithEmail(any(), any()) } returns Unit
+        coEvery { firestoreRestoreUseCase.restoreIfEmpty() } returns Unit
     }
 
     private fun mockContext(): Context {
@@ -39,11 +45,16 @@ class AuthRepositoryTest {
         every { editor.remove(any()) } returns editor
         val prefs = mockk<SharedPreferences>()
         every { prefs.getString("api_token", null) } returns null
+        every { prefs.getString("user_name", null) } returns null
         every { prefs.edit() } returns editor
         val context = mockk<Context>()
         every { context.getSharedPreferences("session", Context.MODE_PRIVATE) } returns prefs
         return context
     }
+
+    private fun buildRepo() = AuthRepository(
+        authApiService, sessionRepository, cookieJar, firebaseAuthManager, firestoreRestoreUseCase
+    )
 
     @Test
     fun `init — cookie istnieje — isLoggedIn true`() {
@@ -54,7 +65,7 @@ class AuthRepositoryTest {
             .build()
         every { cookieJar.loadForRequest(any()) } returns listOf(sessionCookie)
 
-        AuthRepository(authApiService, sessionRepository, cookieJar)
+        buildRepo()
 
         assertTrue(sessionRepository.isLoggedIn.value)
     }
@@ -63,7 +74,7 @@ class AuthRepositoryTest {
     fun `init — brak cookie — isLoggedIn false`() {
         every { cookieJar.loadForRequest(any()) } returns emptyList()
 
-        AuthRepository(authApiService, sessionRepository, cookieJar)
+        buildRepo()
 
         assertEquals(false, sessionRepository.isLoggedIn.value)
     }
@@ -71,7 +82,7 @@ class AuthRepositoryTest {
     @Test
     fun `login sukces — isLoggedIn true, Result success`() = runTest {
         every { cookieJar.loadForRequest(any()) } returns emptyList()
-        val repo = AuthRepository(authApiService, sessionRepository, cookieJar)
+        val repo = buildRepo()
         coEvery { authApiService.initCsrf() } returns Response.success(Unit)
         coEvery { authApiService.login(any()) } returns Response.success("{}".toResponseBody("application/json".toMediaType()))
 
@@ -84,7 +95,7 @@ class AuthRepositoryTest {
     @Test
     fun `login blad 422 — isLoggedIn false, Result failure z komunikatem`() = runTest {
         every { cookieJar.loadForRequest(any()) } returns emptyList()
-        val repo = AuthRepository(authApiService, sessionRepository, cookieJar)
+        val repo = buildRepo()
         coEvery { authApiService.initCsrf() } returns Response.success(Unit)
         val errorBody = """{"errors":{"email":["These credentials do not match our records."]}}"""
             .toResponseBody("application/json".toMediaType())
@@ -100,7 +111,7 @@ class AuthRepositoryTest {
     @Test
     fun `logout — isLoggedIn false, cookies wyczyszczone`() = runTest {
         every { cookieJar.loadForRequest(any()) } returns emptyList()
-        val repo = AuthRepository(authApiService, sessionRepository, cookieJar)
+        val repo = buildRepo()
         sessionRepository.setLoggedIn(true)
         coEvery { authApiService.logout() } returns Response.success(Unit)
 
