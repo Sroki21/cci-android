@@ -18,10 +18,8 @@ class FirebaseAuthManager @Inject constructor(private val auth: FirebaseAuth) {
     suspend fun ensureSignedIn() {
         if (auth.currentUser != null) {
             _uid.value = auth.currentUser?.uid
-            return
         }
-        val result = auth.signInAnonymously().await()
-        _uid.value = result.user?.uid
+        // Brak fallbacku na anonymous — UID pozostaje null do czasu logowania email
     }
 
     suspend fun signInWithEmail(email: String, password: String) {
