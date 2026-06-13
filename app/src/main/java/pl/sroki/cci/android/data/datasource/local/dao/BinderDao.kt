@@ -23,4 +23,7 @@ interface BinderDao {
 
     @Query("SELECT COUNT(*) FROM binder")
     suspend fun countAll(): Int
+
+    @Query("DELETE FROM binder")
+    suspend fun deleteAll()
 }

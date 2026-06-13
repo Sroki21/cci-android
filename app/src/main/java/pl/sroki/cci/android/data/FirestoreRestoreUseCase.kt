@@ -26,6 +26,9 @@ class FirestoreRestoreUseCase @Inject constructor(
         val newUid = authManager.currentUid() ?: error("Nie jesteś zalogowany do Firebase")
         require(newUid != oldUid) { "Stary i nowy UID są identyczne" }
 
+        // Wyczyść istniejące dane — CASCADE usunie też strony i pozycje
+        binderDao.deleteAll()
+
         // oldFsId → (nowy Room ID, nowy Firestore ID)
         val binderFsIdMap = mutableMapOf<String, Pair<Long, String>>()
         val pageFsIdMap   = mutableMapOf<String, Pair<Long, String>>()
