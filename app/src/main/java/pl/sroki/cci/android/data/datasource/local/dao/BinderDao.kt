@@ -15,6 +15,10 @@ interface BinderDao {
     @Query("DELETE FROM binder WHERE id = :id")
     suspend fun deleteById(id: Long)
 
+    // Kaskada FK usuwa też binder_page i cap_position (ON DELETE CASCADE).
+    @Query("DELETE FROM binder")
+    suspend fun deleteAll()
+
     @Query("SELECT * FROM binder ORDER BY name")
     fun getAll(): Flow<List<Binder>>
 

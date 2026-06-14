@@ -1,14 +1,22 @@
 package pl.sroki.cci.android.ui.home
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import pl.sroki.cci.android.data.AuthRepository
+import pl.sroki.cci.android.data.FirestoreRestoreUseCase
+import pl.sroki.cci.android.data.RestoreResult
 import pl.sroki.cci.android.data.SessionRepository
 import javax.inject.Inject
 
@@ -17,10 +25,15 @@ data class HomeUiState(
     val userName: String? = null
 )
 
+sealed interface HomeEvent {
+    data class ShowSnackbar(val message: String) : HomeEvent
+}
+
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val sessionRepository: SessionRepository,
-    private val authRepository: AuthRepository
+    private val authRepository: AuthRepository,
+    private val firestoreRestoreUseCase: FirestoreRestoreUseCase
 ) : ViewModel() {
 
     val uiState: StateFlow<HomeUiState> = combine(
@@ -33,6 +46,39 @@ class HomeViewModel @Inject constructor(
         started = SharingStarted.Eagerly,
         initialValue = HomeUiState()
     )
+
+    var isSyncDialogOpen by mutableStateOf(false)
+        private set
+    var isSyncing by mutableStateOf(false)
+        private set
+
+    private val _events = Channel<HomeEvent>(Channel.BUFFERED)
+    val events: Flow<HomeEvent> = _events.receiveAsFlow()
+
+    fun requestSync() { isSyncDialogOpen = true }
+    fun dismissSync() { isSyncDialogOpen = false }
+
+    fun confirmSync() {
+        isSyncDialogOpen = false
+        isSyncing = true
+        viewModelScope.launch {
+            try {
+                val message = when (val result = firestoreRestoreUseCase.restoreFromFirestore()) {
+                    is RestoreResult.Success ->
+                        "Zsynchronizowano: ${result.binders} klaserów, ${result.pages} stron, ${result.caps} kapsli"
+                    RestoreResult.Empty ->
+                        "Firestore nie zawiera danych — nic nie zmieniono"
+                    RestoreResult.NotLoggedIn ->
+                        "Nie zalogowano — zaloguj się ponownie"
+                }
+                _events.send(HomeEvent.ShowSnackbar(message))
+            } catch (e: Exception) {
+                _events.send(HomeEvent.ShowSnackbar("Błąd synchronizacji — lokalne dane bez zmian"))
+            } finally {
+                isSyncing = false
+            }
+        }
+    }
 
     fun logout() {
         viewModelScope.launch { authRepository.logout() }
