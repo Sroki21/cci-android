@@ -47,14 +47,25 @@ class FirestoreRestoreTest {
             binderDao = db.binderDao(),
             binderPageDao = db.binderPageDao(),
             capPositionDao = db.capPositionDao(),
+            capCacheDao = db.capCacheDao(),
             binderService = binderFs,
             binderPageService = binderPageFs,
             capPositionService = capPositionFs
         )
-        // Seed Firestore: 1 Binder → 1 BinderPage → 1 CapPosition
+        // Seed Firestore: 1 Binder → 1 BinderPage → 1 CapPosition (ze snapshotem)
         val binderFsId = binderFs.scheduleCreate(uid, "Restore Test Klaser")
         val pageFsId = binderPageFs.scheduleCreate(uid, binderFsId, 1)
-        capPositionFs.scheduleCreate(uid, pageFsId, 3, 77L)
+        capPositionFs.scheduleCreate(
+            uid, pageFsId, 3, 77L,
+            pl.sroki.cci.android.data.model.CapSnapshot(
+                name = "Test Cap",
+                country = "Poland",
+                imageUrl = "https://example.test/caps/77.deadbeef.jpeg",
+                createdAt = "2011-04-30T15:20:54Z",
+                createdById = 2,
+                updatedAt = "2023-06-02T22:35:21Z"
+            )
+        )
         // Krótkie oczekiwanie — operacje schedule są fire-and-forget, Firestore SDK buforuje lokalnie
         Thread.sleep(500)
     }
@@ -81,6 +92,13 @@ class FirestoreRestoreTest {
         assertEquals(3, positions[0].position)
         assertEquals(77L, positions[0].capId)
         assertNotNull(positions[0].firestoreId)
+
+        // Snapshot odtworzony do cap_cache (render offline po reinstalacji).
+        val cache = db.capCacheDao().getByIds(listOf(77L))
+        assertEquals(1, cache.size)
+        assertEquals("Test Cap", cache[0].name)
+        assertEquals("Poland", cache[0].country)
+        assertEquals(2, cache[0].createdById)
     }
 
     @Test

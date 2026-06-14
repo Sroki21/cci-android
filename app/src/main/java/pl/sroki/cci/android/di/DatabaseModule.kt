@@ -29,7 +29,8 @@ object DatabaseModule {
                 CciDatabase.MIGRATION_2_3,
                 CciDatabase.MIGRATION_3_4,
                 CciDatabase.MIGRATION_4_5,
-                CciDatabase.MIGRATION_5_6
+                CciDatabase.MIGRATION_5_6,
+                CciDatabase.MIGRATION_6_7
             )
             .fallbackToDestructiveMigration(dropAllTables = true)
             .build()

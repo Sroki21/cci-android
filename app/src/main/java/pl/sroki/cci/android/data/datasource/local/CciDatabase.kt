@@ -19,7 +19,7 @@ import pl.sroki.cci.android.data.datasource.local.entity.PendingCap
 
 @Database(
     entities = [PendingCap::class, Binder::class, BinderPage::class, CapPosition::class, CapCache::class, CountryFlag::class],
-    version = 6,
+    version = 7,
     exportSchema = false
 )
 abstract class CciDatabase : RoomDatabase() {
@@ -98,6 +98,18 @@ abstract class CciDatabase : RoomDatabase() {
                         `image_url` TEXT NOT NULL
                     )
                 """.trimIndent())
+            }
+        }
+        val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Snapshot identyfikujący kapsel + fingerprint + stan weryfikacji
+                // (odporność na zmiany w katalogu crowncaps).
+                db.execSQL("ALTER TABLE `cap_cache` ADD COLUMN `name` TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE `cap_cache` ADD COLUMN `created_at` TEXT")
+                db.execSQL("ALTER TABLE `cap_cache` ADD COLUMN `created_by_id` INTEGER")
+                db.execSQL("ALTER TABLE `cap_cache` ADD COLUMN `updated_at` TEXT")
+                db.execSQL("ALTER TABLE `cap_cache` ADD COLUMN `last_verified_at` INTEGER")
+                db.execSQL("ALTER TABLE `cap_cache` ADD COLUMN `catalog_status` TEXT NOT NULL DEFAULT 'unknown'")
             }
         }
     }

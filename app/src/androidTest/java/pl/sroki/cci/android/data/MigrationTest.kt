@@ -38,4 +38,25 @@ class MigrationTest {
             assertNull(cursor.getString(cursor.getColumnIndexOrThrow("firestore_id")))
         }
     }
+
+    @Test
+    fun migrate6To7_addsSnapshotAndFingerprintColumns() {
+        helper.createDatabase(TEST_DB, 6).use { db ->
+            db.execSQL("INSERT INTO cap_cache (cap_id, country, image_url) VALUES (5, 'Poland', 'u')")
+        }
+
+        val db = helper.runMigrationsAndValidate(TEST_DB, 7, true, CciDatabase.MIGRATION_6_7)
+
+        db.query(
+            "SELECT name, created_at, created_by_id, updated_at, last_verified_at, catalog_status " +
+                "FROM cap_cache WHERE cap_id = 5"
+        ).use { cursor ->
+            assert(cursor.moveToFirst())
+            assertEquals("", cursor.getString(cursor.getColumnIndexOrThrow("name")))
+            assertNull(cursor.getString(cursor.getColumnIndexOrThrow("created_at")))
+            assertNull(cursor.getString(cursor.getColumnIndexOrThrow("updated_at")))
+            assertNull(cursor.getString(cursor.getColumnIndexOrThrow("last_verified_at")))
+            assertEquals("unknown", cursor.getString(cursor.getColumnIndexOrThrow("catalog_status")))
+        }
+    }
 }

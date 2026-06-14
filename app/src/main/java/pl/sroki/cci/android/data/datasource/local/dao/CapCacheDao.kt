@@ -29,6 +29,29 @@ interface CapCacheDao {
     """)
     suspend fun upsertFull(capId: Long, country: String, imageUrl: String)
 
+    // Snapshot identyfikujący kapsel + fingerprint; nie rusza pól weryfikacji
+    // (last_verified_at, catalog_status), więc bezpieczny przy ponownym zapisie.
+    @Query("""
+        INSERT INTO cap_cache (cap_id, name, country, image_url, created_at, created_by_id, updated_at)
+        VALUES (:capId, :name, :country, :imageUrl, :createdAt, :createdById, :updatedAt)
+        ON CONFLICT(cap_id) DO UPDATE SET
+            name = :name, country = :country, image_url = :imageUrl,
+            created_at = :createdAt, created_by_id = :createdById, updated_at = :updatedAt
+    """)
+    suspend fun upsertSnapshot(
+        capId: Long,
+        name: String,
+        country: String,
+        imageUrl: String,
+        createdAt: String?,
+        createdById: Int?,
+        updatedAt: String?
+    )
+
+    // Zapis wyniku weryfikacji.
+    @Query("UPDATE cap_cache SET catalog_status = :status, last_verified_at = :verifiedAt WHERE cap_id = :capId")
+    suspend fun markVerified(capId: Long, status: String, verifiedAt: Long)
+
     @Query("""
         SELECT cp.cap_id FROM cap_position cp
         LEFT JOIN cap_cache cc ON cp.cap_id = cc.cap_id

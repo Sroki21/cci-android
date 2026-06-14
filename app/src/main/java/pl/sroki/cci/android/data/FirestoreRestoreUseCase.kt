@@ -4,6 +4,7 @@ import androidx.room.withTransaction
 import pl.sroki.cci.android.data.datasource.local.CciDatabase
 import pl.sroki.cci.android.data.datasource.local.dao.BinderDao
 import pl.sroki.cci.android.data.datasource.local.dao.BinderPageDao
+import pl.sroki.cci.android.data.datasource.local.dao.CapCacheDao
 import pl.sroki.cci.android.data.datasource.local.dao.CapPositionDao
 import pl.sroki.cci.android.data.datasource.local.entity.Binder
 import pl.sroki.cci.android.data.datasource.local.entity.BinderPage
@@ -30,6 +31,7 @@ class FirestoreRestoreUseCase @Inject constructor(
     private val binderDao: BinderDao,
     private val binderPageDao: BinderPageDao,
     private val capPositionDao: CapPositionDao,
+    private val capCacheDao: CapCacheDao,
     private val binderService: BinderFirestoreService,
     private val binderPageService: BinderPageFirestoreService,
     private val capPositionService: CapPositionFirestoreService
@@ -116,6 +118,12 @@ class FirestoreRestoreUseCase @Inject constructor(
                     firestoreId = doc.firestoreId
                 )
             )
+            // Odtwórz snapshot do cap_cache, by kolekcja renderowała się offline po reinstalacji.
+            doc.snapshot?.let { s ->
+                capCacheDao.upsertSnapshot(
+                    doc.capId, s.name, s.country, s.imageUrl, s.createdAt, s.createdById, s.updatedAt
+                )
+            }
         }
     }
 }

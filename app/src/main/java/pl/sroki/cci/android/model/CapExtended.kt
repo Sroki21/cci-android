@@ -34,7 +34,18 @@ data class CapExtended(
     val isInCollection: Boolean = false,
     val createdBy: UserPublic? = null,
     @Serializable(with = InstantSerializer::class)
-    val createdAt: Instant
+    val createdAt: Instant,
+    @Serializable(with = InstantSerializer::class)
+    val updatedAt: Instant? = null
+)
+
+fun CapExtended.toSnapshot() = pl.sroki.cci.android.data.model.CapSnapshot(
+    name = description ?: "",
+    country = country.name,
+    imageUrl = imageUrl,
+    createdAt = createdAt.toString(),
+    createdById = createdBy?.id,
+    updatedAt = updatedAt?.toString()
 )
 
 fun CapExtended.toCap() = Cap(

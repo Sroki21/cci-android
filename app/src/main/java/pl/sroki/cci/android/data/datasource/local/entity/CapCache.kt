@@ -8,5 +8,14 @@ import androidx.room.PrimaryKey
 data class CapCache(
     @PrimaryKey @ColumnInfo(name = "cap_id") val capId: Long,
     @ColumnInfo(name = "country") val country: String = "",
-    @ColumnInfo(name = "image_url") val imageUrl: String = ""
+    @ColumnInfo(name = "image_url") val imageUrl: String = "",
+    // Snapshot identyfikujący kapsel (odporność na zmiany w katalogu crowncaps).
+    @ColumnInfo(name = "name") val name: String = "",
+    // Fingerprint do wykrywania rozjazdów (createdAt/createdById niezmienne; updatedAt = tania zmiana).
+    @ColumnInfo(name = "created_at") val createdAt: String? = null,
+    @ColumnInfo(name = "created_by_id") val createdById: Int? = null,
+    @ColumnInfo(name = "updated_at") val updatedAt: String? = null,
+    // Stan weryfikacji.
+    @ColumnInfo(name = "last_verified_at") val lastVerifiedAt: Long? = null,
+    @ColumnInfo(name = "catalog_status") val catalogStatus: String = "unknown"
 )

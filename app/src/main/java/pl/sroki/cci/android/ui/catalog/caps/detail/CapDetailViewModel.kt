@@ -25,6 +25,7 @@ import pl.sroki.cci.android.data.datasource.local.entity.BinderPage
 import pl.sroki.cci.android.data.model.CapBinderInfo
 import pl.sroki.cci.android.model.BinderSuggestion
 import pl.sroki.cci.android.model.CapExtended
+import pl.sroki.cci.android.model.toSnapshot
 import java.io.IOException
 import javax.inject.Inject
 
@@ -114,14 +115,18 @@ class CapDetailViewModel @Inject constructor(
             isSaving = true
             assignmentError = null
             try {
+                val snapshot = current.cap.toSnapshot()
+                capCacheRepository.upsertSnapshot(
+                    capId, snapshot.name, snapshot.country, snapshot.imageUrl,
+                    snapshot.createdAt, snapshot.createdById, snapshot.updatedAt
+                )
                 if (current.status == CapStatus.IN_COLLECTION) {
-                    capPositionRepository.reassign(capId, pageId, position)
+                    capPositionRepository.reassign(capId, pageId, position, snapshot)
                 } else {
                     if (!current.cap.isInCollection) {
                         repository.addToCollection(current.cap.id)
                     }
-                    capCacheRepository.upsert(capId, current.cap.country.name)
-                    capPositionRepository.assign(pageId, position, capId)
+                    capPositionRepository.assign(pageId, position, capId, snapshot)
                 }
                 val newBinderInfo = capPositionRepository.getBinderInfoByCapId(capId)
                 capDetailUiState = current.copy(

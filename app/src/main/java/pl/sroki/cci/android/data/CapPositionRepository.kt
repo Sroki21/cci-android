@@ -6,6 +6,7 @@ import pl.sroki.cci.android.data.datasource.local.dao.BinderPageDao
 import pl.sroki.cci.android.data.datasource.local.dao.CapPositionDao
 import pl.sroki.cci.android.data.datasource.local.entity.CapPosition
 import pl.sroki.cci.android.data.model.CapBinderInfo
+import pl.sroki.cci.android.data.model.CapSnapshot
 import pl.sroki.cci.android.data.datasource.remote.firestore.CapPositionFirestoreService
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -27,24 +28,24 @@ class CapPositionRepository @Inject constructor(
 
     fun getAllCapIdsFlow(): Flow<Set<Long>> = dao.getAllCapIdsFlow().map { it.toSet() }
 
-    suspend fun assign(binderPageId: Long, position: Int, capId: Long): Long {
+    suspend fun assign(binderPageId: Long, position: Int, capId: Long, snapshot: CapSnapshot? = null): Long {
         require(position in 1..35) { "Pozycja musi być w zakresie 1-35" }
         val uid = authManager.uid.value
         val firestoreId = if (uid != null) {
             val page = binderPageDao.getById(binderPageId)
-            page?.firestoreId?.let { capPositionFirestoreService.scheduleCreate(uid, it, position, capId) }
+            page?.firestoreId?.let { capPositionFirestoreService.scheduleCreate(uid, it, position, capId, snapshot) }
         } else null
         return dao.insert(CapPosition(binderPageId = binderPageId, position = position, capId = capId, firestoreId = firestoreId))
     }
 
-    suspend fun reassign(capId: Long, newBinderPageId: Long, newPosition: Int) {
+    suspend fun reassign(capId: Long, newBinderPageId: Long, newPosition: Int, snapshot: CapSnapshot? = null) {
         require(newPosition in 1..35) { "Pozycja musi być w zakresie 1-35" }
         val uid = authManager.uid.value
         val oldPos = dao.getByCapId(capId)
         val newFirestoreId = if (uid != null) {
             oldPos?.firestoreId?.let { capPositionFirestoreService.scheduleDelete(uid, it) }
             val newPage = binderPageDao.getById(newBinderPageId)
-            newPage?.firestoreId?.let { capPositionFirestoreService.scheduleCreate(uid, it, newPosition, capId) }
+            newPage?.firestoreId?.let { capPositionFirestoreService.scheduleCreate(uid, it, newPosition, capId, snapshot) }
         } else null
         dao.reassignFull(capId, CapPosition(binderPageId = newBinderPageId, position = newPosition, capId = capId, firestoreId = newFirestoreId))
     }

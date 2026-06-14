@@ -3,6 +3,7 @@ package pl.sroki.cci.android.data.datasource.remote.firestore
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
+import pl.sroki.cci.android.data.model.CapSnapshot
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -11,16 +12,30 @@ class CapPositionFirestoreService @Inject constructor(private val firestore: Fir
 
     private fun col(uid: String) = firestore.collection("users/$uid/cap_positions")
 
-    fun scheduleCreate(uid: String, binderPageFirestoreId: String, position: Int, capId: Long): String {
+    fun scheduleCreate(
+        uid: String,
+        binderPageFirestoreId: String,
+        position: Int,
+        capId: Long,
+        snapshot: CapSnapshot? = null
+    ): String {
         val ref = col(uid).document()
-        ref.set(
-            mapOf(
-                "binderPageFirestoreId" to binderPageFirestoreId,
-                "position" to position,
-                "capId" to capId,
-                "updatedAt" to FieldValue.serverTimestamp()
-            )
-        )
+        // Pola snapshotu prefiksowane "cap" — "updatedAt" jest już zajęte przez znacznik sync.
+        val data = buildMap<String, Any?> {
+            put("binderPageFirestoreId", binderPageFirestoreId)
+            put("position", position)
+            put("capId", capId)
+            put("updatedAt", FieldValue.serverTimestamp())
+            if (snapshot != null) {
+                put("capName", snapshot.name)
+                put("capCountry", snapshot.country)
+                put("capImageUrl", snapshot.imageUrl)
+                put("capCreatedAt", snapshot.createdAt)
+                put("capCreatedById", snapshot.createdById)
+                put("capUpdatedAt", snapshot.updatedAt)
+            }
+        }
+        ref.set(data)
         return ref.id
     }
 
@@ -35,11 +50,22 @@ class CapPositionFirestoreService @Inject constructor(private val firestore: Fir
 
     suspend fun fetchAll(uid: String): List<CapPositionDocument> =
         col(uid).get().await().documents.mapNotNull { doc ->
+            val snapshot = doc.getString("capImageUrl")?.let {
+                CapSnapshot(
+                    name = doc.getString("capName") ?: "",
+                    country = doc.getString("capCountry") ?: "",
+                    imageUrl = it,
+                    createdAt = doc.getString("capCreatedAt"),
+                    createdById = doc.getLong("capCreatedById")?.toInt(),
+                    updatedAt = doc.getString("capUpdatedAt")
+                )
+            }
             CapPositionDocument(
                 firestoreId = doc.id,
                 binderPageFirestoreId = doc.getString("binderPageFirestoreId") ?: return@mapNotNull null,
                 position = (doc.getLong("position") ?: return@mapNotNull null).toInt(),
-                capId = doc.getLong("capId") ?: return@mapNotNull null
+                capId = doc.getLong("capId") ?: return@mapNotNull null,
+                snapshot = snapshot
             )
         }
 }
@@ -48,5 +74,6 @@ data class CapPositionDocument(
     val firestoreId: String,
     val binderPageFirestoreId: String,
     val position: Int,
-    val capId: Long
+    val capId: Long,
+    val snapshot: CapSnapshot? = null
 )

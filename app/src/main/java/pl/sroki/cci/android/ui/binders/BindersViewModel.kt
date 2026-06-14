@@ -181,6 +181,7 @@ class BindersViewModel @Inject constructor(
 
     private fun CapCache.toCap(): Cap = Cap(
         id = capId,
+        description = name,
         country = country,
         product = "",
         liner = "",
