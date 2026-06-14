@@ -28,6 +28,7 @@ import pl.sroki.cci.android.ui.components.FullSizeLoader
 fun StatisticsScreen(
     onBack: () -> Unit,
     onOpenCountries: () -> Unit = {},
+    onOpenLocations: () -> Unit = {},
     onCountryClick: (String) -> Unit = {}
 ) {
     val viewModel = hiltViewModel<StatisticsViewModel>()
@@ -75,14 +76,14 @@ fun StatisticsScreen(
                                 horizontalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
                                 StatCard(label = "Kapsle", value = state.totalCaps.toString(), modifier = Modifier.weight(1f))
-                                StatCard(label = "Kraje", value = state.totalCountries.toString(), modifier = Modifier.weight(1f))
+                                StatCard(label = "Kraje", value = state.totalCountries.toString(), onClick = onOpenCountries, modifier = Modifier.weight(1f))
                             }
                         }
                         item {
                             ListItem(
-                                modifier = Modifier.clickable(onClick = onOpenCountries),
+                                modifier = Modifier.clickable(onClick = onOpenLocations),
                                 headlineContent = {
-                                    Text("Kraje", style = MaterialTheme.typography.titleMedium)
+                                    Text("Lokalizacje", style = MaterialTheme.typography.titleMedium)
                                 },
                                 trailingContent = {
                                     Icon(
@@ -143,8 +144,13 @@ internal fun CountryRow(stat: CountryStat, onClick: () -> Unit) {
 }
 
 @Composable
-private fun StatCard(label: String, value: String, modifier: Modifier = Modifier) {
-    Card(modifier = modifier) {
+private fun StatCard(
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null,
+) {
+    Card(modifier = if (onClick != null) modifier.clickable(onClick = onClick) else modifier) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()

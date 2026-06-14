@@ -36,6 +36,7 @@ import pl.sroki.cci.android.ui.auth.LoginScreen
 import pl.sroki.cci.android.ui.binders.BindersScreen
 import pl.sroki.cci.android.ui.catalog.caps.advanced.AdvancedSearchScreen
 import pl.sroki.cci.android.ui.statistics.CountriesListScreen
+import pl.sroki.cci.android.ui.statistics.map.LocationsMapScreen
 import pl.sroki.cci.android.ui.statistics.CountryOwnedCapsScreen
 import pl.sroki.cci.android.ui.statistics.StatisticsScreen
 import pl.sroki.cci.android.ui.catalog.picturesearch.PictureSearch
@@ -191,10 +192,17 @@ fun Navigation(
                 onCapClick = { navController.navigate(Screen.CapDetail.createUrl(it)) }
             )
         }
+        composable(route = Screen.LocationsMap.route) {
+            LocationsMapScreen(
+                onBack = { navController.popBackStack() },
+                onCountryClick = { navController.navigate(Screen.CountryOwnedCaps.createUrl(it)) }
+            )
+        }
         composable(route = Screen.Statistics.route) {
             StatisticsScreen(
                 onBack = { navController.popBackStack() },
                 onOpenCountries = { navController.navigate(Screen.OwnedCountries.route) },
+                onOpenLocations = { navController.navigate(Screen.LocationsMap.route) },
                 onCountryClick = { country ->
                     navController.navigate(Screen.CountryOwnedCaps.createUrl(country))
                 }

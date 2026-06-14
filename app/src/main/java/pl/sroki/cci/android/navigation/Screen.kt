@@ -38,4 +38,5 @@ sealed class Screen(val route: String) {
     object Login : Screen("login")
     object Binders : Screen("binders")
     object Statistics : Screen("statistics")
+    object LocationsMap : Screen("locations-map")
 }
