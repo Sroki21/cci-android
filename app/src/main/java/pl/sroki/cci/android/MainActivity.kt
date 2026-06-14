@@ -35,6 +35,8 @@ import pl.sroki.cci.android.ui.catalog.latest.LatestCapsScreen
 import pl.sroki.cci.android.ui.auth.LoginScreen
 import pl.sroki.cci.android.ui.binders.BindersScreen
 import pl.sroki.cci.android.ui.catalog.caps.advanced.AdvancedSearchScreen
+import pl.sroki.cci.android.ui.statistics.CountriesListScreen
+import pl.sroki.cci.android.ui.statistics.CountryOwnedCapsScreen
 import pl.sroki.cci.android.ui.statistics.StatisticsScreen
 import pl.sroki.cci.android.ui.catalog.picturesearch.PictureSearch
 import pl.sroki.cci.android.ui.catalog.purchased.PurchasedScreen
@@ -187,7 +189,35 @@ fun Navigation(
             BindersScreen(onBack = { navController.popBackStack() })
         }
         composable(route = Screen.Statistics.route) {
-            StatisticsScreen(onBack = { navController.popBackStack() })
+            StatisticsScreen(
+                onBack = { navController.popBackStack() },
+                onOpenCountries = { navController.navigate(Screen.OwnedCountries.route) },
+                onCountryClick = { country ->
+                    navController.navigate(Screen.CountryOwnedCaps.createUrl(country))
+                }
+            )
+        }
+        composable(route = Screen.OwnedCountries.route) {
+            CountriesListScreen(
+                onBack = { navController.popBackStack() },
+                onCountryClick = { country ->
+                    navController.navigate(Screen.CountryOwnedCaps.createUrl(country))
+                }
+            )
+        }
+        composable(
+            route = Screen.CountryOwnedCaps.route,
+            arguments = listOf(
+                navArgument("country") {
+                    type = NavType.StringType
+                    defaultValue = ""
+                }
+            )
+        ) {
+            CountryOwnedCapsScreen(
+                onBack = { navController.popBackStack() },
+                onCapClick = { navController.navigate(Screen.CapDetail.createUrl(it.id)) }
+            )
         }
     }
     } // CompositionLocalProvider

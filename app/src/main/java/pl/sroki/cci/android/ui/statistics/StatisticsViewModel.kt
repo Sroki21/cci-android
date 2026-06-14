@@ -17,9 +17,10 @@ import kotlinx.coroutines.withTimeoutOrNull
 import pl.sroki.cci.android.data.CapCacheRepository
 import pl.sroki.cci.android.data.CapPositionRepository
 import pl.sroki.cci.android.data.CapsRepository
+import pl.sroki.cci.android.data.CountriesRepository
 import javax.inject.Inject
 
-data class CountryStat(val name: String, val count: Int)
+data class CountryStat(val name: String, val count: Int, val flagUrl: String? = null)
 
 sealed interface StatisticsUiState {
     data object Loading : StatisticsUiState
@@ -27,6 +28,7 @@ sealed interface StatisticsUiState {
         val totalCaps: Int,
         val totalCountries: Int,
         val topCountries: List<CountryStat>,
+        val allCountries: List<CountryStat>,
         val isRefreshing: Boolean = false
     ) : StatisticsUiState
     data class Error(val message: String) : StatisticsUiState
@@ -36,8 +38,12 @@ sealed interface StatisticsUiState {
 class StatisticsViewModel @Inject constructor(
     private val capsRepository: CapsRepository,
     private val capPositionRepository: CapPositionRepository,
-    private val capCacheRepository: CapCacheRepository
+    private val capCacheRepository: CapCacheRepository,
+    private val countriesRepository: CountriesRepository
 ) : ViewModel() {
+
+    // name -> flagUrl; pobierane raz, opcjonalne (flagi to dodatek)
+    private var flagByCountry: Map<String, String> = emptyMap()
 
     private val _uiState = MutableStateFlow<StatisticsUiState>(StatisticsUiState.Loading)
     val uiState: StateFlow<StatisticsUiState> = _uiState.asStateFlow()
@@ -48,6 +54,9 @@ class StatisticsViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.value = StatisticsUiState.Loading
             try {
+                if (flagByCountry.isEmpty()) {
+                    flagByCountry = countriesRepository.getFlagMap()
+                }
                 showCurrentStats(isRefreshing = true)
                 val missingIds = capCacheRepository.getMissingForPositioned()
                 if (missingIds.isNotEmpty()) {
@@ -64,12 +73,14 @@ class StatisticsViewModel @Inject constructor(
 
     private suspend fun showCurrentStats(isRefreshing: Boolean) {
         val total = capPositionRepository.getTotalCount()
-        val countryRows = capCacheRepository.getCountryStats()
-        val allCountries = countryRows.map { CountryStat(it.country, it.count) }
+        val countryRows = capCacheRepository.getCountryStats() // posortowane wg liczby malejąco
+        val byCount = countryRows.map { CountryStat(it.country, it.count, flagByCountry[it.country]) }
+        val alphabetical = byCount.sortedBy { it.name.lowercase() }
         _uiState.value = StatisticsUiState.Success(
             totalCaps = total,
-            totalCountries = allCountries.size,
-            topCountries = allCountries.take(10),
+            totalCountries = byCount.size,
+            topCountries = byCount.take(5),
+            allCountries = alphabetical,
             isRefreshing = isRefreshing
         )
     }
@@ -82,10 +93,15 @@ class StatisticsViewModel @Inject constructor(
                     async {
                         withTimeoutOrNull(6_000L) {
                             semaphore.withPermit {
-                                runCatching { capsRepository.getById(id.toInt()).country.name }
+                                runCatching { capsRepository.getById(id.toInt()) }
                                     .getOrNull()
-                                    ?.takeIf { it.isNotBlank() }
-                                    ?.let { country -> capCacheRepository.upsert(id, country) }
+                                    ?.let { cap ->
+                                        val country = cap.country.name
+                                        if (country.isNotBlank()) {
+                                            // cache'uj kraj i zdjęcie (zakładka Kraje korzysta z image_url)
+                                            capCacheRepository.upsertFull(id, country, cap.imageUrl)
+                                        }
+                                    }
                             }
                         }
                     }

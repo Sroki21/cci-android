@@ -12,6 +12,7 @@ import pl.sroki.cci.android.data.datasource.local.dao.BinderDao
 import pl.sroki.cci.android.data.datasource.local.dao.BinderPageDao
 import pl.sroki.cci.android.data.datasource.local.dao.CapCacheDao
 import pl.sroki.cci.android.data.datasource.local.dao.CapPositionDao
+import pl.sroki.cci.android.data.datasource.local.dao.CountryFlagDao
 import pl.sroki.cci.android.data.datasource.local.dao.PendingCapDao
 import javax.inject.Singleton
 
@@ -27,7 +28,8 @@ object DatabaseModule {
                 CciDatabase.MIGRATION_1_2,
                 CciDatabase.MIGRATION_2_3,
                 CciDatabase.MIGRATION_3_4,
-                CciDatabase.MIGRATION_4_5
+                CciDatabase.MIGRATION_4_5,
+                CciDatabase.MIGRATION_5_6
             )
             .fallbackToDestructiveMigration(dropAllTables = true)
             .build()
@@ -46,4 +48,7 @@ object DatabaseModule {
 
     @Provides
     fun provideCapCacheDao(db: CciDatabase): CapCacheDao = db.capCacheDao()
+
+    @Provides
+    fun provideCountryFlagDao(db: CciDatabase): CountryFlagDao = db.countryFlagDao()
 }

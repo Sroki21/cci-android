@@ -23,4 +23,6 @@ class CapCacheRepository @Inject constructor(private val dao: CapCacheDao) {
     suspend fun getMissingForPositioned(): List<Long> = dao.getMissingForPositioned()
 
     suspend fun getCountryStats(): List<CountryStatRow> = dao.getCountryStats()
+
+    suspend fun getOwnedCapsByCountry(country: String) = dao.getOwnedCapsByCountry(country)
 }

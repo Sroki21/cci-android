@@ -8,16 +8,18 @@ import pl.sroki.cci.android.data.datasource.local.dao.BinderDao
 import pl.sroki.cci.android.data.datasource.local.dao.BinderPageDao
 import pl.sroki.cci.android.data.datasource.local.dao.CapCacheDao
 import pl.sroki.cci.android.data.datasource.local.dao.CapPositionDao
+import pl.sroki.cci.android.data.datasource.local.dao.CountryFlagDao
 import pl.sroki.cci.android.data.datasource.local.dao.PendingCapDao
 import pl.sroki.cci.android.data.datasource.local.entity.Binder
 import pl.sroki.cci.android.data.datasource.local.entity.BinderPage
 import pl.sroki.cci.android.data.datasource.local.entity.CapCache
 import pl.sroki.cci.android.data.datasource.local.entity.CapPosition
+import pl.sroki.cci.android.data.datasource.local.entity.CountryFlag
 import pl.sroki.cci.android.data.datasource.local.entity.PendingCap
 
 @Database(
-    entities = [PendingCap::class, Binder::class, BinderPage::class, CapPosition::class, CapCache::class],
-    version = 5,
+    entities = [PendingCap::class, Binder::class, BinderPage::class, CapPosition::class, CapCache::class, CountryFlag::class],
+    version = 6,
     exportSchema = false
 )
 abstract class CciDatabase : RoomDatabase() {
@@ -26,6 +28,7 @@ abstract class CciDatabase : RoomDatabase() {
     abstract fun binderPageDao(): BinderPageDao
     abstract fun capPositionDao(): CapPositionDao
     abstract fun capCacheDao(): CapCacheDao
+    abstract fun countryFlagDao(): CountryFlagDao
 
     companion object {
         val MIGRATION_1_2 = object : Migration(1, 2) {
@@ -83,6 +86,18 @@ abstract class CciDatabase : RoomDatabase() {
                 // Cache zaczyna trzymać też URL zdjęcia kapsla, żeby zakładka Klasery
                 // nie dociągała go z API przy każdym wejściu.
                 db.execSQL("ALTER TABLE `cap_cache` ADD COLUMN `image_url` TEXT NOT NULL DEFAULT ''")
+            }
+        }
+        val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Trwały cache flag krajów (nazwa -> URL flagi), żeby zakładka Kraje
+                // nie pobierała flag z API przy każdym wejściu.
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `country_flag` (
+                        `name` TEXT PRIMARY KEY NOT NULL,
+                        `image_url` TEXT NOT NULL
+                    )
+                """.trimIndent())
             }
         }
     }

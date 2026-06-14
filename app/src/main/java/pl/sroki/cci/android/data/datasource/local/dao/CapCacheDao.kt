@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Query
 import pl.sroki.cci.android.data.datasource.local.entity.CapCache
 import pl.sroki.cci.android.data.model.CountryStatRow
+import pl.sroki.cci.android.data.model.OwnedCapRow
 
 @Dao
 interface CapCacheDao {
@@ -44,4 +45,14 @@ interface CapCacheDao {
         ORDER BY count DESC
     """)
     suspend fun getCountryStats(): List<CountryStatRow>
+
+    // Posiadane kapsle danego kraju (z lokalnego cache) — capId + zdjęcie, bez API.
+    @Query("""
+        SELECT DISTINCT cc.cap_id as capId, cc.image_url as imageUrl
+        FROM cap_position cp
+        JOIN cap_cache cc ON cp.cap_id = cc.cap_id
+        WHERE cc.country = :country
+        ORDER BY cc.cap_id DESC
+    """)
+    suspend fun getOwnedCapsByCountry(country: String): List<OwnedCapRow>
 }

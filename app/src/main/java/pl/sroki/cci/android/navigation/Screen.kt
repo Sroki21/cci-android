@@ -1,5 +1,6 @@
 package pl.sroki.cci.android.navigation
 
+import android.net.Uri
 import pl.sroki.cci.android.model.Category
 
 sealed class Screen(val route: String) {
@@ -24,6 +25,12 @@ sealed class Screen(val route: String) {
 
     object QuickSearchResults : Screen("caps/search?query={query}") {
         fun createUrl(query: String) = "caps/search?query=$query"
+    }
+
+    object OwnedCountries : Screen("owned-countries")
+
+    object CountryOwnedCaps : Screen("owned-caps?country={country}") {
+        fun createUrl(country: String) = "owned-caps?country=${Uri.encode(country)}"
     }
 
     object AdvancedSearch : Screen("advanced-search")
