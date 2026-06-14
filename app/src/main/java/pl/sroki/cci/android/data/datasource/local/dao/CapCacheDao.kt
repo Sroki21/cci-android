@@ -2,6 +2,7 @@ package pl.sroki.cci.android.data.datasource.local.dao
 
 import androidx.room.Dao
 import androidx.room.Query
+import kotlinx.coroutines.flow.Flow
 import pl.sroki.cci.android.data.datasource.local.entity.CapCache
 import pl.sroki.cci.android.data.model.CountryStatRow
 import pl.sroki.cci.android.data.model.OwnedCapRow
@@ -51,6 +52,33 @@ interface CapCacheDao {
     // Zapis wyniku weryfikacji.
     @Query("UPDATE cap_cache SET catalog_status = :status, last_verified_at = :verifiedAt WHERE cap_id = :capId")
     suspend fun markVerified(capId: Long, status: String, verifiedAt: Long)
+
+    // Kolejka do weryfikacji: wstawione kapsle, najdawniej (lub nigdy) weryfikowane najpierw.
+    @Query("""
+        SELECT cp.cap_id FROM cap_position cp
+        LEFT JOIN cap_cache cc ON cp.cap_id = cc.cap_id
+        GROUP BY cp.cap_id
+        ORDER BY (MAX(cc.last_verified_at) IS NULL) DESC, MAX(cc.last_verified_at) ASC
+        LIMIT :limit
+    """)
+    suspend fun getCapIdsToVerify(limit: Int): List<Long>
+
+    // Liczba wstawionych kapsli z rozjazdem (odznaka) — reaktywnie.
+    @Query("""
+        SELECT COUNT(DISTINCT cp.cap_id) FROM cap_position cp
+        JOIN cap_cache cc ON cp.cap_id = cc.cap_id
+        WHERE cc.catalog_status IN ('missing', 'swapped', 'updated')
+    """)
+    fun flaggedCountFlow(): Flow<Int>
+
+    // Wstawione kapsle z rozjazdem (ekran przeglądu) — reaktywnie.
+    @Query("""
+        SELECT cc.* FROM cap_cache cc
+        WHERE cc.cap_id IN (SELECT DISTINCT cap_id FROM cap_position)
+          AND cc.catalog_status IN ('missing', 'swapped', 'updated')
+        ORDER BY cc.catalog_status, cc.name
+    """)
+    fun flaggedCapsFlow(): Flow<List<CapCache>>
 
     @Query("""
         SELECT cp.cap_id FROM cap_position cp

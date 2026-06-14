@@ -39,4 +39,5 @@ sealed class Screen(val route: String) {
     object Binders : Screen("binders")
     object Statistics : Screen("statistics")
     object LocationsMap : Screen("locations-map")
+    object CollectionVerification : Screen("collection-verification")
 }

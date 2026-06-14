@@ -50,6 +50,13 @@ class CapPositionRepository @Inject constructor(
         dao.reassignFull(capId, CapPosition(binderPageId = newBinderPageId, position = newPosition, capId = capId, firestoreId = newFirestoreId))
     }
 
+    /** Odśwież snapshot pozycji w Firestore (po „zaakceptuj nowy" w rozjeździe). */
+    suspend fun updateSnapshot(capId: Long, snapshot: CapSnapshot) {
+        val uid = authManager.uid.value ?: return
+        val fsId = dao.getByCapId(capId)?.firestoreId ?: return
+        capPositionFirestoreService.scheduleUpdateSnapshot(uid, fsId, snapshot)
+    }
+
     suspend fun getTotalCount(): Int = dao.countAll()
 
     suspend fun unassign(capId: Long) {

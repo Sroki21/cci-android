@@ -74,6 +74,10 @@ class CapDetailViewModel @Inject constructor(
     var binderSuggestion: BinderSuggestion? by mutableStateOf(null)
         private set
 
+    // Status rozjazdu kapsla (null/"ok"/"unknown" = bez banera; missing/swapped/updated = baner z akcjami).
+    var catalogStatus: String? by mutableStateOf(null)
+        private set
+
     private var pagesJob: Job? = null
     private var suggestionJob: Job? = null
 
@@ -105,6 +109,41 @@ class CapDetailViewModel @Inject constructor(
     }
 
     fun dismissError() { assignmentError = null }
+
+    /** Rozjazd: zachowaj mój snapshot — tylko oznacz jako rozstrzygnięty. */
+    fun keepSnapshot() {
+        val capId = (capDetailUiState as? CapDetailUiState.Success)?.cap?.id?.toLong() ?: return
+        viewModelScope.launch {
+            capCacheRepository.markVerified(capId, "ok", System.currentTimeMillis())
+            catalogStatus = "ok"
+        }
+    }
+
+    /** Rozjazd: zaakceptuj świeże dane z katalogu — nadpisz snapshot (Room + Firestore). */
+    fun acceptNew() {
+        val current = capDetailUiState as? CapDetailUiState.Success ?: return
+        val capId = current.cap.id.toLong()
+        viewModelScope.launch {
+            val s = current.cap.toSnapshot()
+            capCacheRepository.upsertSnapshot(
+                capId, s.name, s.country, s.imageUrl, s.createdAt, s.createdById, s.updatedAt
+            )
+            capCacheRepository.markVerified(capId, "ok", System.currentTimeMillis())
+            runCatching { capPositionRepository.updateSnapshot(capId, s) }
+            catalogStatus = "ok"
+        }
+    }
+
+    /** Rozjazd: odepnij kapsel z klasera. */
+    fun unlinkFlagged() {
+        val current = capDetailUiState as? CapDetailUiState.Success ?: return
+        val capId = current.cap.id.toLong()
+        viewModelScope.launch {
+            runCatching { capPositionRepository.unassign(capId) }
+            catalogStatus = null
+            capDetailUiState = current.copy(status = CapStatus.PURCHASED, binderInfo = null)
+        }
+    }
 
     private fun saveAssignment() {
         val pageId = selectedPageId ?: return
@@ -202,6 +241,7 @@ class CapDetailViewModel @Inject constructor(
                 }
                 if (binderInfo != null) initBinderPreFill(binderInfo)
                 if (status == CapStatus.PURCHASED) launchSuggestion(cap.country.name, id.toLong())
+                catalogStatus = capCacheRepository.getOne(id.toLong())?.catalogStatus
                 CapDetailUiState.Success(cap = cap, status = status, binderInfo = binderInfo)
             } catch (e: IOException) {
                 CapDetailUiState.Error

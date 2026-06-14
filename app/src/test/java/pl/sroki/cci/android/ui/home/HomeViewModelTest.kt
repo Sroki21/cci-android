@@ -6,8 +6,12 @@ import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
 import pl.sroki.cci.android.data.AuthRepository
+import pl.sroki.cci.android.data.CapCacheRepository
+import pl.sroki.cci.android.data.CollectionVerifier
 import pl.sroki.cci.android.data.FirestoreRestoreUseCase
+import pl.sroki.cci.android.data.VerificationPrefs
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
@@ -38,7 +42,14 @@ class HomeViewModelTest {
         authRepository = mockk(relaxed = true)
         firestoreRestoreUseCase = mockk(relaxed = true)
         coEvery { authRepository.logout() } returns Unit
-        viewModel = HomeViewModel(sessionRepository, authRepository, firestoreRestoreUseCase)
+        val collectionVerifier = mockk<CollectionVerifier>(relaxed = true)
+        val verificationPrefs = mockk<VerificationPrefs>(relaxed = true)
+        val capCacheRepository = mockk<CapCacheRepository>(relaxed = true)
+        every { capCacheRepository.flaggedCountFlow() } returns flowOf(0)
+        viewModel = HomeViewModel(
+            sessionRepository, authRepository, firestoreRestoreUseCase,
+            collectionVerifier, verificationPrefs, capCacheRepository
+        )
     }
 
     private fun mockContext(): Context {

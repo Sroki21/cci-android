@@ -25,6 +25,7 @@ import pl.sroki.cci.android.data.BinderRepository
 import pl.sroki.cci.android.data.CapCacheRepository
 import pl.sroki.cci.android.data.CapPositionRepository
 import pl.sroki.cci.android.data.CapsRepository
+import pl.sroki.cci.android.data.CollectionVerifier
 import pl.sroki.cci.android.data.CountriesRepository
 import pl.sroki.cci.android.data.datasource.local.entity.CapCache
 import pl.sroki.cci.android.data.datasource.local.entity.Binder
@@ -42,6 +43,8 @@ data class BindersUiState(
     val binderPages: Map<Long, List<BinderPage>> = emptyMap(),
     val capPositions: Map<Long, List<CapPosition>> = emptyMap(),
     val capInfo: Map<Long, Cap> = emptyMap(),
+    // capId -> catalog_status (do oznaczania rozjazdów czerwoną pogrubioną czcionką).
+    val capStatus: Map<Long, String> = emptyMap(),
     val isCreateDialogOpen: Boolean = false,
     val isLoading: Boolean = false,
     val deleteBinderConfirmId: Long? = null,
@@ -59,7 +62,8 @@ class BindersViewModel @Inject constructor(
     private val capPositionRepository: CapPositionRepository,
     private val capsRepository: CapsRepository,
     private val countriesRepository: CountriesRepository,
-    private val capCacheRepository: CapCacheRepository
+    private val capCacheRepository: CapCacheRepository,
+    private val collectionVerifier: CollectionVerifier
 ) : ViewModel() {
 
     var countries by mutableStateOf<List<Country>>(emptyList())
@@ -91,6 +95,11 @@ class BindersViewModel @Inject constructor(
     init {
         viewModelScope.launch {
             countries = try { countriesRepository.getCountries() } catch (e: Exception) { emptyList() }
+        }
+        // Pasywna weryfikacja inkrementalna — ~50 najdawniej sprawdzanych pozycji na wejście.
+        viewModelScope.launch {
+            runCatching { collectionVerifier.runIncremental(50) }
+            refreshStatuses()
         }
         var previousIds = emptySet<Long>()
         viewModelScope.launch {
@@ -152,7 +161,10 @@ class BindersViewModel @Inject constructor(
         val needed = capIds.filter { it !in capInfoCache }
         if (needed.isEmpty()) return
 
-        val cached = capCacheRepository.getByIds(needed).filter { it.imageUrl.isNotEmpty() }
+        val all = capCacheRepository.getByIds(needed)
+        val statuses = all.associate { it.capId to it.catalogStatus }
+        if (statuses.isNotEmpty()) _uiState.update { it.copy(capStatus = it.capStatus + statuses) }
+        val cached = all.filter { it.imageUrl.isNotEmpty() }
         cached.forEach { capInfoCache[it.capId] = it.toCap() }
         if (cached.isNotEmpty()) _uiState.update { it.copy(capInfo = capInfoCache.toMap()) }
 
@@ -177,6 +189,14 @@ class BindersViewModel @Inject constructor(
             }.awaitAll()
         }
         _uiState.update { it.copy(capInfo = capInfoCache.toMap()) }
+    }
+
+    // Po weryfikacji odśwież statusy dla aktualnie wczytanych pozycji (oznaczenia rozjazdów).
+    private suspend fun refreshStatuses() {
+        val capIds = _uiState.value.capPositions.values.flatten().map { it.capId }.distinct()
+        if (capIds.isEmpty()) return
+        val statuses = capCacheRepository.getByIds(capIds).associate { it.capId to it.catalogStatus }
+        _uiState.update { it.copy(capStatus = it.capStatus + statuses) }
     }
 
     private fun CapCache.toCap(): Cap = Cap(

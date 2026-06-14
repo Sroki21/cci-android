@@ -37,6 +37,7 @@ import pl.sroki.cci.android.ui.binders.BindersScreen
 import pl.sroki.cci.android.ui.catalog.caps.advanced.AdvancedSearchScreen
 import pl.sroki.cci.android.ui.statistics.CountriesListScreen
 import pl.sroki.cci.android.ui.statistics.map.LocationsMapScreen
+import pl.sroki.cci.android.ui.statistics.verification.CollectionVerificationScreen
 import pl.sroki.cci.android.ui.statistics.CountryOwnedCapsScreen
 import pl.sroki.cci.android.ui.statistics.StatisticsScreen
 import pl.sroki.cci.android.ui.catalog.picturesearch.PictureSearch
@@ -188,6 +189,12 @@ fun Navigation(
         }
         composable(route = Screen.Binders.route) {
             BindersScreen(
+                onBack = { navController.popBackStack() },
+                onCapClick = { navController.navigate(Screen.CapDetail.createUrl(it)) }
+            )
+        }
+        composable(route = Screen.CollectionVerification.route) {
+            CollectionVerificationScreen(
                 onBack = { navController.popBackStack() },
                 onCapClick = { navController.navigate(Screen.CapDetail.createUrl(it)) }
             )

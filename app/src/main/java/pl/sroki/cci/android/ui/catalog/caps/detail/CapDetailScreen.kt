@@ -11,6 +11,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -21,6 +22,40 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import pl.sroki.cci.android.ui.components.FullSizeLoader
+
+@Composable
+private fun DriftBanner(
+    status: String?,
+    onKeep: () -> Unit,
+    onAccept: () -> Unit,
+    onUnlink: () -> Unit,
+) {
+    val message = when (status) {
+        "swapped" -> "Uwaga: pod tym ID jest teraz inny kapsel niż zapisany."
+        "updated" -> "Ten kapsel zmienił się w katalogu."
+        "missing" -> "Ten kapsel zniknął z katalogu."
+        else -> return
+    }
+    Surface(
+        color = MaterialTheme.colorScheme.errorContainer,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        androidx.compose.foundation.layout.Column(Modifier.padding(12.dp)) {
+            Text(
+                text = message,
+                color = MaterialTheme.colorScheme.onErrorContainer,
+                style = MaterialTheme.typography.bodyMedium
+            )
+            Row {
+                TextButton(onClick = onKeep) { Text("Zachowaj") }
+                if (status != "missing") {
+                    TextButton(onClick = onAccept) { Text("Zaakceptuj nowy") }
+                }
+                TextButton(onClick = onUnlink) { Text("Odepnij") }
+            }
+        }
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -109,21 +144,29 @@ fun CapDetailScreen(
             when (uiState) {
                 is CapDetailUiState.Error -> Text("Błąd ładowania")
                 is CapDetailUiState.Loading -> FullSizeLoader()
-                is CapDetailUiState.Success -> CapDetailView(
-                    cap = uiState.cap,
-                    status = uiState.status,
-                    binderInfo = uiState.binderInfo,
-                    binders = if (isLoggedIn) viewModel.binders else emptyList(),
-                    binderPages = viewModel.binderPages,
-                    selectedBinderId = viewModel.selectedBinderId,
-                    selectedPageId = viewModel.selectedPageId,
-                    selectedPosition = viewModel.selectedPosition,
-                    isSaving = viewModel.isSaving,
-                    binderSuggestion = viewModel.binderSuggestion,
-                    onBinderSelected = viewModel::onBinderSelected,
-                    onPageSelected = viewModel::onPageSelected,
-                    onPositionSelected = viewModel::onPositionSelected,
-                )
+                is CapDetailUiState.Success -> androidx.compose.foundation.layout.Column {
+                    DriftBanner(
+                        status = viewModel.catalogStatus,
+                        onKeep = viewModel::keepSnapshot,
+                        onAccept = viewModel::acceptNew,
+                        onUnlink = viewModel::unlinkFlagged,
+                    )
+                    CapDetailView(
+                        cap = uiState.cap,
+                        status = uiState.status,
+                        binderInfo = uiState.binderInfo,
+                        binders = if (isLoggedIn) viewModel.binders else emptyList(),
+                        binderPages = viewModel.binderPages,
+                        selectedBinderId = viewModel.selectedBinderId,
+                        selectedPageId = viewModel.selectedPageId,
+                        selectedPosition = viewModel.selectedPosition,
+                        isSaving = viewModel.isSaving,
+                        binderSuggestion = viewModel.binderSuggestion,
+                        onBinderSelected = viewModel::onBinderSelected,
+                        onPageSelected = viewModel::onPageSelected,
+                        onPositionSelected = viewModel::onPositionSelected,
+                    )
+                }
             }
         }
     }

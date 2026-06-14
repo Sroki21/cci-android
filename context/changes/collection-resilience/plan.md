@@ -272,9 +272,9 @@ Jeden rdzeń weryfikacji napędzany trzema trybami (auto-backfill po aktualizacj
 
 #### Automated
 
-- [x] 1.1 Kompilacja przechodzi: `gradlew :app:compileDebugKotlin`
-- [x] 1.2 Testy jednostkowe przechodzą: `gradlew :app:testDebugUnitTest`
-- [x] 1.3 ktlint przechodzi: `gradlew :app:ktlintCheck`
+- [x] 1.1 Kompilacja przechodzi: `gradlew :app:compileDebugKotlin` — 3468cdf
+- [x] 1.2 Testy jednostkowe przechodzą: `gradlew :app:testDebugUnitTest` — 3468cdf
+- [x] 1.3 ktlint przechodzi: `gradlew :app:ktlintCheck` — 3468cdf
 - [ ] 1.4 Test migracji 6→7 (Room) przechodzi
 - [ ] 1.5 `FirestoreRestoreTest` rozszerzony o pola snapshotu przechodzi
 
@@ -289,9 +289,9 @@ Jeden rdzeń weryfikacji napędzany trzema trybami (auto-backfill po aktualizacj
 
 #### Automated
 
-- [ ] 2.1 Kompilacja przechodzi: `gradlew :app:compileDebugKotlin`
-- [ ] 2.2 Testy jednostkowe przechodzą: `gradlew :app:testDebugUnitTest`
-- [ ] 2.3 ktlint przechodzi: `gradlew :app:ktlintCheck`
+- [x] 2.1 Kompilacja przechodzi: `gradlew :app:compileDebugKotlin`
+- [x] 2.2 Testy jednostkowe przechodzą: `gradlew :app:testDebugUnitTest`
+- [x] 2.3 ktlint przechodzi: `gradlew :app:ktlintCheck`
 - [ ] 2.4 `CollectionVerifierTest`: 3 poziomy + baseline-bez-porównania
 - [ ] 2.5 Test wyboru pozycji wg najstarszego `last_verified_at`
 

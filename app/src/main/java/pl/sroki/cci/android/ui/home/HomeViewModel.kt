@@ -14,10 +14,14 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import pl.sroki.cci.android.BuildConfig
 import pl.sroki.cci.android.data.AuthRepository
+import pl.sroki.cci.android.data.CapCacheRepository
+import pl.sroki.cci.android.data.CollectionVerifier
 import pl.sroki.cci.android.data.FirestoreRestoreUseCase
 import pl.sroki.cci.android.data.RestoreResult
 import pl.sroki.cci.android.data.SessionRepository
+import pl.sroki.cci.android.data.VerificationPrefs
 import javax.inject.Inject
 
 data class HomeUiState(
@@ -33,7 +37,10 @@ sealed interface HomeEvent {
 class HomeViewModel @Inject constructor(
     private val sessionRepository: SessionRepository,
     private val authRepository: AuthRepository,
-    private val firestoreRestoreUseCase: FirestoreRestoreUseCase
+    private val firestoreRestoreUseCase: FirestoreRestoreUseCase,
+    private val collectionVerifier: CollectionVerifier,
+    private val verificationPrefs: VerificationPrefs,
+    capCacheRepository: CapCacheRepository
 ) : ViewModel() {
 
     val uiState: StateFlow<HomeUiState> = combine(
@@ -46,6 +53,20 @@ class HomeViewModel @Inject constructor(
         started = SharingStarted.Eagerly,
         initialValue = HomeUiState()
     )
+
+    // Odznaka „X do przejrzenia" — liczba wstawionych kapsli z rozjazdem.
+    val flaggedCount: StateFlow<Int> = capCacheRepository.flaggedCountFlow()
+        .stateIn(viewModelScope, SharingStarted.Eagerly, 0)
+
+    init {
+        // Jednorazowy backfill snapshotu/fingerprintu po aktualizacji (ustanawia baseline 4126 kapsli).
+        if (verificationPrefs.backfilledVersion < BuildConfig.VERSION_CODE) {
+            viewModelScope.launch {
+                runCatching { collectionVerifier.runFullScan() }
+                verificationPrefs.backfilledVersion = BuildConfig.VERSION_CODE
+            }
+        }
+    }
 
     var isSyncDialogOpen by mutableStateOf(false)
         private set

@@ -1,5 +1,6 @@
 package pl.sroki.cci.android.data
 
+import kotlinx.coroutines.flow.Flow
 import pl.sroki.cci.android.data.datasource.local.dao.CapCacheDao
 import pl.sroki.cci.android.data.datasource.local.entity.CapCache
 import pl.sroki.cci.android.data.model.CountryStatRow
@@ -13,6 +14,8 @@ class CapCacheRepository @Inject constructor(private val dao: CapCacheDao) {
         dao.getCountry(capId)?.takeIf { it.isNotBlank() }
 
     suspend fun getByIds(ids: List<Long>): List<CapCache> = dao.getByIds(ids)
+
+    suspend fun getOne(capId: Long): CapCache? = dao.getByIds(listOf(capId)).firstOrNull()
 
     suspend fun upsert(capId: Long, country: String) =
         dao.upsertCountry(capId, country)
@@ -32,6 +35,12 @@ class CapCacheRepository @Inject constructor(private val dao: CapCacheDao) {
 
     suspend fun markVerified(capId: Long, status: String, verifiedAt: Long) =
         dao.markVerified(capId, status, verifiedAt)
+
+    suspend fun getCapIdsToVerify(limit: Int): List<Long> = dao.getCapIdsToVerify(limit)
+
+    fun flaggedCountFlow(): Flow<Int> = dao.flaggedCountFlow()
+
+    fun flaggedCapsFlow(): Flow<List<CapCache>> = dao.flaggedCapsFlow()
 
     suspend fun getMissingForPositioned(): List<Long> = dao.getMissingForPositioned()
 

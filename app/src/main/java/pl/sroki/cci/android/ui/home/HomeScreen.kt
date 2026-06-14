@@ -32,6 +32,7 @@ fun HomeScreen(
 ) {
     val vm = hiltViewModel<HomeViewModel>()
     val uiState by vm.uiState.collectAsState()
+    val flaggedCount by vm.flaggedCount.collectAsState()
 
     var query by remember { mutableStateOf("") }
     val snackbarState = remember { SnackbarHostState() }
@@ -66,6 +67,23 @@ fun HomeScreen(
                             expanded = menuExpanded,
                             onDismissRequest = { menuExpanded = false }
                         ) {
+                            DropdownMenuItem(
+                                text = {
+                                    Text(
+                                        if (flaggedCount > 0) "Weryfikacja kolekcji ($flaggedCount)"
+                                        else "Weryfikacja kolekcji"
+                                    )
+                                },
+                                trailingIcon = {
+                                    if (flaggedCount > 0) {
+                                        Badge { Text("$flaggedCount") }
+                                    }
+                                },
+                                onClick = {
+                                    menuExpanded = false
+                                    onClick(Screen.CollectionVerification)
+                                }
+                            )
                             DropdownMenuItem(
                                 text = { Text("Synchronizuj z Firestore") },
                                 onClick = {

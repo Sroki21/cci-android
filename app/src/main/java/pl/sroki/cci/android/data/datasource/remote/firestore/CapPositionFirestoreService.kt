@@ -43,6 +43,20 @@ class CapPositionFirestoreService @Inject constructor(private val firestore: Fir
         col(uid).document(firestoreId).delete()
     }
 
+    /** Odświeża snapshot w istniejącym dokumencie pozycji (po udanej weryfikacji baseline/ok). */
+    fun scheduleUpdateSnapshot(uid: String, firestoreId: String, snapshot: CapSnapshot) {
+        col(uid).document(firestoreId).update(
+            mapOf(
+                "capName" to snapshot.name,
+                "capCountry" to snapshot.country,
+                "capImageUrl" to snapshot.imageUrl,
+                "capCreatedAt" to snapshot.createdAt,
+                "capCreatedById" to snapshot.createdById,
+                "capUpdatedAt" to snapshot.updatedAt
+            )
+        )
+    }
+
     fun scheduleDeleteByPage(uid: String, pageFirestoreId: String) {
         col(uid).whereEqualTo("binderPageFirestoreId", pageFirestoreId).get()
             .addOnSuccessListener { snap -> snap.documents.forEach { it.reference.delete() } }

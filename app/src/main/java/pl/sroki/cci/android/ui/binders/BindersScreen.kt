@@ -42,6 +42,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.compose.foundation.shape.CircleShape
@@ -126,6 +128,7 @@ fun BindersScreen(
                     expandedPageIds = uiState.expandedPageIds,
                     capPositions = uiState.capPositions,
                     capInfo = uiState.capInfo,
+                    capStatus = uiState.capStatus,
                     totalCaps = totalCaps,
                     selectedCountry = selectedCountry,
                     isLoading = uiState.isLoading,
@@ -267,6 +270,7 @@ private fun ExpandableBinderRow(
     expandedPageIds: Set<Long>,
     capPositions: Map<Long, List<CapPosition>>,
     capInfo: Map<Long, Cap>,
+    capStatus: Map<Long, String>,
     totalCaps: Int,
     selectedCountry: String,
     isLoading: Boolean,
@@ -278,6 +282,9 @@ private fun ExpandableBinderRow(
     onCapClick: (Long) -> Unit,
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
+        val binderFlagged = pages.any { page ->
+            (capPositions[page.id] ?: emptyList()).any { isFlagged(capStatus[it.capId]) }
+        }
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -285,7 +292,12 @@ private fun ExpandableBinderRow(
             verticalAlignment = Alignment.CenterVertically
         ) {
             val binderLabel = if (totalCaps > 0) "${binder.name} - $totalCaps" else binder.name
-            Text(text = binderLabel, modifier = Modifier.weight(1f))
+            Text(
+                text = binderLabel,
+                modifier = Modifier.weight(1f),
+                color = if (binderFlagged) MaterialTheme.colorScheme.error else Color.Unspecified,
+                fontWeight = if (binderFlagged) FontWeight.Bold else null
+            )
             IconButton(onClick = onToggle) {
                 Icon(
                     imageVector = if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
@@ -305,13 +317,19 @@ private fun ExpandableBinderRow(
                 val countries = caps.mapNotNull { capInfo[it.capId]?.country }.distinct().sorted()
                 val countriesSuffix = if (countries.isEmpty()) "" else " (${countries.joinToString(", ")})"
                 val pageLabel = "Strona ${page.pageNumber}$countriesSuffix${if (caps.isNotEmpty()) " - ${caps.size}" else ""}"
+                val pageFlagged = allCaps.any { isFlagged(capStatus[it.capId]) }
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(start = 32.dp, end = 16.dp, top = 2.dp, bottom = 2.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(text = pageLabel, modifier = Modifier.weight(1f))
+                    Text(
+                        text = pageLabel,
+                        modifier = Modifier.weight(1f),
+                        color = if (pageFlagged) MaterialTheme.colorScheme.error else Color.Unspecified,
+                        fontWeight = if (pageFlagged) FontWeight.Bold else null
+                    )
                     IconButton(onClick = { onTogglePage(page.id) }) {
                         Icon(
                             imageVector = if (pageExpanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
@@ -339,10 +357,13 @@ private fun ExpandableBinderRow(
                                     .size(40.dp)
                                     .clip(CircleShape)
                             )
+                            val capFlagged = isFlagged(capStatus[cap.capId])
                             Column(modifier = Modifier.padding(start = 8.dp)) {
                                 Text(
                                     text = "Pozycja ${cap.position}: ${cap.capId}",
-                                    style = MaterialTheme.typography.bodySmall
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = if (capFlagged) MaterialTheme.colorScheme.error else Color.Unspecified,
+                                    fontWeight = if (capFlagged) FontWeight.Bold else null
                                 )
                                 if (info != null) {
                                     Text(
@@ -366,6 +387,9 @@ private fun ExpandableBinderRow(
         }
     }
 }
+
+private fun isFlagged(status: String?): Boolean =
+    status == "missing" || status == "swapped" || status == "updated"
 
 @Composable
 private fun CreateBinderDialog(
