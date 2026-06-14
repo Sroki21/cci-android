@@ -54,7 +54,10 @@ import pl.sroki.cci.android.model.Cap
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun BindersScreen(onBack: () -> Unit) {
+fun BindersScreen(
+    onBack: () -> Unit,
+    onCapClick: (Long) -> Unit,
+) {
     val vm = hiltViewModel<BindersViewModel>()
     val uiState by vm.uiState.collectAsState()
     val snackbarState = remember { SnackbarHostState() }
@@ -130,7 +133,8 @@ fun BindersScreen(onBack: () -> Unit) {
                     onTogglePage = { vm.togglePageExpand(it) },
                     onDeleteBinder = { vm.requestDeleteBinder(binder.id) },
                     onAddPage = { vm.addPage(binder.id) },
-                    onDeletePage = { vm.requestDeletePage(it) }
+                    onDeletePage = { vm.requestDeletePage(it) },
+                    onCapClick = onCapClick
                 )
             }
             item {
@@ -271,6 +275,7 @@ private fun ExpandableBinderRow(
     onDeleteBinder: () -> Unit,
     onAddPage: () -> Unit,
     onDeletePage: (Long) -> Unit,
+    onCapClick: (Long) -> Unit,
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
@@ -323,6 +328,7 @@ private fun ExpandableBinderRow(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
+                                .clickable { onCapClick(cap.capId) }
                                 .padding(start = 48.dp, end = 16.dp, top = 2.dp, bottom = 2.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {

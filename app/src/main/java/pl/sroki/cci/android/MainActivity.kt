@@ -186,7 +186,10 @@ fun Navigation(
             )
         }
         composable(route = Screen.Binders.route) {
-            BindersScreen(onBack = { navController.popBackStack() })
+            BindersScreen(
+                onBack = { navController.popBackStack() },
+                onCapClick = { navController.navigate(Screen.CapDetail.createUrl(it)) }
+            )
         }
         composable(route = Screen.Statistics.route) {
             StatisticsScreen(
