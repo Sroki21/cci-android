@@ -19,6 +19,7 @@ import org.junit.Before
 import org.junit.Test
 import pl.sroki.cci.android.data.BinderPageRepository
 import pl.sroki.cci.android.data.BinderRepository
+import pl.sroki.cci.android.data.CapCacheRepository
 import pl.sroki.cci.android.data.CapPositionRepository
 import pl.sroki.cci.android.data.CapsRepository
 import pl.sroki.cci.android.data.CountriesRepository
@@ -33,6 +34,7 @@ class BindersViewModelTest {
     private lateinit var capPositionRepository: CapPositionRepository
     private lateinit var capsRepository: CapsRepository
     private lateinit var countriesRepository: CountriesRepository
+    private lateinit var capCacheRepository: CapCacheRepository
     private lateinit var viewModel: BindersViewModel
 
     @Before
@@ -43,10 +45,11 @@ class BindersViewModelTest {
         capPositionRepository = mockk()
         capsRepository = mockk()
         countriesRepository = mockk()
+        capCacheRepository = mockk(relaxed = true)
         every { binderRepository.getAll() } returns flowOf(emptyList())
         every { binderPageRepository.getByBinder(any()) } returns flowOf(emptyList())
         coEvery { countriesRepository.getCountries() } returns emptyList()
-        viewModel = BindersViewModel(binderRepository, binderPageRepository, capPositionRepository, capsRepository, countriesRepository)
+        viewModel = BindersViewModel(binderRepository, binderPageRepository, capPositionRepository, capsRepository, countriesRepository, capCacheRepository)
     }
 
     @After
@@ -59,7 +62,7 @@ class BindersViewModelTest {
         val binder = Binder(id = 1L, name = "Europa 1")
         every { binderRepository.getAll() } returns flowOf(listOf(binder))
         coEvery { binderRepository.create("Europa 1") } returns 1L
-        viewModel = BindersViewModel(binderRepository, binderPageRepository, capPositionRepository, capsRepository, countriesRepository)
+        viewModel = BindersViewModel(binderRepository, binderPageRepository, capPositionRepository, capsRepository, countriesRepository, capCacheRepository)
 
         viewModel.createBinder("Europa 1")
 

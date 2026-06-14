@@ -11,6 +11,8 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -20,9 +22,11 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import pl.sroki.cci.android.data.BinderPageRepository
 import pl.sroki.cci.android.data.BinderRepository
+import pl.sroki.cci.android.data.CapCacheRepository
 import pl.sroki.cci.android.data.CapPositionRepository
 import pl.sroki.cci.android.data.CapsRepository
 import pl.sroki.cci.android.data.CountriesRepository
+import pl.sroki.cci.android.data.datasource.local.entity.CapCache
 import pl.sroki.cci.android.data.datasource.local.entity.Binder
 import pl.sroki.cci.android.data.datasource.local.entity.BinderPage
 import pl.sroki.cci.android.data.datasource.local.entity.CapPosition
@@ -54,7 +58,8 @@ class BindersViewModel @Inject constructor(
     private val binderPageRepository: BinderPageRepository,
     private val capPositionRepository: CapPositionRepository,
     private val capsRepository: CapsRepository,
-    private val countriesRepository: CountriesRepository
+    private val countriesRepository: CountriesRepository,
+    private val capCacheRepository: CapCacheRepository
 ) : ViewModel() {
 
     var countries by mutableStateOf<List<Country>>(emptyList())
@@ -68,6 +73,10 @@ class BindersViewModel @Inject constructor(
     }
 
     private val capInfoCache = mutableMapOf<Long, Cap>()
+
+    // Ogranicza liczbę równoległych zapytań do API przy pierwszym (niezbuforowanym)
+    // załadowaniu — bez tego strony×kapsle generowały tysiące jednoczesnych POST-ów.
+    private val fetchSemaphore = Semaphore(8)
 
     private val _uiState = MutableStateFlow(BindersUiState())
     val uiState: StateFlow<BindersUiState> = _uiState.asStateFlow()
@@ -120,22 +129,7 @@ class BindersViewModel @Inject constructor(
                     capJobs[pageId] = viewModelScope.launch {
                         capPositionRepository.getByPage(pageId).collect { caps ->
                             _uiState.update { it.copy(capPositions = it.capPositions + (pageId to caps)) }
-                            val uncachedIds = caps.map { it.capId }.filter { it !in capInfoCache }
-                            if (uncachedIds.isNotEmpty()) {
-                                coroutineScope {
-                                    uncachedIds.map { capId ->
-                                        async {
-                                            runCatching {
-                                                capsRepository.searchByFilter(
-                                                    CapsSearchRequest(id = capId.toInt()),
-                                                    page = 1
-                                                ).data.firstOrNull()
-                                            }.getOrNull()?.let { cap -> capInfoCache[capId] = cap }
-                                        }
-                                    }.awaitAll()
-                                }
-                                _uiState.update { it.copy(capInfo = capInfoCache.toMap()) }
-                            }
+                            loadCapInfo(caps.map { it.capId })
                         }
                     }
                 }
@@ -147,6 +141,52 @@ class BindersViewModel @Inject constructor(
             }
         }
     }
+
+    /**
+     * Uzupełnia [capInfoCache] danymi kapsli (kraj + zdjęcie). Najpierw czyta lokalny
+     * cache Room (natychmiast), z API dociąga tylko te, których w cache brakuje lub nie
+     * mają jeszcze zdjęcia, i zapisuje je z powrotem. Dzięki temu kolejne wejścia na ekran
+     * nie generują żadnych zapytań sieciowych.
+     */
+    private suspend fun loadCapInfo(capIds: List<Long>) {
+        val needed = capIds.filter { it !in capInfoCache }
+        if (needed.isEmpty()) return
+
+        val cached = capCacheRepository.getByIds(needed).filter { it.imageUrl.isNotEmpty() }
+        cached.forEach { capInfoCache[it.capId] = it.toCap() }
+        if (cached.isNotEmpty()) _uiState.update { it.copy(capInfo = capInfoCache.toMap()) }
+
+        val toFetch = needed - cached.map { it.capId }.toSet()
+        if (toFetch.isEmpty()) return
+
+        coroutineScope {
+            toFetch.map { capId ->
+                async {
+                    fetchSemaphore.withPermit {
+                        runCatching {
+                            capsRepository.searchByFilter(
+                                CapsSearchRequest(id = capId.toInt()),
+                                page = 1
+                            ).data.firstOrNull()
+                        }.getOrNull()?.let { cap ->
+                            capInfoCache[capId] = cap
+                            capCacheRepository.upsertFull(capId, cap.country, cap.imageUrl)
+                        }
+                    }
+                }
+            }.awaitAll()
+        }
+        _uiState.update { it.copy(capInfo = capInfoCache.toMap()) }
+    }
+
+    private fun CapCache.toCap(): Cap = Cap(
+        id = capId,
+        country = country,
+        product = "",
+        liner = "",
+        purpose = "",
+        imageUrl = imageUrl
+    )
 
     fun toggleExpand(binderId: Long) {
         val expanded = _uiState.value.expandedBinderIds

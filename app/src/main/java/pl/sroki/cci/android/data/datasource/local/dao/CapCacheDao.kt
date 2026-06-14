@@ -1,8 +1,6 @@
 package pl.sroki.cci.android.data.datasource.local.dao
 
 import androidx.room.Dao
-import androidx.room.Insert
-import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import pl.sroki.cci.android.data.datasource.local.entity.CapCache
 import pl.sroki.cci.android.data.model.CountryStatRow
@@ -13,8 +11,22 @@ interface CapCacheDao {
     @Query("SELECT country FROM cap_cache WHERE cap_id = :capId LIMIT 1")
     suspend fun getCountry(capId: Long): String?
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun upsert(entry: CapCache)
+    @Query("SELECT * FROM cap_cache WHERE cap_id IN (:ids)")
+    suspend fun getByIds(ids: List<Long>): List<CapCache>
+
+    // Zapisuje tylko kraj, nie ruszając już zapisanego image_url (Statystyki/Detal).
+    @Query("""
+        INSERT INTO cap_cache (cap_id, country, image_url) VALUES (:capId, :country, '')
+        ON CONFLICT(cap_id) DO UPDATE SET country = :country
+    """)
+    suspend fun upsertCountry(capId: Long, country: String)
+
+    // Pełny wpis z kraju i zdjęcia (zakładka Klasery).
+    @Query("""
+        INSERT INTO cap_cache (cap_id, country, image_url) VALUES (:capId, :country, :imageUrl)
+        ON CONFLICT(cap_id) DO UPDATE SET country = :country, image_url = :imageUrl
+    """)
+    suspend fun upsertFull(capId: Long, country: String, imageUrl: String)
 
     @Query("""
         SELECT cp.cap_id FROM cap_position cp

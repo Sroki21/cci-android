@@ -12,8 +12,13 @@ class CapCacheRepository @Inject constructor(private val dao: CapCacheDao) {
     suspend fun getCountry(capId: Long): String? =
         dao.getCountry(capId)?.takeIf { it.isNotBlank() }
 
+    suspend fun getByIds(ids: List<Long>): List<CapCache> = dao.getByIds(ids)
+
     suspend fun upsert(capId: Long, country: String) =
-        dao.upsert(CapCache(capId, country))
+        dao.upsertCountry(capId, country)
+
+    suspend fun upsertFull(capId: Long, country: String, imageUrl: String) =
+        dao.upsertFull(capId, country, imageUrl)
 
     suspend fun getMissingForPositioned(): List<Long> = dao.getMissingForPositioned()
 

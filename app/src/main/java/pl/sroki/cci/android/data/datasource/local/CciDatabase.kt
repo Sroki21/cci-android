@@ -17,7 +17,7 @@ import pl.sroki.cci.android.data.datasource.local.entity.PendingCap
 
 @Database(
     entities = [PendingCap::class, Binder::class, BinderPage::class, CapPosition::class, CapCache::class],
-    version = 4,
+    version = 5,
     exportSchema = false
 )
 abstract class CciDatabase : RoomDatabase() {
@@ -76,6 +76,13 @@ abstract class CciDatabase : RoomDatabase() {
                 db.execSQL("ALTER TABLE `cap_position_new` RENAME TO `cap_position`")
                 db.execSQL("CREATE UNIQUE INDEX `index_cap_position_binder_page_id_position` ON `cap_position` (`binder_page_id`, `position`)")
                 db.execSQL("CREATE INDEX `index_cap_position_binder_page_id` ON `cap_position` (`binder_page_id`)")
+            }
+        }
+        val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Cache zaczyna trzymać też URL zdjęcia kapsla, żeby zakładka Klasery
+                // nie dociągała go z API przy każdym wejściu.
+                db.execSQL("ALTER TABLE `cap_cache` ADD COLUMN `image_url` TEXT NOT NULL DEFAULT ''")
             }
         }
     }
