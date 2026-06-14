@@ -43,6 +43,7 @@ class FirestoreRestoreTest {
         capPositionFs = CapPositionFirestoreService(firestore)
         restoreUseCase = FirestoreRestoreUseCase(
             authManager = authManager,
+            database = db,
             binderDao = db.binderDao(),
             binderPageDao = db.binderPageDao(),
             capPositionDao = db.capPositionDao(),
