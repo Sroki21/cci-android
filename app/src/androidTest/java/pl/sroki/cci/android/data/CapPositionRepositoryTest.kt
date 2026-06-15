@@ -95,7 +95,7 @@ class CapPositionRepositoryTest {
         try {
             repo.reassign(42L, binderPageId, 2)
             fail("Expected SQLiteConstraintException — slot (page=$binderPageId, pos=2) is occupied by cap 99")
-        } catch (e: android.database.sqlite.SQLiteConstraintException) {
+        } catch (e: SQLiteConstraintException) {
             // expected: @Transaction rolls back deleteByCapId when @Insert fails
         }
 

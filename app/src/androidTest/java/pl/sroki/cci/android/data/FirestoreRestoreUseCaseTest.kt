@@ -85,7 +85,7 @@ class FirestoreRestoreUseCaseTest {
         )
 
         // failingCapDao throws inside database.withTransaction {} → triggers rollback
-        val failingCapDao = mockk<CapPositionDao>()
+        val failingCapDao = mockk<CapPositionDao>(relaxed = true)
         coEvery { failingCapDao.insertOrIgnore(any()) } throws SQLiteException("forced failure in test")
         val failingUseCase = FirestoreRestoreUseCase(
             authManager, db, db.binderDao(), db.binderPageDao(),
@@ -109,8 +109,11 @@ class FirestoreRestoreUseCaseTest {
 
     @Test
     fun restoreIfEmpty_concurrentCalls_noDuplicates() = runBlocking {
-        // delay(50) powoduje że oba coroutiny mogłyby przejść check countAll()==0 przed insertem
-        // Mutex w restoreIfEmpty() gwarantuje że tylko jedno wywołanie wykonuje restore
+        // runBlocking używa jednowątkowego BlockingEventLoop — interleaving zachodzi przez
+        // kooperatywne zawieszenie na delay(50) wewnątrz withLock. job1 zawiesza się trzymając
+        // Mutex; job2 dostaje szansę sprawdzić countAll(). NIE zamieniaj na runTest: jego
+        // wirtualny czas i scheduler nie replikują tego interleavingu i test przestanie
+        // rozróżniać kod z Mutex od kodu bez Mutex.
         coEvery { binderService.fetchAll(TEST_UID) } coAnswers {
             delay(50)
             listOf(BinderDocument("fsB1", "Test Klaser"))
