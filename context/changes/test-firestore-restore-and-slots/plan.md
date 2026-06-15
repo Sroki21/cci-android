@@ -271,20 +271,20 @@ class FirestoreRestoreUseCaseTest {
 ### Phase 1: Slot uniqueness coverage (R7)
 
 #### Automated
-- [x] 1.1 Kompilacja — `./gradlew compileDebugAndroidTestKotlin` — brak błędów
-- [x] 1.2 `connectedDebugAndroidTest --tests "*.CapPositionRepositoryTest"` — `reassignFull_targetOccupied_rollsBack` PASS
+- [x] 1.1 Kompilacja — `./gradlew compileDebugAndroidTestKotlin` — brak błędów — 75b4d3e
+- [x] 1.2 `connectedDebugAndroidTest --tests "*.CapPositionRepositoryTest"` — `reassignFull_targetOccupied_rollsBack` PASS — 75b4d3e
 
 #### Manual
-- [x] 1.3 Potwierdź wyjątek w logach testu: `SQLiteConstraintException` caught (nie fail/error)
+- [x] 1.3 Potwierdź wyjątek w logach testu: `SQLiteConstraintException` caught (nie fail/error) — 75b4d3e
 
 ### Phase 2: FirestoreRestoreUseCase tests + TOCTOU fix (R4, R5)
 
 #### Automated
-- [ ] 2.1 Kompilacja — `./gradlew compileDebugAndroidTestKotlin` — brak błędów po dodaniu mockk-android
-- [ ] 2.2 `connectedDebugAndroidTest --tests "*.FirestoreRestoreUseCaseTest"` — oba testy PASS
-- [ ] 2.3 `connectedDebugAndroidTest --tests "*.CapPositionRepositoryTest"` — brak regresji
-- [ ] 2.4 `connectedDebugAndroidTest --tests "*.FirestoreRestoreTest"` — brak regresji w istniejących testach
+- [x] 2.1 Kompilacja — `./gradlew compileDebugAndroidTestKotlin` — brak błędów po dodaniu mockk-android
+- [x] 2.2 `connectedDebugAndroidTest --tests "*.FirestoreRestoreUseCaseTest"` — oba testy PASS
+- [x] 2.3 `connectedDebugAndroidTest --tests "*.CapPositionRepositoryTest"` — brak regresji
+- [x] 2.4 `connectedDebugAndroidTest --tests "*.FirestoreRestoreTest"` — brak regresji w istniejących testach
 
 #### Manual
-- [ ] 2.5 Sprawdź logi: `restoreFromFirestore_partialFailure_rollsBack` — binderCount=1 po rollback
-- [ ] 2.6 Sprawdź logi: `restoreIfEmpty_concurrentCalls_noDuplicates` — binderCount=1 (Mutex)
+- [x] 2.5 Sprawdź logi: `restoreFromFirestore_partialFailure_rollsBack` — binderCount=1 po rollback
+- [x] 2.6 Sprawdź logi: `restoreIfEmpty_concurrentCalls_noDuplicates` — binderCount=1 (Mutex)

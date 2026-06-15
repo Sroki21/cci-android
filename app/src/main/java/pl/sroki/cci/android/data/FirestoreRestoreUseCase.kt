@@ -1,6 +1,8 @@
 package pl.sroki.cci.android.data
 
 import androidx.room.withTransaction
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import pl.sroki.cci.android.data.datasource.local.CciDatabase
 import pl.sroki.cci.android.data.datasource.local.dao.BinderDao
 import pl.sroki.cci.android.data.datasource.local.dao.BinderPageDao
@@ -36,18 +38,21 @@ class FirestoreRestoreUseCase @Inject constructor(
     private val binderPageService: BinderPageFirestoreService,
     private val capPositionService: CapPositionFirestoreService
 ) {
+    private val restoreIfEmptyMutex = Mutex()
+
     suspend fun deduplicateRoomData() {
         binderDao.deduplicateByName()
     }
 
     suspend fun restoreIfEmpty() {
         val uid = authManager.uid.value ?: return
-        if (binderDao.countAll() > 0) return
-
-        val allBinders = binderService.fetchAll(uid)
-        val allPages = binderPageService.fetchAll(uid)
-        val allCaps = capPositionService.fetchAll(uid)
-        insertRestored(chooseBinders(allBinders, allPages, allCaps), allPages, allCaps)
+        restoreIfEmptyMutex.withLock {
+            if (binderDao.countAll() > 0) return
+            val allBinders = binderService.fetchAll(uid)
+            val allPages = binderPageService.fetchAll(uid)
+            val allCaps = capPositionService.fetchAll(uid)
+            insertRestored(chooseBinders(allBinders, allPages, allCaps), allPages, allCaps)
+        }
     }
 
     /**
