@@ -10,6 +10,7 @@ import io.mockk.mockk
 import io.mockk.verify
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Ignore
 import org.junit.Test
@@ -61,8 +62,9 @@ class FirebaseAuthManagerTest {
         )
         every { auth.createUserWithEmailAndPassword(any(), any()) } returns Tasks.forResult(mockk())
 
-        manager.signInWithEmail("test@example.com", "password123")
+        val result = runCatching { manager.signInWithEmail("test@example.com", "password123") }
 
         verify(exactly = 0) { auth.createUserWithEmailAndPassword(any(), any()) }
+        assertTrue(result.isFailure)
     }
 }

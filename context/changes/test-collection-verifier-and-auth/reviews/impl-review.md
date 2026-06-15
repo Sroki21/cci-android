@@ -48,7 +48,7 @@
 - **Location**: CollectionVerifierTest.kt:148–155
 - **Detail**: Test `verify — zmiana createdAt — zwraca SWAPPED` asertuje tylko wartość zwracaną. Nie sprawdza że `upsertSnapshot` NIE jest wywołane. Testy UPDATED i MISSING mają pełne weryfikacje.
 - **Fix**: Dodaj `coVerify(exactly = 0) { capCacheRepository.upsertSnapshot(any(), any(), any(), any(), any(), any(), any()) }` do testu SWAPPED.
-- **Decision**: PENDING
+- **Decision**: FIXED — dodano `coVerify(exactly = 0)` po asercji zwracanej wartości.
 
 ### F4 — Plan drift: test "runBatch" wywołuje runFullScan()
 
@@ -58,7 +58,7 @@
 - **Location**: CollectionVerifierTest.kt:187
 - **Detail**: Plan mówi "runBatch — max 4 równoległe" sugerując bezpośrednie wywołanie `runBatch()`. Test wywołuje `verifier.runFullScan()` (bo `runBatch` jest prywatny — OK). Ale nazwa testu "runBatch" jest myląca.
 - **Fix**: Zmień nazwę testu na `` `runFullScan — max 4 rownolegle wywolania verify` ``.
-- **Decision**: PENDING
+- **Decision**: FIXED — zmieniono nazwę testu na `` `runFullScan — max 4 rownolegle wywolania verify` ``.
 
 ### F5 — @Ignore błąd sieci: brakuje asercji propagacji wyjątku
 
@@ -68,7 +68,7 @@
 - **Location**: FirebaseAuthManagerTest.kt:56–67
 - **Detail**: Test "błąd sieci" weryfikuje tylko że `createUser` nie jest wywołane. Nie sprawdza że `IOException` propaguje się do wywołującego. Po naprawieniu buga: jeśli fix nie woła createUser ale błąd jest cicho połykany, test przejdzie mimo niepoprawnego zachowania.
 - **Fix**: Gdy @Ignore zostanie usunięty, dodaj `runCatching { manager.signInWithEmail(...) }; assertTrue(result.isFailure)`.
-- **Decision**: PENDING
+- **Decision**: FIXED — zmieniono wywołanie na `runCatching { ... }` i dodano `assertTrue(result.isFailure)` + import `Assert.assertTrue`.
 
 ### F6 — SessionAuthenticatorTest: drugi test jest nadmiarowy
 
@@ -78,4 +78,4 @@
 - **Location**: SessionAuthenticatorTest.kt:67–72
 - **Detail**: Test 2 ("authenticate — zwraca null (brak retry)") asertuje tylko `assertNull(result)` — co jest już pokryte przez Test 1 (linia 64). Dodaje noise bez unikalnego pokrycia.
 - **Fix**: Rozszerz Test 2 o unikalny scenariusz (np. wywołanie gdy sesja już wylogowana) LUB usuń jako redundantny.
-- **Decision**: PENDING
+- **Decision**: FIXED — usunięto redundantny test `authenticate — zwraca null (brak retry)`.

@@ -64,10 +64,4 @@ class SessionAuthenticatorTest {
         assertNull(result)
     }
 
-    @Test
-    fun `authenticate — zwraca null (brak retry)`() {
-        val result = authenticator.authenticate(route = null, response = build401Response())
-
-        assertNull(result)
-    }
 }

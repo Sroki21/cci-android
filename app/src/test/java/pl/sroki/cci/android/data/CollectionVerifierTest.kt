@@ -154,6 +154,9 @@ class CollectionVerifierTest {
         val result = verifier.verify(1L)
 
         assertEquals(CatalogStatus.SWAPPED, result)
+        coVerify(exactly = 0) {
+            capCacheRepository.upsertSnapshot(any(), any(), any(), any(), any(), any(), any())
+        }
     }
 
     @Test
@@ -187,7 +190,7 @@ class CollectionVerifierTest {
 
     @OptIn(ExperimentalCoroutinesApi::class)
     @Test
-    fun `runBatch — max 4 rownolegle wywolania verify`() = runTest(UnconfinedTestDispatcher()) {
+    fun `runFullScan — max 4 rownolegle wywolania verify`() = runTest(UnconfinedTestDispatcher()) {
         val ids = (1L..8L).toList()
         coEvery { capPositionRepository.getAllCapIds() } returns ids
         coEvery { capCacheRepository.getOne(any()) } returns null
