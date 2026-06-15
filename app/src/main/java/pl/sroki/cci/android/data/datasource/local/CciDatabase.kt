@@ -20,7 +20,7 @@ import pl.sroki.cci.android.data.datasource.local.entity.PendingCap
 @Database(
     entities = [PendingCap::class, Binder::class, BinderPage::class, CapPosition::class, CapCache::class, CountryFlag::class],
     version = 7,
-    exportSchema = false
+    exportSchema = true
 )
 abstract class CciDatabase : RoomDatabase() {
     abstract fun pendingCapDao(): PendingCapDao

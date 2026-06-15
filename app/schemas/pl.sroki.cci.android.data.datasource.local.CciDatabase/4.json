@@ -1,0 +1,228 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 4,
+    "identityHash": "cb72d5c52661bb90e8ccf327b76f924a",
+    "entities": [
+      {
+        "tableName": "pending_cap",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`cap_id` INTEGER NOT NULL, PRIMARY KEY(`cap_id`))",
+        "fields": [
+          {
+            "fieldPath": "capId",
+            "columnName": "cap_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "cap_id"
+          ]
+        }
+      },
+      {
+        "tableName": "binder",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `firestore_id` TEXT)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "firestoreId",
+            "columnName": "firestore_id",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "binder_page",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `binder_id` INTEGER NOT NULL, `page_number` INTEGER NOT NULL, `firestore_id` TEXT, FOREIGN KEY(`binder_id`) REFERENCES `binder`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "binderId",
+            "columnName": "binder_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "pageNumber",
+            "columnName": "page_number",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "firestoreId",
+            "columnName": "firestore_id",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_binder_page_binder_id_page_number",
+            "unique": true,
+            "columnNames": [
+              "binder_id",
+              "page_number"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_binder_page_binder_id_page_number` ON `${TABLE_NAME}` (`binder_id`, `page_number`)"
+          },
+          {
+            "name": "index_binder_page_binder_id",
+            "unique": false,
+            "columnNames": [
+              "binder_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_binder_page_binder_id` ON `${TABLE_NAME}` (`binder_id`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "binder",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "binder_id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "cap_position",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `binder_page_id` INTEGER NOT NULL, `position` INTEGER NOT NULL, `cap_id` INTEGER NOT NULL, `firestore_id` TEXT, FOREIGN KEY(`binder_page_id`) REFERENCES `binder_page`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "binderPageId",
+            "columnName": "binder_page_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "position",
+            "columnName": "position",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "capId",
+            "columnName": "cap_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "firestoreId",
+            "columnName": "firestore_id",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_cap_position_binder_page_id_position",
+            "unique": true,
+            "columnNames": [
+              "binder_page_id",
+              "position"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_cap_position_binder_page_id_position` ON `${TABLE_NAME}` (`binder_page_id`, `position`)"
+          },
+          {
+            "name": "index_cap_position_binder_page_id",
+            "unique": false,
+            "columnNames": [
+              "binder_page_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_cap_position_binder_page_id` ON `${TABLE_NAME}` (`binder_page_id`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "binder_page",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "binder_page_id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "cap_cache",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`cap_id` INTEGER NOT NULL, `country` TEXT NOT NULL, PRIMARY KEY(`cap_id`))",
+        "fields": [
+          {
+            "fieldPath": "capId",
+            "columnName": "cap_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "country",
+            "columnName": "country",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "cap_id"
+          ]
+        }
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'cb72d5c52661bb90e8ccf327b76f924a')"
+    ]
+  }
+}
