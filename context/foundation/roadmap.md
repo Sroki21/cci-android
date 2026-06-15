@@ -1,6 +1,6 @@
 ---
 project: "CCI Android — wersja prywatna"
-version: 4
+version: 5
 status: done
 created: 2026-06-11
 updated: 2026-06-15
@@ -17,6 +17,7 @@ top_blocker: none
 > v2 (2026-06-15): F-01, F-02, F-03 i S-02 oznaczone `done`; S-01 awansowane do `ready`.
 > v3 (2026-06-15): S-01, S-03, S-04 oznaczone `done` — wszystkie roadmap items zrealizowane.
 > v4 (2026-06-15): S-05..S-07 dodane i oznaczone `done` — home-screen-redesign, advanced-search, api-validation.
+> v5 (2026-06-15): F-04 (login-fix) i S-08 (collection-stats) dodane i oznaczone `done`.
 
 ## Vision recap
 
@@ -55,6 +56,8 @@ autentykację i zwraca prawdziwy `isInCollection` dla zalogowanego użytkownika.
 | S-05 | home-screen-redesign       | korzystać ze stałego pola wyszukiwania i nowych przycisków nawigacji na Home     | —             | —                                              | done     |
 | S-06 | advanced-search            | wyszukiwać kapsle wg wielu filtrów (ID, tekst, kraj, producent)                  | —             | —                                              | done     |
 | S-07 | api-validation             | (research) zweryfikowane działanie i zgodność 7 endpointów REST API              | —             | —                                              | done     |
+| F-04 | login-fix                  | (foundation) ekran logowania wyświetlany przy pierwszym uruchomieniu             | F-01          | —                                              | done     |
+| S-08 | collection-stats           | widzieć statystyki kolekcji — liczbę kapsli i podział wg kraju z API             | F-01          | FR-014                                         | done     |
 
 ## Streams
 
@@ -205,6 +208,30 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Risk:** Zrealizowane. Weryfikacja ręczna + przegląd modeli Kotlin vs odpowiedzi API.
 - **Status:** done
 
+### F-04: Login fix
+
+- **Outcome:** (foundation) ekran logowania wyświetlany przy pierwszym uruchomieniu gdy użytkownik nie jest zalogowany; `startDestination` w `NavHost` (MainActivity.kt) poprawnie kieruje do auth flow.
+- **Change ID:** `login-fix`
+- **PRD refs:** —
+- **Prerequisites:** F-01
+- **Parallel with:** —
+- **Blockers:** —
+- **Unknowns:** —
+- **Risk:** Zrealizowane. 2-liniowy fix w MainActivity.kt.
+- **Status:** done
+
+### S-08: Collection stats
+
+- **Outcome:** zalogowany użytkownik widzi statystyki własnej kolekcji z API crowncaps.info — całkowitą liczbę kapsli i podział wg kraju; dane pobierane przez dedykowany endpoint i wyświetlane na ekranie statystyk.
+- **Change ID:** `collection-stats`
+- **PRD refs:** FR-014
+- **Prerequisites:** F-01
+- **Parallel with:** —
+- **Blockers:** —
+- **Unknowns:** —
+- **Risk:** Zrealizowane. Endpoint istnieje i zwraca dane zgodne z modelami Kotlin.
+- **Status:** done
+
 ## Backlog Handoff
 
 | Roadmap ID | Change ID                  | Suggested issue title                                               | Ready for `/10x-plan` | Notes                                           |
@@ -244,3 +271,5 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **S-05: Home screen redesign** — Archived 2026-06-15 → `context/archive/2026-06-11-home-screen-redesign/`. Lesson: —.
 - **S-06: Advanced search** — Archived 2026-06-15 → `context/archive/2026-06-12-advanced-search/`. Lesson: —.
 - **S-07: API validation** — Archived 2026-06-15 → `context/archive/2026-06-10-api-validation/`. Lesson: —.
+- **F-04: Login fix** — Archived 2026-06-15 → `context/archive/2026-06-15-login-fix/`. Lesson: —.
+- **S-08: Collection stats** — Archived 2026-06-15 → `context/archive/2026-06-15-collection-stats/`. Lesson: —.
