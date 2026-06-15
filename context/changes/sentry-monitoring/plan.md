@@ -152,10 +152,10 @@ runCatching { fetchApiToken(email, password) }
 
 #### Automated
 
-- [x] 1.1 Kompilacja — `./gradlew compileDebugKotlin` — brak błędów po dodaniu SDK
-- [x] 1.2 Lockfile — `./gradlew :app:dependencies --write-locks` — bez konfliktów
+- [x] 1.1 Kompilacja — `./gradlew compileDebugKotlin` — brak błędów po dodaniu SDK — e06ad38
+- [x] 1.2 Lockfile — `./gradlew :app:dependencies --write-locks` — bez konfliktów — e06ad38
 
 #### Manual
 
-- [ ] 1.3 Event testowy dotarł do Sentry dashboard (session lub wymuszony crash)
-- [ ] 1.4 Firebase UID widoczny w polu User na evencie Sentry
+- [x] 1.3 Event testowy dotarł do Sentry dashboard (session lub wymuszony crash)
+- [x] 1.4 Firebase UID widoczny w polu User na evencie Sentry
