@@ -47,7 +47,8 @@ class AuthRepository @Inject constructor(
                     // CookieJar zapisał już uwierzytelnioną sesję z tej odpowiedzi.
                     sessionRepository.setLoggedIn(true)
                     sessionRepository.setUserName(email)
-                    fetchApiToken(email, password)
+                    runCatching { fetchApiToken(email, password) }
+                        .onFailure { Log.w("CCI_AUTH", "api token fetch failed: ${it.message}") }
                     runCatching { firebaseAuthManager.signInWithEmail(email, password) }
                         .onFailure { Log.w("CCI_AUTH", "Firebase signInWithEmail failed: ${it.message}") }
                     try { firestoreRestoreUseCase.restoreIfEmpty() } catch (_: Exception) {}
@@ -72,22 +73,18 @@ class AuthRepository @Inject constructor(
             sessionRepository.setToken(cached)
             return
         }
-        try {
-            val resp = authApiService.apiToken(TokenRequest(email, password, "android"))
-            Log.d("CCI_AUTH", "api token code=${resp.code()}")
-            val raw = resp.body()?.string()
-                ?: resp.errorBody()?.string()
-                ?: run { Log.d("CCI_AUTH", "api token: empty body"); return }
-            val token = when {
-                raw.trimStart().startsWith('"') -> raw.trim().removeSurrounding("\"")
-                raw.trimStart().startsWith('{') -> json.decodeFromString<LoginResponse>(raw).token
-                else -> raw.trim().takeIf { it.isNotBlank() }
-            }
-            Log.d("CCI_AUTH", "api token fetched: ${token != null}, raw prefix=${raw.take(40)}")
-            sessionRepository.setToken(token)
-        } catch (e: Exception) {
-            Log.d("CCI_AUTH", "api token error: ${e.message}")
+        val resp = authApiService.apiToken(TokenRequest(email, password, "android"))
+        Log.d("CCI_AUTH", "api token code=${resp.code()}")
+        val raw = resp.body()?.string()
+            ?: resp.errorBody()?.string()
+            ?: run { Log.d("CCI_AUTH", "api token: empty body"); return }
+        val token = when {
+            raw.trimStart().startsWith('"') -> raw.trim().removeSurrounding("\"")
+            raw.trimStart().startsWith('{') -> json.decodeFromString<LoginResponse>(raw).token
+            else -> raw.trim().takeIf { it.isNotBlank() }
         }
+        Log.d("CCI_AUTH", "api token fetched: ${token != null}, raw prefix=${raw.take(40)}")
+        sessionRepository.setToken(token)
     }
 
     suspend fun logout() {
