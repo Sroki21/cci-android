@@ -52,6 +52,19 @@ class AuthRepositoryTest {
         return context
     }
 
+    private fun mockContextWithToken(token: String): Context {
+        val editor = mockk<SharedPreferences.Editor>(relaxed = true)
+        every { editor.putString(any(), any()) } returns editor
+        every { editor.remove(any()) } returns editor
+        val prefs = mockk<SharedPreferences>()
+        every { prefs.getString("api_token", null) } returns token
+        every { prefs.getString("user_name", null) } returns null
+        every { prefs.edit() } returns editor
+        val context = mockk<Context>()
+        every { context.getSharedPreferences("session", Context.MODE_PRIVATE) } returns prefs
+        return context
+    }
+
     private fun buildRepo() = AuthRepository(
         authApiService, sessionRepository, cookieJar, firebaseAuthManager, firestoreRestoreUseCase
     )
@@ -72,11 +85,22 @@ class AuthRepositoryTest {
 
     @Test
     fun `init — brak cookie — isLoggedIn false`() {
+        // R6: wyjście negatywne — brak tokenu = wylogowany
         every { cookieJar.loadForRequest(any()) } returns emptyList()
 
         buildRepo()
 
         assertEquals(false, sessionRepository.isLoggedIn.value)
+    }
+
+    @Test
+    fun `init — brak cookie, jest token — isLoggedIn true`() {
+        every { cookieJar.loadForRequest(any()) } returns emptyList()
+        sessionRepository = SessionRepository(mockContextWithToken("bearer-token"))
+
+        buildRepo()
+
+        assertTrue(sessionRepository.isLoggedIn.value)
     }
 
     @Test

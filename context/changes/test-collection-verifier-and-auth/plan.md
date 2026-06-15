@@ -295,22 +295,22 @@ Testy JVM bez opóźnień sieciowych; `StandardTestDispatcher` skipuje `delay(12
 
 #### Automated
 
-- [x] 2.1 `./gradlew testDebugUnitTest` przechodzi bez błędów
-- [x] 2.2 Test sukcesu (`signInWithEmail sukces`) zielony
-- [x] 2.3 Testy R3 bug (złe hasło, błąd sieci) failują lub są @Ignore z komentarzem
+- [x] 2.1 `./gradlew testDebugUnitTest` przechodzi bez błędów — 9ca482e
+- [x] 2.2 Test sukcesu (`signInWithEmail sukces`) zielony — 9ca482e
+- [x] 2.3 Testy R3 bug (złe hasło, błąd sieci) failują lub są @Ignore z komentarzem — 9ca482e
 
 #### Manual
 
-- [x] 2.4 Zidentyfikuj w Android Studio które testy dokumentują R3 bug
+- [x] 2.4 Zidentyfikuj w Android Studio które testy dokumentują R3 bug — 9ca482e
 
 ### Phase 3: SessionAuthenticatorTest + AuthRepositoryTest patch
 
 #### Automated
 
-- [ ] 3.1 `./gradlew testDebugUnitTest` przechodzi bez błędów
-- [ ] 3.2 Nowe testy w `SessionAuthenticatorTest` zielone
-- [ ] 3.3 Nowe testy w `AuthRepositoryTest` zielone (init + token)
+- [x] 3.1 `./gradlew testDebugUnitTest` przechodzi bez błędów
+- [x] 3.2 Nowe testy w `SessionAuthenticatorTest` zielone
+- [x] 3.3 Nowe testy w `AuthRepositoryTest` zielone (init + token)
 
 #### Manual
 
-- [ ] 3.4 Potwierdź w Android Studio brak regresji w istniejącym `AuthRepositoryTest`
+- [x] 3.4 Potwierdź w Android Studio brak regresji w istniejącym `AuthRepositoryTest`
