@@ -1,6 +1,7 @@
 package pl.sroki.cci.android.data
 
 import android.util.Log
+import io.sentry.Sentry
 import com.franmontiel.persistentcookiejar.PersistentCookieJar
 import kotlinx.serialization.json.Json
 import okhttp3.HttpUrl.Companion.toHttpUrl
@@ -48,7 +49,10 @@ class AuthRepository @Inject constructor(
                     sessionRepository.setLoggedIn(true)
                     sessionRepository.setUserName(email)
                     runCatching { fetchApiToken(email, password) }
-                        .onFailure { Log.w("CCI_AUTH", "api token fetch failed: ${it.message}") }
+                        .onFailure {
+                            Sentry.captureException(it)
+                            Log.w("CCI_AUTH", "api token fetch failed: ${it.message}")
+                        }
                     runCatching { firebaseAuthManager.signInWithEmail(email, password) }
                         .onFailure { Log.w("CCI_AUTH", "Firebase signInWithEmail failed: ${it.message}") }
                     try { firestoreRestoreUseCase.restoreIfEmpty() } catch (_: Exception) {}

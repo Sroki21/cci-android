@@ -15,6 +15,9 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.CCI"
         tools:targetApi="31">
+        <meta-data
+            android:name="io.sentry.dsn"
+            android:value="https://93dc374117d0f6f4a88619a96f1ea01c@o4511529432055808.ingest.de.sentry.io/4511571137134672" />
         <activity
             android:name=".MainActivity"
             android:exported="true"
