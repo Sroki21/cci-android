@@ -1,10 +1,10 @@
 ---
 change_id: test-firestore-restore-and-slots
 title: Testy Firestore dual-write, restore concurrency i slot uniqueness
-status: impl_reviewed
+status: archived
 created: 2026-06-15
 updated: 2026-06-15
-archived_at: null
+archived_at: 2026-06-15T19:06:49Z
 ---
 
 ## Notes
