@@ -1,10 +1,10 @@
 ---
 change_id: test-room-migrations
 title: Test room migrations
-status: impl_reviewed
+status: archived
 created: 2026-06-15
 updated: 2026-06-15
-archived_at: null
+archived_at: 2026-06-15T18:17:03Z
 ---
 
 ## Notes
