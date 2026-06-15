@@ -252,9 +252,9 @@ Foundations below assume these are present and do NOT re-scaffold them.
 
 ## Parked
 
-- **Tryb offline dla sprawdzania isInCollection** — Why parked: PRD §Non-Goals — wymaga aktywnego połączenia z API; widok klaserów (dane lokalne) działa offline. Kandydat do v2.
+- **Tryb offline dla sprawdzania isInCollection** — Why parked: PRD §Non-Goals — wymaga aktywnego połączenia z API. **Częściowo spełniony (2026-06-15):** dane klaserów, strony, pozycje i cache kapsli przechowywane lokalnie w Room; aplikacja działa offline w zakresie przeglądania klaserów. Pełny offline (isInCollection bez internetu) to kandydat do v2.
 - **Wersja publiczna** — Why parked: PRD §Non-Goals — osobny projekt, osobny shaping.
-- **Rozpoznawanie kapsla ze zdjęcia przez AI** — Why parked: PRD §Non-Goals — PictureSearch pozostaje jako wybór kategorii wizualnych; AI image recognition to oddzielna, kosztowna decyzja.
+- **Rozpoznawanie kapsla ze zdjęcia przez AI** — **Porzucone (2026-06-15).** Aplikacja ma już wbudowany (nie-AI) moduł rozpoznawania kapsla ze zdjęcia — oddzielna implementacja AI jest zbędna.
 - **Udostępnianie kolekcji innym użytkownikom** — Why parked: PRD §Non-Goals — aplikacja prywatna, jedno konto.
 - **Usuwanie kapsla z kolekcji crowncaps.info z poziomu aplikacji** — Why parked: PRD §Non-Goals — MVP obsługuje tylko dodawanie.
 - **FR-014: Statystyki kolekcji (liczba kapsli, podział wg kraju)** — Why parked: Priority: nice-to-have; dostępność API weryfikowana przed implementacją — endpoint może nie istnieć.
