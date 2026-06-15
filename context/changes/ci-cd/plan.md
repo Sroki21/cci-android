@@ -158,11 +158,11 @@ joba na GitHub Actions.
 #### Automated
 
 - [x] 1.1 Plik `.github/workflows/android.yml` istnieje — 129b551
-- [ ] 1.2 Job `ci` zielony na GitHub Actions (wszystkie kroki ✓)
-- [ ] 1.3 Logi: `23 tests, 0 failures` w kroku testów
-- [ ] 1.4 Logi: `BUILD SUCCESSFUL` w kroku ktlint
+- [x] 1.2 Job `ci` zielony na GitHub Actions (wszystkie kroki ✓)
+- [x] 1.3 Logi: `23 tests, 0 failures` w kroku testów
+- [x] 1.4 Logi: `BUILD SUCCESSFUL` w kroku ktlint
 
 #### Manual
 
-- [ ] 1.5 Run widoczny w zakładce Actions na GitHub po push do main
+- [x] 1.5 Run widoczny w zakładce Actions na GitHub po push do main
 - [ ] 1.6 Cache hit przy drugim uruchomieniu (czas buildu ~2-3 min)
