@@ -283,25 +283,25 @@ Testy JVM bez opóźnień sieciowych; `StandardTestDispatcher` skipuje `delay(12
 
 #### Automated
 
-- [x] 1.1 `./gradlew testDebugUnitTest` przechodzi bez błędów
-- [x] 1.2 Wszystkie 7 testów w `CollectionVerifierTest` zielone
-- [x] 1.3 Brak nowych lint warnings
+- [x] 1.1 `./gradlew testDebugUnitTest` przechodzi bez błędów — 5c7642f
+- [x] 1.2 Wszystkie 7 testów w `CollectionVerifierTest` zielone — 5c7642f
+- [x] 1.3 Brak nowych lint warnings — 5c7642f
 
 #### Manual
 
-- [x] 1.4 Uruchom CollectionVerifierTest w Android Studio i potwierdź przejście
+- [x] 1.4 Uruchom CollectionVerifierTest w Android Studio i potwierdź przejście — 5c7642f
 
 ### Phase 2: FirebaseAuthManagerTest
 
 #### Automated
 
-- [ ] 2.1 `./gradlew testDebugUnitTest` przechodzi bez błędów
-- [ ] 2.2 Test sukcesu (`signInWithEmail sukces`) zielony
-- [ ] 2.3 Testy R3 bug (złe hasło, błąd sieci) failują lub są @Ignore z komentarzem
+- [x] 2.1 `./gradlew testDebugUnitTest` przechodzi bez błędów
+- [x] 2.2 Test sukcesu (`signInWithEmail sukces`) zielony
+- [x] 2.3 Testy R3 bug (złe hasło, błąd sieci) failują lub są @Ignore z komentarzem
 
 #### Manual
 
-- [ ] 2.4 Zidentyfikuj w Android Studio które testy dokumentują R3 bug
+- [x] 2.4 Zidentyfikuj w Android Studio które testy dokumentują R3 bug
 
 ### Phase 3: SessionAuthenticatorTest + AuthRepositoryTest patch
 
