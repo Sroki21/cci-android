@@ -1,10 +1,10 @@
 ---
 change_id: collection-resilience
 title: Odporność kolekcji na zmiany w katalogu crowncaps (snapshot + weryfikacja)
-status: implementing
+status: archived
 created: 2026-06-14
-updated: 2026-06-14
-archived_at: null
+updated: 2026-06-15
+archived_at: 2026-06-15T00:00:00Z
 ---
 
 ## Notes
