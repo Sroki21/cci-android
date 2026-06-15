@@ -8,6 +8,8 @@ import io.mockk.just
 import io.mockk.mockk
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.ResponseBody.Companion.toResponseBody
@@ -178,13 +180,14 @@ class CollectionVerifierTest {
         val callCount = AtomicInteger(0)
         verifier.runFullScan(isCancelled = { callCount.incrementAndGet() > 1 })
 
-        coVerify(atMost = 1) {
+        coVerify(exactly = 1) {
             capCacheRepository.upsertSnapshot(any(), any(), any(), any(), any(), any(), any())
         }
     }
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     @Test
-    fun `runBatch — max 4 rownolegle wywolania verify`() = runTest {
+    fun `runBatch — max 4 rownolegle wywolania verify`() = runTest(UnconfinedTestDispatcher()) {
         val ids = (1L..8L).toList()
         coEvery { capPositionRepository.getAllCapIds() } returns ids
         coEvery { capCacheRepository.getOne(any()) } returns null
