@@ -1,7 +1,7 @@
 ---
 id: test-collection-verifier-and-auth
 title: "Phase A — Data Integrity: CollectionVerifier + Auth tests"
-status: implementing
+status: implemented
 created: 2026-06-15
 updated: 2026-06-15
 

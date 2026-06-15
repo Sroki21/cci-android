@@ -307,10 +307,10 @@ Testy JVM bez opóźnień sieciowych; `StandardTestDispatcher` skipuje `delay(12
 
 #### Automated
 
-- [x] 3.1 `./gradlew testDebugUnitTest` przechodzi bez błędów
-- [x] 3.2 Nowe testy w `SessionAuthenticatorTest` zielone
-- [x] 3.3 Nowe testy w `AuthRepositoryTest` zielone (init + token)
+- [x] 3.1 `./gradlew testDebugUnitTest` przechodzi bez błędów — 9aa7d3c
+- [x] 3.2 Nowe testy w `SessionAuthenticatorTest` zielone — 9aa7d3c
+- [x] 3.3 Nowe testy w `AuthRepositoryTest` zielone (init + token) — 9aa7d3c
 
 #### Manual
 
-- [x] 3.4 Potwierdź w Android Studio brak regresji w istniejącym `AuthRepositoryTest`
+- [x] 3.4 Potwierdź w Android Studio brak regresji w istniejącym `AuthRepositoryTest` — 9aa7d3c
