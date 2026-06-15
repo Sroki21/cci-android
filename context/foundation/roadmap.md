@@ -1,6 +1,6 @@
 ---
 project: "CCI Android — wersja prywatna"
-version: 5
+version: 6
 status: done
 created: 2026-06-11
 updated: 2026-06-15
@@ -18,6 +18,7 @@ top_blocker: none
 > v3 (2026-06-15): S-01, S-03, S-04 oznaczone `done` — wszystkie roadmap items zrealizowane.
 > v4 (2026-06-15): S-05..S-07 dodane i oznaczone `done` — home-screen-redesign, advanced-search, api-validation.
 > v5 (2026-06-15): F-04 (login-fix) i S-08 (collection-stats) dodane i oznaczone `done`.
+> v6 (2026-06-15): S-09 (cap-recognition) dodane i oznaczone `done`.
 
 ## Vision recap
 
@@ -58,6 +59,7 @@ autentykację i zwraca prawdziwy `isInCollection` dla zalogowanego użytkownika.
 | S-07 | api-validation             | (research) zweryfikowane działanie i zgodność 7 endpointów REST API              | —             | —                                              | done     |
 | F-04 | login-fix                  | (foundation) ekran logowania wyświetlany przy pierwszym uruchomieniu             | F-01          | —                                              | done     |
 | S-08 | collection-stats           | widzieć statystyki kolekcji — liczbę kapsli i podział wg kraju z API             | F-01          | FR-014                                         | done     |
+| S-09 | cap-recognition            | rozpoznać kapsel ze zdjęcia bez zewnętrznego AI — wbudowany moduł                | —             | —                                              | done     |
 
 ## Streams
 
@@ -232,6 +234,18 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Risk:** Zrealizowane. Endpoint istnieje i zwraca dane zgodne z modelami Kotlin.
 - **Status:** done
 
+### S-09: Cap recognition
+
+- **Outcome:** użytkownik może zrobić zdjęcie kapsla i aplikacja identyfikuje go przy użyciu wbudowanego modułu rozpoznawania obrazu (bez zewnętrznego AI/API).
+- **Change ID:** `cap-recognition`
+- **PRD refs:** —
+- **Prerequisites:** —
+- **Parallel with:** —
+- **Blockers:** —
+- **Unknowns:** —
+- **Risk:** Zrealizowane. Wbudowany moduł — brak zależności zewnętrznych.
+- **Status:** done
+
 ## Backlog Handoff
 
 | Roadmap ID | Change ID                  | Suggested issue title                                               | Ready for `/10x-plan` | Notes                                           |
@@ -254,7 +268,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 
 - **Tryb offline dla sprawdzania isInCollection** — Why parked: PRD §Non-Goals — wymaga aktywnego połączenia z API. **Częściowo spełniony (2026-06-15):** dane klaserów, strony, pozycje i cache kapsli przechowywane lokalnie w Room; aplikacja działa offline w zakresie przeglądania klaserów. Pełny offline (isInCollection bez internetu) to kandydat do v2.
 - **Wersja publiczna** — Why parked: PRD §Non-Goals — osobny projekt, osobny shaping.
-- **Rozpoznawanie kapsla ze zdjęcia przez AI** — **Porzucone (2026-06-15).** Aplikacja ma już wbudowany (nie-AI) moduł rozpoznawania kapsla ze zdjęcia — oddzielna implementacja AI jest zbędna.
+- **Rozpoznawanie kapsla ze zdjęcia przez AI** — **Porzucone (2026-06-15).** Aplikacja ma już wbudowany (nie-AI) moduł rozpoznawania kapsla ze zdjęcia (S-09) — oddzielna implementacja AI jest zbędna.
 - **Udostępnianie kolekcji innym użytkownikom** — Why parked: PRD §Non-Goals — aplikacja prywatna, jedno konto.
 - **Usuwanie kapsla z kolekcji crowncaps.info z poziomu aplikacji** — Why parked: PRD §Non-Goals — MVP obsługuje tylko dodawanie.
 - **FR-014: Statystyki kolekcji (liczba kapsli, podział wg kraju)** — Why parked: Priority: nice-to-have; dostępność API weryfikowana przed implementacją — endpoint może nie istnieć.
@@ -273,3 +287,4 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **S-07: API validation** — Archived 2026-06-15 → `context/archive/2026-06-10-api-validation/`. Lesson: —.
 - **F-04: Login fix** — Archived 2026-06-15 → `context/archive/2026-06-15-login-fix/`. Lesson: —.
 - **S-08: Collection stats** — Archived 2026-06-15 → `context/archive/2026-06-15-collection-stats/`. Lesson: —.
+- **S-09: Cap recognition** — Archived 2026-06-15 → `context/archive/2026-06-15-cap-recognition/`. Lesson: —.
