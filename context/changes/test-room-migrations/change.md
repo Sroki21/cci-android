@@ -1,7 +1,7 @@
 ---
 change_id: test-room-migrations
 title: Test room migrations
-status: implementing
+status: implemented
 created: 2026-06-15
 updated: 2026-06-15
 archived_at: null
