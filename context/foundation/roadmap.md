@@ -1,9 +1,9 @@
 ---
 project: "CCI Android — wersja prywatna"
-version: 1
-status: draft
+version: 4
+status: done
 created: 2026-06-11
-updated: 2026-06-11
+updated: 2026-06-15
 prd_version: 1
 main_goal: low-complexity
 top_blocker: none
@@ -14,6 +14,9 @@ top_blocker: none
 > Derived from `context/foundation/prd.md` (v1) + auto-researched codebase baseline.
 > Edit-in-place; archive when superseded.
 > Slices below are listed in dependency order. The "At a glance" table is the index.
+> v2 (2026-06-15): F-01, F-02, F-03 i S-02 oznaczone `done`; S-01 awansowane do `ready`.
+> v3 (2026-06-15): S-01, S-03, S-04 oznaczone `done` — wszystkie roadmap items zrealizowane.
+> v4 (2026-06-15): S-05..S-07 dodane i oznaczone `done` — home-screen-redesign, advanced-search, api-validation.
 
 ## Vision recap
 
@@ -36,41 +39,44 @@ autentykację i zwraca prawdziwy `isInCollection` dla zalogowanego użytkownika.
 
 > "North star" oznacza tutaj: najmniejszy end-to-end przepływ, którego dostarczenie udowodniłoby,
 > że rdzeń produktu działa — umieszczony tak wcześnie, jak pozwalają Prerequisites, bo wszystko
-> inne ma sens tylko jeśli ten przepływ działa.
+> inne ma sens tylko jeśli ten przepływ działa. S-01 jest teraz `ready` — F-01 i F-02 spełnione.
 
 ## At a glance
 
-| ID   | Change ID                  | Outcome (user can…)                                                              | Prerequisites | PRD refs                                    | Status   |
-|------|----------------------------|----------------------------------------------------------------------------------|---------------|---------------------------------------------|----------|
-| F-01 | auth-scaffold              | (foundation) zalogować się kontem crowncaps.info i wywoływać auth'd endpointy    | —             | FR-001, FR-002, FR-004, FR-005, FR-006      | ready    |
-| F-02 | room-local-data            | (foundation) lokalnie trwałe dane klaserów i kapsli oczekujących są dostępne     | —             | FR-008, FR-009, FR-010, FR-011, FR-012, FR-013 | ready |
-| F-03 | firestore-sync             | (foundation) dane klaserów/stron/pozycji synchronizowane z Firestore — backup i odtwarzanie po utracie urządzenia | F-02 | — | proposed |
-| S-01 | shop-check-and-mark-bought | widzieć status posiadania przy kapslu i oznaczyć go jako kupiony                  | F-01, F-02    | FR-001, FR-003, FR-007, FR-008, US-01       | proposed |
-| S-02 | binder-management          | tworzyć i usuwać klasery oraz dodawać do nich strony                              | F-02, F-03    | FR-010, FR-011                              | proposed |
-| S-03 | cataloging-flow            | katalogować kapsel z zakładki oczekujących do pozycji w klaserze                  | S-01, S-02    | FR-008, FR-009, FR-012, US-02               | proposed |
-| S-04 | binder-fill-stats          | widzieć zapełnienie klaserów — ile wolnych pozycji na każdej stronie              | S-02, S-03    | FR-013                                      | proposed |
+| ID   | Change ID                  | Outcome (user can…)                                                              | Prerequisites | PRD refs                                       | Status   |
+|------|----------------------------|----------------------------------------------------------------------------------|---------------|------------------------------------------------|----------|
+| F-01 | auth-scaffold              | (foundation) zalogować się kontem crowncaps.info i wywoływać auth'd endpointy    | —             | FR-001, FR-002, FR-004, FR-005, FR-006         | done     |
+| F-02 | room-local-data            | (foundation) lokalnie trwałe dane klaserów i kapsli oczekujących są dostępne     | —             | FR-008, FR-009, FR-010, FR-011, FR-012, FR-013 | done     |
+| F-03 | firestore-sync             | (foundation) dane klaserów/stron/pozycji synchronizowane z Firestore — backup    | F-02          | —                                              | done     |
+| S-01 | shop-check-and-mark-bought | widzieć status posiadania przy kapslu i oznaczyć go jako kupiony                 | F-01, F-02    | FR-001, FR-003, FR-007, FR-008, US-01          | done     |
+| S-02 | binder-management          | tworzyć i usuwać klasery oraz dodawać do nich strony                             | F-02, F-03    | FR-010, FR-011                                 | done     |
+| S-03 | cataloging-flow            | katalogować kapsel z zakładki oczekujących do pozycji w klaserze                 | S-01, S-02    | FR-008, FR-009, FR-012, US-02                  | done     |
+| S-04 | binder-fill-stats          | widzieć zapełnienie klaserów — ile wolnych pozycji na każdej stronie             | S-02, S-03    | FR-013                                         | done     |
+| S-05 | home-screen-redesign       | korzystać ze stałego pola wyszukiwania i nowych przycisków nawigacji na Home     | —             | —                                              | done     |
+| S-06 | advanced-search            | wyszukiwać kapsle wg wielu filtrów (ID, tekst, kraj, producent)                  | —             | —                                              | done     |
+| S-07 | api-validation             | (research) zweryfikowane działanie i zgodność 7 endpointów REST API              | —             | —                                              | done     |
 
 ## Streams
 
 Navigation aid — groups items that share a Prerequisites chain. Canonical ordering still lives
 in the dependency graph below; this table is the proposed reading order across parallel tracks.
 
-| Stream | Theme                                 | Chain                                       | Note                                                                           |
-|--------|---------------------------------------|---------------------------------------------|--------------------------------------------------------------------------------|
-| A      | Struktura klaserów + katalogowanie    | `F-02` → `F-03` → `S-02` → `S-03` → `S-04` | `S-03` joins Stream B at `S-01`; F-03 (Firestore backup) wymagane przed S-02  |
-| B      | Autentykacja + weryfikacja posiadania | `F-01` → `S-01`                             | OQ-1/OQ-2 rozwiązane 2026-06-11; `S-01` wchodzi w `S-03` (Stream A)           |
+| Stream | Theme                                  | Chain                                                    | Note                                                              |
+|--------|----------------------------------------|----------------------------------------------------------|-------------------------------------------------------------------|
+| A      | Autentykacja + weryfikacja posiadania  | `F-01` ✓ → `S-01`                                       | S-01 [ready]; zasila Stream B przy `S-03`                        |
+| B      | Struktura klaserów + katalogowanie     | `F-02` ✓ → `F-03` ✓ → `S-02` ✓ → `S-03` → `S-04`      | S-03 łączy ze Streamu A (czeka na S-01)                          |
 
 ## Baseline
 
-What's already in place in the codebase as of 2026-06-11 (auto-researched + user-confirmed).
+What's already in place in the codebase as of 2026-06-15 (auto-researched + user-confirmed).
 Foundations below assume these are present and do NOT re-scaffold them.
 
-- **Frontend:** present — Jetpack Compose BOM 2025.05.01, 8 ekranów (Home, Countries, CountryCaps, Latest, QuickSearch, PictureSearch, PictureSearchCaps, CapDetail), architektura MVVM+Repository
-- **Backend / API:** present — Retrofit 2.11, 3 serwisy API (CapApiService, CountryApiService, CategoryApiService), 7 endpointów, wszystkie HTTP 200
-- **Data:** absent — brak Room, brak DataStore, brak SharedPreferences
-- **Auth:** absent — wszystkie wywołania API anonimowe, brak interceptora, brak przechowywania tokenu
-- **Deploy / infra:** absent — brak CI/CD, brak Dockerfile
-- **Observability:** partial — tylko `println()` w `CapDetailView.kt:92`, brak frameworka logowania
+- **Frontend:** present — Jetpack Compose BOM 2026.05.01, 8+ ekranów, architektura MVVM+Repository
+- **Backend / API:** present — Retrofit 3.0.0, 3 serwisy API, 7 anonimowych endpointów + auth endpointy (Sanctum)
+- **Data:** present — Room v7, CciDatabase (PendingCap, Binder, BinderPage, CapPosition, CapCache, CountryFlag), Firestore sync dual-write
+- **Auth:** present — CSRF + cookie (Laravel Sanctum), BearerTokenInterceptor, PersistentCookieJar, SessionRepository (SharedPreferences)
+- **Deploy / infra:** partial — GitHub Actions CI (test+lint na push do main); signing release obecny; brak automatycznego deploy APK
+- **Observability:** partial — android.util.Log w AuthRepository i CapsRepository; brak Timber
 
 ## Foundations
 
@@ -84,19 +90,12 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Parallel with:** F-02
 - **Blockers:** —
 - **Unknowns:** —
-- **Auth API contract (zweryfikowany 2026-06-11):**
-  - `GET /sanctum/csrf-cookie` → 204; ustawia `XSRF-TOKEN` + `crowncapsinfo-session` w cookies
-  - `POST /auth/login` + header `X-XSRF-TOKEN` + body `{"email":"...","password":"..."}` → sesja; błąd: `{"errors":{"email":["..."]}}`
-  - `GET /data/users/current` → 200 zalogowany / 401 niezalogowany
-  - `POST /logout`
-  - `POST /data/catalog/caps/{id}/collection` → dodaj do kolekcji (brak body)
-  - `DELETE /data/catalog/caps/{id}/collection` → usuń z kolekcji
-- **Risk:** Laravel Sanctum cookie mode — Android wymaga CookieJar z persystencją między sesjami aplikacji (EncryptedSharedPreferences lub `PersistentCookieJar`). Brak Turnstile po stronie serwera — logowanie nie wymaga CAPTCHA tokena.
-- **Status:** ready
+- **Risk:** Zrealizowane. Laravel Sanctum cookie mode zweryfikowany — `GET /sanctum/csrf-cookie` → `POST /auth/login` → sesja. PersistentCookieJar persystuje cookies między sesjami.
+- **Status:** done
 
 ### F-02: Room local data layer
 
-- **Outcome:** (foundation) minimalny schemat Room: tabela `PendingCap` (cap_id — dla S-01), tabela `Binder` + `BinderPage` (klaser i strony — dla S-02), tabela `CapPosition` (klaser+strona+pozycja jako unique slot — dla S-03, S-04); DAO + Repository; reguła unikalności slotu egzekwowana na poziomie DB constraint. Nie zawiera logiki UI.
+- **Outcome:** (foundation) schemat Room v7: `PendingCap` (dla S-01), `Binder` + `BinderPage` (dla S-02), `CapPosition` (dla S-03/S-04); DAO + Repository; reguła unikalności slotu egzekwowana na poziomie DB constraint.
 - **Change ID:** `room-local-data`
 - **PRD refs:** FR-008, FR-009, FR-010, FR-011, FR-012, FR-013
 - **Unlocks:** S-01 (potrzebuje `PendingCap`), S-02 (potrzebuje `Binder`+`BinderPage`), S-03 (potrzebuje `CapPosition`), S-04 (potrzebuje `CapPosition`)
@@ -104,21 +103,21 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Parallel with:** F-01
 - **Blockers:** —
 - **Unknowns:** —
-- **Risk:** Schemat musi przewidzieć reguły domenowe z góry: strona 1–15, pozycja 1–35, unikalność (binder_id, page, position). Błąd tu wymaga późniejszej migracji Room — jednorazowe przemyślenie schematu jest tańsze niż refactor.
-- **Status:** ready
+- **Risk:** Zrealizowane. Schemat Room v7 obejmuje wszystkie encje domenowe; reguły unikalności zakodowane w DB constraints.
+- **Status:** done
 
 ### F-03: Firestore sync
 
-- **Outcome:** (foundation) dane klaserów (`Binder`), stron (`BinderPage`) i pozycji kapsli (`CapPosition`) są synchronizowane dwukierunkowo z Firebase Firestore; utrata urządzenia nie oznacza utraty danych kolekcji; Room pozostaje lokalnym cache (offline-first) — zapis do Room i Firestore jednocześnie, odczyt zawsze z Room.
+- **Outcome:** (foundation) dane klaserów (`Binder`), stron (`BinderPage`) i pozycji kapsli (`CapPosition`) synchronizowane z Firebase Firestore; Room offline-first — zapis do Room i Firestore jednocześnie, odczyt zawsze z Room; snapshot kolekcji + fingerprint umożliwiają wykrywanie rozbieżności.
 - **Change ID:** `firestore-sync`
 - **PRD refs:** —
-- **Unlocks:** S-02 (klasery muszą być trwałe przed UI), S-03, S-04
-- **Prerequisites:** F-02 (schemat Room musi istnieć; Firestore odzwierciedla te same encje)
-- **Parallel with:** F-01, S-01 (Firestore nie blokuje auth flow)
+- **Unlocks:** S-02 (dane klaserów muszą być trwałe przed UI zarządzania), S-03, S-04
+- **Prerequisites:** F-02
+- **Parallel with:** F-01, S-01
 - **Blockers:** —
-- **Unknowns:** strategia pierwszej synchronizacji po instalacji (Firestore → Room pull); konflikt przy jednoczesnej edycji z dwóch urządzeń (MVP: last-write-wins).
-- **Risk:** Firestore wymaga konta Google i konfiguracji `google-services.json`; darmowy tier (Spark): 1 GB storage, 50K reads/day, 20K writes/day — wystarczający dla prywatnej kolekcji. Offline-first z Room chroni przed przerwami sieciowymi.
-- **Status:** proposed
+- **Unknowns:** —
+- **Risk:** Zrealizowane. Darmowy tier Firestore (Spark) wystarcza dla prywatnej kolekcji. Uwaga: ta foundation wykracza poza PRD NFR ("dane wyłącznie na urządzeniu") — dodana jako resilience improvement.
+- **Status:** done
 
 ## Slices
 
@@ -128,23 +127,23 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Change ID:** `shop-check-and-mark-bought`
 - **PRD refs:** FR-001, FR-003, FR-007, FR-008, US-01
 - **Prerequisites:** F-01 (auth), F-02 (tabela `PendingCap`)
-- **Parallel with:** S-02 (S-02 potrzebuje tylko F-02, niezależne od F-01)
+- **Parallel with:** —
 - **Blockers:** —
 - **Unknowns:** —
-- **Risk:** North star — mechanizm auth jest zweryfikowany (Laravel Sanctum cookie), API zapis do kolekcji istnieje. Główne ryzyko implementacyjne: CookieJar musi persystować cookies między sesjami aplikacji; bez tego sesja ginie po restarcie.
-- **Status:** proposed
+- **Risk:** Zrealizowane. CookieJar persystuje sesję; isInCollection propagowane przez Paging 3.
+- **Status:** done
 
 ### S-02: Kolekcjoner tworzy klasery i strony
 
 - **Outcome:** użytkownik może dodać nowy klaser (nazwa: kontynent + numer), usunąć pusty klaser, dodać stronę do klasera (limit 15); zajęte klasery są chronione przed usunięciem; próba dodania 16. strony kończy się czytelnym komunikatem błędu
 - **Change ID:** `binder-management`
 - **PRD refs:** FR-010, FR-011
-- **Prerequisites:** F-02 (tabele `Binder`+`BinderPage`), F-03 (dane muszą być backupowane przed UI zarządzania)
-- **Parallel with:** S-01 (S-02 nie potrzebuje F-01 — niezależne od Streamu B; można zacząć gdy F-02 i F-03 gotowe)
+- **Prerequisites:** F-02 (tabele `Binder`+`BinderPage`), F-03
+- **Parallel with:** S-01
 - **Blockers:** —
 - **Unknowns:** —
-- **Risk:** Prosta CRUD slice — niskie ryzyko. Ważne: blokada usuwania klasera z kapslami egzekwowana w Room (FK constraint lub DAO-level guard), nie tylko w UI — inaczej user może usunąć klasery przy bezpośrednim dostępie do DB.
-- **Status:** proposed
+- **Risk:** Zrealizowane. Blokada usuwania klasera z kapslami egzekwowana w DAO-level guard i FK constraint.
+- **Status:** done
 
 ### S-03: Kolekcjoner kataloguje kapsel z zakładki oczekujących do klasera
 
@@ -155,32 +154,68 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Parallel with:** —
 - **Blockers:** —
 - **Unknowns:** —
-- **Risk:** UI selector pozycji (klaser → strona → wolne sloty) jest najtrudniejszą częścią implementacji UI w tym projekcie — do 15 stron × 35 = 525 slotów per klaser; należy przewidzieć wydajne renderowanie listy slotów (LazyColumn z filtrowaniem zajętych).
-- **Status:** proposed
+- **Risk:** Zrealizowane. UI selector pozycji z LazyColumn i filtrowaniem zajętych slotów.
+- **Status:** done
 
 ### S-04: Kolekcjoner widzi zapełnienie klaserów
 
 - **Outcome:** użytkownik widzi ekran z listą klaserów; przy każdym klaserze widzi każdą stronę z liczbą wolnych i zajętych pozycji (każda strona ma 35 miejsc); widok obliczany lokalnie bez wywołań API
 - **Change ID:** `binder-fill-stats`
 - **PRD refs:** FR-013
-- **Prerequisites:** S-02 (klasery i strony muszą istnieć), S-03 (kapsle muszą być przypisane — inaczej widok zawsze zerowy)
+- **Prerequisites:** S-02 (klasery i strony muszą istnieć), S-03 (kapsle muszą być przypisane)
 - **Parallel with:** —
 - **Blockers:** —
 - **Unknowns:** —
-- **Risk:** Czysto lokalne obliczenie — brak zewnętrznych zależności, niskie ryzyko. FR-013 ma Priority: must-have, nie nice-to-have — nie można pominąć.
-- **Status:** proposed
+- **Risk:** Zrealizowane. Obliczenie lokalne z Room bez wywołań API.
+- **Status:** done
+
+### S-05: Home screen redesign
+
+- **Outcome:** użytkownik widzi stałe pole wyszukiwania (QuickSearch) zawsze widoczne na HomeScreen oraz nowe przyciski nawigacji; przycisk Szukanie zaawansowane widoczny (choć initially disabled).
+- **Change ID:** `home-screen-redesign`
+- **PRD refs:** —
+- **Prerequisites:** —
+- **Parallel with:** —
+- **Blockers:** —
+- **Unknowns:** —
+- **Risk:** Zrealizowane. UI-only zmiana bez wpływu na logikę biznesową.
+- **Status:** done
+
+### S-06: Advanced search
+
+- **Outcome:** użytkownik może wyszukiwać kapsle wg wielu filtrów jednocześnie: ID (Zawiera/Równe/Zaczyna się od), tekst, kraj (autocomplete), producent; wyniki paginowane (Paging 3), widoczne poniżej formularza; przycisk na HomeScreen odblokowany.
+- **Change ID:** `advanced-search`
+- **PRD refs:** —
+- **Prerequisites:** —
+- **Parallel with:** —
+- **Blockers:** —
+- **Unknowns:** —
+- **Risk:** Zrealizowane. API risk: endpoint `GET api/v1/caps?query=` może nie obsługiwać wszystkich parametrów filtrowania — zweryfikowane w S-07.
+- **Status:** done
+
+### S-07: API validation
+
+- **Outcome:** (research) zweryfikowane poprawne działanie wszystkich 7 endpointów REST API crowncaps.info oraz zgodność odpowiedzi JSON z modelami Kotlin; udokumentowane odchylenia i workaroundy.
+- **Change ID:** `api-validation`
+- **PRD refs:** —
+- **Prerequisites:** —
+- **Parallel with:** —
+- **Blockers:** —
+- **Unknowns:** —
+- **Risk:** Zrealizowane. Weryfikacja ręczna + przegląd modeli Kotlin vs odpowiedzi API.
+- **Status:** done
 
 ## Backlog Handoff
 
-| Roadmap ID | Change ID                  | Suggested issue title                                               | Ready for `/10x-plan` | Notes                                   |
-|------------|----------------------------|---------------------------------------------------------------------|-----------------------|-----------------------------------------|
-| F-01       | auth-scaffold              | [Foundation] Scaffold autoryzacji crowncaps.info                    | yes                   | Uruchom `/10x-plan auth-scaffold`       |
-| F-02       | room-local-data            | [Foundation] Room local data layer — schemat klaserów + PendingCap  | yes                   | Uruchom `/10x-plan room-local-data`     |
-| F-03       | firestore-sync             | [Foundation] Firestore sync — backup klaserów/stron/pozycji         | no                    | Czeka na F-02                           |
-| S-01       | shop-check-and-mark-bought | Kolekcjoner: status posiadania i oznaczenie kupionego               | no                    | Czeka na F-01 i F-02                    |
-| S-02       | binder-management          | Kolekcjoner: tworzenie klaserów i stron                             | no                    | Czeka na F-02 i F-03                    |
-| S-03       | cataloging-flow            | Kolekcjoner: katalogowanie kapsla do klasera                        | no                    | Czeka na S-01 i S-02                   |
-| S-04       | binder-fill-stats          | Kolekcjoner: zapełnienie klaserów                                   | no                    | Czeka na S-02 i S-03                    |
+| Roadmap ID | Change ID                  | Suggested issue title                                               | Ready for `/10x-plan` | Notes                                           |
+|------------|----------------------------|---------------------------------------------------------------------|-----------------------|-------------------------------------------------|
+| F-01       | auth-scaffold              | [Foundation] Scaffold autoryzacji crowncaps.info                    | —                     | Done. Pending `/10x-archive auth-scaffold`      |
+| F-02       | room-local-data            | [Foundation] Room local data layer — schemat klaserów + PendingCap  | —                     | Done. Pending `/10x-archive room-local-data`    |
+| F-03       | firestore-sync             | [Foundation] Firestore sync — backup klaserów/stron/pozycji         | —                     | Done. Pending `/10x-archive firestore-sync`     |
+| S-01       | shop-check-and-mark-bought | Kolekcjoner: status posiadania i oznaczenie kupionego               | —                     | Done. Pending `/10x-archive shop-check-and-mark-bought` |
+| S-02       | binder-management          | Kolekcjoner: tworzenie klaserów i stron                             | —                     | Done. Pending `/10x-archive binder-management`  |
+| S-03       | cataloging-flow            | Kolekcjoner: katalogowanie kapsla do klasera                        | —                     | Done. Pending `/10x-archive cataloging-flow`    |
+| S-04       | binder-fill-stats          | Kolekcjoner: zapełnienie klaserów                                   | —                     | Done. Pending `/10x-archive binder-fill-stats`  |
 
 ## Open Roadmap Questions
 
@@ -194,12 +229,18 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Wersja publiczna** — Why parked: PRD §Non-Goals — osobny projekt, osobny shaping.
 - **Rozpoznawanie kapsla ze zdjęcia przez AI** — Why parked: PRD §Non-Goals — PictureSearch pozostaje jako wybór kategorii wizualnych; AI image recognition to oddzielna, kosztowna decyzja.
 - **Udostępnianie kolekcji innym użytkownikom** — Why parked: PRD §Non-Goals — aplikacja prywatna, jedno konto.
-- **Usuwanie kapsla z kolekcji crowncaps.info z poziomu aplikacji** — Why parked: PRD §Non-Goals — MVP obsługuje tylko dodawanie (oznaczanie jako kupiony).
+- **Usuwanie kapsla z kolekcji crowncaps.info z poziomu aplikacji** — Why parked: PRD §Non-Goals — MVP obsługuje tylko dodawanie.
 - **FR-014: Statystyki kolekcji (liczba kapsli, podział wg kraju)** — Why parked: Priority: nice-to-have; dostępność API weryfikowana przed implementacją — endpoint może nie istnieć.
 
 ## Done
 
-(Puste przy pierwszej generacji. `/10x-archive` dopisuje wpis tutaj — i przełącza Status na `done` —
-gdy zmiana z pasującym `Change ID` zostaje zarchiwizowana. Format:)
-
-- **\<Slice ID\>: \<Outcome\>** — Archived \<YYYY-MM-DD\> → `context/archive/<YYYY-MM-DD-change-id>/`. Lesson: \<pointer do lessons.md lub `—`\>.
+- **F-01: (foundation) zalogować się kontem crowncaps.info i wywoływać auth'd endpointy** — Implemented 2026-06-11. Pending `/10x-archive auth-scaffold`. Lesson: —.
+- **F-02: (foundation) lokalnie trwałe dane klaserów i kapsli oczekujących są dostępne** — Implemented 2026-06-11. Pending `/10x-archive room-local-data`. Lesson: —.
+- **F-03: (foundation) dane klaserów/stron/pozycji synchronizowane z Firestore** — Implemented 2026-06-11. Pending `/10x-archive firestore-sync`. Lesson: —.
+- **S-02: użytkownik może tworzyć i usuwać klasery oraz dodawać do nich strony** — Implemented 2026-06-14. Pending `/10x-archive binder-management`. Lesson: —.
+- **S-01: zalogowany użytkownik widzi status posiadania i oznacza kapsel jako kupiony** — Implemented 2026-06-15. Pending `/10x-archive shop-check-and-mark-bought`. Lesson: —.
+- **S-03: zalogowany użytkownik kataloguje kapsel z zakładki oczekujących do klasera** — Implemented 2026-06-15. Pending `/10x-archive cataloging-flow`. Lesson: —.
+- **S-04: użytkownik widzi zapełnienie klaserów — ile wolnych pozycji na każdej stronie** — Implemented 2026-06-15. Pending `/10x-archive binder-fill-stats`. Lesson: —.
+- **S-05: Home screen redesign** — Archived 2026-06-15 → `context/archive/2026-06-11-home-screen-redesign/`. Lesson: —.
+- **S-06: Advanced search** — Archived 2026-06-15 → `context/archive/2026-06-12-advanced-search/`. Lesson: —.
+- **S-07: API validation** — Archived 2026-06-15 → `context/archive/2026-06-10-api-validation/`. Lesson: —.

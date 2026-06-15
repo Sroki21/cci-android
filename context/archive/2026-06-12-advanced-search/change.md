@@ -1,7 +1,9 @@
 ---
 id: advanced-search
-status: planned
+status: archived
 created: 2026-06-12
+updated: 2026-06-15
+archived_at: 2026-06-15T08:45:44Z
 ---
 
 # Advanced Search — change identity
