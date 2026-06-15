@@ -157,7 +157,7 @@ joba na GitHub Actions.
 
 #### Automated
 
-- [x] 1.1 Plik `.github/workflows/android.yml` istnieje
+- [x] 1.1 Plik `.github/workflows/android.yml` istnieje — 129b551
 - [ ] 1.2 Job `ci` zielony na GitHub Actions (wszystkie kroki ✓)
 - [ ] 1.3 Logi: `23 tests, 0 failures` w kroku testów
 - [ ] 1.4 Logi: `BUILD SUCCESSFUL` w kroku ktlint

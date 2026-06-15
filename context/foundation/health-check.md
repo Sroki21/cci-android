@@ -1,6 +1,6 @@
 ---
 project: "CCI Android — wersja prywatna"
-checked_at: 2026-06-15T08:50:00Z
+checked_at: 2026-06-15T00:00:00Z
 health_status: healthy
 context_type: brownfield
 language_family: java
@@ -19,188 +19,249 @@ audit_findings:
   low: 0
 test_runner_detected: true
 ci_provider: null
-recommended_fixes: 5
+recommended_fixes: 2
 ---
-
-# Health Check — CCI Android
-
-**Sprawdzono**: 2026-06-15 · **Commit**: b8b504c · **Branch**: main · **Repo**: Sroki21/cci-android
-**Rodzina języka**: Kotlin/Android (JVM, Gradle) · **JDK użyty do weryfikacji**: Android Studio JBR (`C:\Program Files\Android\Android Studio\jbr`)
 
 ## Dependency Health
 
 ### Lockfile
 
 ```
-Status: missing (brak gradle.lockfile)
-Package manager: Gradle 9.5.1 (wrapper)
+Status:          present (app/gradle.lockfile)
+Package manager: Gradle (Groovy DSL) z lockAllConfigurations()
 ```
 
-Gradle nie ma domyślnie włączonego dependency lockingu i nie wygenerowano `gradle.lockfile`. **Ryzyko jest jednak zmitigowane**: wszystkie zależności w `app/build.gradle` i `build.gradle` są przypięte do dokładnych wersji (brak dynamicznych `+` / `latest.release`), a wersje pluginów są jawne. Buildy są w praktyce reprodukowalne. Prawdziwy lockfile dodałby gwarancję dla zależności tranzytywnych.
-
-Fix (opcjonalny): włącz `dependencyLocking { lockAllConfigurations() }` w `build.gradle` i wygeneruj lock przez `./gradlew dependencies --write-locks`.
+`app/gradle.lockfile` blokuje wszystkie resolvable konfiguracje Gradle
+(implementation, testImplementation, androidTestImplementation, runtimeClasspath itd.).
+Buildy są reprodukowalne — agent może opierać się na dokładnym stanie całego drzewa
+zależności, w tym tranzytywnych.
 
 ### Security Audit
 
 ```
-Tool: skipped — Gradle/Android nie ma wbudowanego narzędzia audytu CVE (jak Java/Dart)
-Summary: 0 CRITICAL, 0 HIGH, 0 MODERATE, 0 LOW (nie skanowano pod kątem CVE)
-Direct vs transitive: nie dotyczy (brak skanu)
-Recommended external tool: GitHub Dependabot (alerts + auto-PR, zero konfiguracji dla repo na GitHub)
-  lub OWASP dependency-check Gradle plugin (org.owasp.dependencycheck) dla skanu lokalnego/CI
+Tool:    skipped — brak wbudowanego narzędzia audytu CVE dla Kotlin/JVM/Android
+Summary: 0 CRITICAL, 0 HIGH, 0 MODERATE, 0 LOW (brak formalnego skanu)
 ```
 
-Wszystkie zależności to biblioteki first-party Google/JetBrains lub de-facto standardy (Retrofit, Coil, OkHttp, MockK) — niski profil ryzyka, ale formalny skan CVE nie był wykonany.
+**Dostępna automatyzacja bezpieczeństwa:** `.github/dependabot.yml` jest skonfigurowany
+z harmonogramem `weekly` dla ekosystemu `gradle`. Dependabot automatycznie otwiera PR-y
+przy wykryciu podatnych wersji zależności — passywny monitoring aktywny.
+
+**Rekomendowane zewnętrzne narzędzie dla głębszego skanu:**
+OWASP Dependency-Check Gradle plugin (`org.owasp.dependencycheck`) — jednorazowa
+konfiguracja, raport HTML/XML lokalnie lub w CI.
 
 ### Outdated Dependencies
 
 ```
-Packages with major version gaps (stabilne wydania): 0 w kategorii "2+ major behind"
+Sprawdzenie staleness: pominięte w tej sesji (wymaga uruchomienia ./gradlew dependencyUpdates
+w środowisku z Android SDK)
 ```
 
-Raport `./gradlew dependencyUpdates` (ben-manes 0.54.0) wykonany pomyślnie. Zdecydowana większość pozostających „nowszych" wersji to **pre-release (alpha/rc)** — nie rekomendowane do produkcji (np. material3 1.5.0-alpha21, compose-ui 1.12.0-alpha03, hilt 1.4.0-rc01, lifecycle 2.11.0-rc01, navigation 2.10.0-alpha05, appcompat 1.8.0-alpha01). Pomijamy je świadomie.
+Plugin `com.github.ben-manes.versions` (0.54.0) jest zainstalowany. Uruchom lokalnie:
 
-Stabilne wydania pozostające w tyle (informacyjnie, opcjonalna aktualizacja — żadne ≥2 major wstecz):
+```bash
+./gradlew dependencyUpdates
+# Raport: app/build/dependencyUpdates/report.txt
+```
 
-- **androidx.room** 2.7.0 → 2.8.4 (stabilny minor)
-- **com.google.firebase:firebase-bom** 33.8.0 → 34.14.1 (1 major)
-- **com.squareup.okhttp3:logging-interceptor** 4.12.0 → 5.4.0 (1 major)
-- **com.pinterest.ktlint** (CLI rulesetu) 1.0.1 → 1.8.0 (narzędzie, znacząca poprawa reguł)
-- **org.jetbrains.kotlin** 2.3.20 → 2.4.0 — **świadomie zablokowany**: czeka na KSP 2.4.x (zob. notatka projektowa o macierzy wersji)
+Na podstawie przeglądu `app/build.gradle` — używane wersje:
+
+| Zależność               | Wersja w projekcie | Uwaga                                       |
+|-------------------------|--------------------|---------------------------------------------|
+| Compose BOM             | 2026.05.01         | Bardzo aktualne                             |
+| Hilt                    | 2.59.2             | Aktualne                                    |
+| Room                    | 2.7.0              | Dostępny 2.8.x (minor)                      |
+| Retrofit                | 3.0.0              | Aktualne (major jump z 2.x zakończony)      |
+| Firebase BOM            | 33.8.0             | Dostępny 34.x (1 major)                     |
+| OkHttp logging          | 4.12.0             | Dostępny 5.x (1 major)                      |
+| Paging                  | 3.5.0              | Aktualne                                    |
+| Kotlin                  | 2.3.20             | 2.4.0 świadomie zablokowany (czeka KSP 2.4.x) |
+| kotlinx-coroutines-test | 1.11.0             | Aktualne                                    |
+
+Brak zależności ≥2 major versions behind na podstawie przeglądu. Kotlin 2.4.0 jest
+świadomie odroczony (patrz memory: `project_kotlin_upgrade_blocked.md`).
+
+---
 
 ## Test Suite
 
 ```
-Test runner: JUnit 4 + MockK 1.14.11 + kotlinx-coroutines-test 1.11.0 + paging-testing 3.5.0
-Tests found: 23 testy jednostkowe (6 klas) + 7 klas testów instrumentowanych
-Test execution: passing (23/23 unit, 0 failures, 0 errors) — zweryfikowane realnym przebiegiem
+Test runner:    JUnit 4 + MockK 1.14.11 + kotlinx-coroutines-test 1.11.0 + paging-testing 3.5.0
+Tests found:    6 klas unit testów (host JVM) + 7 klas testów instrumentowanych (device)
+Test execution: nie uruchomiono w tej sesji (wymaga Android SDK + JDK w środowisku)
 ```
 
+**Konfiguracja:**
+
 ```
-Configuration: app/build.gradle (testOptions.unitTests.returnDefaultValues = true)
-Framework: JUnit 4.13.2; mock przez MockK (constructor injection); korutyny przez runTest
+Framework:    JUnit 4 (junit:junit:4.13.2)
+Mocking:      MockK 1.14.11 (constructor injection — zgodnie z CLAUDE.md)
+Async:        kotlinx-coroutines-test 1.11.0, runTest, UnconfinedTestDispatcher
+Paging:       paging-testing 3.5.0
+Instrumented: Espresso 3.7.0 + Compose UI Test + Room Testing 2.7.0
+testOptions:  unitTests.returnDefaultValues = true
 ```
 
-Testy jednostkowe uruchomione przez `./gradlew testDebugUnitTest` — **BUILD SUCCESSFUL**, wszystkie zielone:
+**Pliki unit testów (host JVM — app/src/test):**
 
-| Klasa testowa | Testy | Wynik |
-|---|---|---|
-| `data.AuthRepositoryTest` | 5 | ✓ |
-| `data.CapsRepositoryTest` | 5 | ✓ |
-| `data.LatestCapsPagingSourceTest` | 4 | ✓ |
-| `ui.binders.BindersViewModelTest` | 5 | ✓ |
-| `ui.home.HomeViewModelTest` | 3 | ✓ |
-| `ExampleUnitTest` (stub) | 1 | ✓ |
+| Klasa                       | Typ    | Co testuje                                       |
+|-----------------------------|--------|--------------------------------------------------|
+| `ExampleUnitTest`           | stub   | auto-wygenerowany (2+2=4)                        |
+| `CapsRepositoryTest`        | realny | 5 testów delegacji getLatest/getByCountryId/getByQuery/PagingSource |
+| `AuthRepositoryTest`        | realny | 5 testów login/logout/cookie session/CSRF flow   |
+| `HomeViewModelTest`         | realny | 3 testy stanu isLoggedIn/userName                |
+| `BindersViewModelTest`      | realny | testy ViewModel klaserów                         |
+| `LatestCapsPagingSourceTest`| realny | testy PagingSource dla latest caps               |
 
-Testy instrumentowane (`app/src/androidTest`, wymagają emulatora/urządzenia — **nieuruchamiane w tym health-checku**): `BinderRepositoryTest`, `CapPositionRepositoryTest`, `FirestoreRestoreTest`, `FirestoreWriteThroughTest`, `MigrationTest`, `PendingCapDaoTest`, `ExampleInstrumentedTest`.
+**Pliki testów instrumentowanych (device/emulator — app/src/androidTest):**
 
-To radykalna poprawa względem oceny stosu z 2026-06-10, gdzie istniały wyłącznie autogenerowane stuby. Agent ma teraz działający mechanizm weryfikacji własnych zmian oraz wzorce testowe do naśladowania (ViewModel, Repository, PagingSource, DAO, migracje Room, write-through Firestore).
+| Klasa                      | Co testuje                                     |
+|----------------------------|------------------------------------------------|
+| `ExampleInstrumentedTest`  | stub                                           |
+| `PendingCapDaoTest`        | DAO dla kapsli oczekujących (Room)             |
+| `BinderRepositoryTest`     | Repository klaserów (prawdziwy Room)           |
+| `CapPositionRepositoryTest`| pozycje kapsli w klaserach                    |
+| `FirestoreWriteThroughTest`| dual-write Room + Firestore                    |
+| `FirestoreRestoreTest`     | przywracanie kolekcji ze snapshotu Firestore   |
+| `MigrationTest`            | Room schema migrations                         |
+
+Wzorzec testowy jest spójny z `CLAUDE.md`: constructor injection z MockK, `runTest`
+dla suspend functions, `UnconfinedTestDispatcher` dla ViewModeli. Agent ma działające
+wzorce do naśladowania dla każdej warstwy (ViewModel, Repository, PagingSource, DAO,
+migracje Room, write-through Firestore).
+
+---
 
 ## CI/CD
 
 ```
-Provider: not detected
-Configuration: not found (brak .github/workflows/, brak innej konfiguracji CI)
+Provider:      nie wykryto (brak .github/workflows/)
+Configuration: nie znaleziono
 ```
 
-| Stage      | Status | Notes |
-|------------|--------|-------|
-| Lint       | ✗      | ktlint skonfigurowany lokalnie (plugin), ale brak pipeline CI |
-| Test       | ✗      | runner działa lokalnie, ale brak pipeline CI |
-| Build      | ✗      | nie skonfigurowane w CI |
-| Type check | ✗      | kompilator Kotlin (wbudowany), brak osobnego kroku CI |
-| Security   | ✗      | brak Dependabot/skanu w CI |
+**Dostępna automatyzacja (poza pipeline):**
 
-ℹ Brak konfiguracji CI/CD. To skonfigurujesz na lekcji o infrastrukturze i deploy ([Sprint Zero z Agentem — M1L5](https://platforma.przeprogramowani.pl/external/10xdevs-3/m1-l5)). Na ten moment działający lokalny runner testów wystarcza do współpracy z agentem.
+`.github/dependabot.yml` — automatyczne PR-y przy nowych wersjach zależności Gradle
+(harmonogram: weekly). To nie jest pipeline CI, ale daje passywny monitoring wersji
+i podatności.
+
+Stage coverage (brak pipeline):
+
+| Stage      | Status | Uwagi                                             |
+|------------|--------|---------------------------------------------------|
+| Lint       | ✗      | ktlint dostępny lokalnie (plugin), brak w CI      |
+| Test       | ✗      | JUnit 4 + MockK lokalne, brak automatyzacji w CI  |
+| Build      | ✗      | `./gradlew assembleDebug` lokalnie                |
+| Type check | ✗      | kompilator Kotlin wbudowany, brak kroku CI        |
+| Security   | ~      | Dependabot (PR-y przy podatnościach) — częściowe  |
+
+ℹ Brak CI/CD pipeline. Ustawisz go w lekcji infrastruktury i wdrożenia.
+Dla teraz lokalny runner testów wystarczy do współpracy z agentem.
+
+---
 
 ## Configuration
 
+Wszystkie oczekiwane pliki konfiguracyjne są obecne:
+
+| Plik           | Status | Uwaga                                                            |
+|----------------|--------|------------------------------------------------------------------|
+| `.editorconfig`| ✓      | kt/kts: indent_size=4, max_line_length=120, UTF-8, LF            |
+| `.gitignore`   | ✓      | Wyklucza .idea, /build, keystore.properties, *.jks, .claude/     |
+| `CLAUDE.md`    | ✓      | Kompletna dokumentacja konwencji (struktura, MVVM, Hilt, nawigacja) |
+| ktlint         | ✓      | Plugin `org.jlleitschuh.gradle.ktlint` w app/build.gradle        |
+
 ### High severity
 
-Brak luk wysokiej wagi. `.gitignore` obecny i poprawnie wyklucza sekrety (`keystore.properties`, `*.jks`, `*.keystore`, `local.properties`, `/build`, `.claude/`).
+Brak.
 
 ### Medium severity
 
-Brak luk średniej wagi. Formatter/linter (**ktlint** `org.jlleitschuh.gradle.ktlint` 12.1.2) jest skonfigurowany — `./gradlew ktlintCheck` przechodzi bez naruszeń. `.editorconfig` obecny i spójny z regułami ktlint (4 spacje, max line 120, LF, UTF-8).
+Brak.
 
 ### Low severity
 
-- **`.env.example`** — brak, ale **nie dotyczy** tego stacku. Android nie używa plików `.env`; konfiguracja środowiskowa to `keystore.properties` (poza VCS) oraz `google-services.json` (Firebase). Dokumentacja zmiennych nie jest tu potrzebna.
+- **`.env.example`** — nie dotyczy. Android nie używa zmiennych środowiskowych serwera.
+  Konfiguracja wrażliwa (`keystore.properties`, `google-services.json`) jest celowo
+  poza VCS (`.gitignore`). Brak potrzeby `.env.example`.
 
-Pozostałe oczekiwane pliki obecne: `.editorconfig` ✓, `.gitignore` ✓, `CLAUDE.md` ✓. `tsconfig` nie dotyczy (Kotlin jest statycznie typowany natywnie).
+---
 
 ## Stack Assessment Cross-Reference
 
 ```
 Stack assessment: context/foundation/stack-assessment.md
-Agent readiness (from stack-assess): ready-with-compensation
+Agent readiness (from stack-assess): ready
+Gates passed: 4/4 (wszystkie kryteria agentowej przyjazności)
 ```
 
-Obie luki kompensacyjne ze stack-assessment zostały **wdrożone od czasu oceny (2026-06-10)**:
+Dwa obszary zidentyfikowane w poprzedniej ocenie stack-assessment (2026-06-10,
+`ready-with-compensation`) zostały zamknięte przed aktualną oceną:
 
-| Quality Gate Gap | Health-Check Finding | Status |
-|------------------|----------------------|--------|
-| convention_based: partial (brak pliku instrukcji) | `CLAUDE.md` obecny, z pełną sekcją konwencji architektonicznych (struktura pakietów, reguła podziału modeli, granice MVVM+Repository, wzorzec Hilt, nawigacja, testowanie) | Zmitigowane |
-| test runner: brak realnych testów (tylko stuby) | 23 działające testy jednostkowe (ViewModel/Repository/PagingSource) + 7 klas testów instrumentowanych (Room, Firestore, migracje) | Zmitigowane |
+| Gap ze stack-assess (2026-06-10)       | Wynik health-check (2026-06-15)                                          | Status         |
+|----------------------------------------|--------------------------------------------------------------------------|----------------|
+| Convention-based: partial (brak CLAUDE.md) | `CLAUDE.md` obecny z pełną dokumentacją: struktura pakietów, MVVM, Hilt, nawigacja, testowanie | Zmitigowany ✓ |
+| Niskie pokrycie testami                | 5 realnych klas unit testów + 7 klas testów instrumentowanych (Room, Firestore, migracje) | Zmitigowany ✓ |
 
-Verdict `ready-with-compensation` ze stack-assess jest teraz w pełni pokryty — rekomendowane kompensacje istnieją w kodzie.
+**Dodatkowe ustalenia health-check (poza stack-assess):**
+
+- Dependabot skonfigurowany (`.github/dependabot.yml`) — monitoring podatności aktywny.
+  Stack-assess nie odnotował tego.
+- Instrumented tests pokrywają warstwy persistence (Room DAO, Repository, migracje,
+  dual-write Firestore) — kompensuje brak testów integracyjnych w CI.
+- Drobna rozbieżność wersji między `stack-assessment.md` a `app/build.gradle`:
+  Compose BOM `2026.05.01` vs `2025.05.01`; Retrofit `3.0.0` vs `2.11`; Paging `3.5.0`
+  vs `3.3.4` — stack-assessment odnotowuje nieznacznie starsze dane. Wersje
+  w `app/build.gradle` są autorytarne.
+
+---
 
 ## Recommended Fixes
 
 ### Fix before agent work (Category A)
 
-#### 1. Dodaj automatyczny skan podatności zależności (Dependabot)
+Brak blokerów. Projekt spełnia wszystkie Category A kryteria — nie ma CRITICAL/HIGH
+audit findings, test runner jest na miejscu i ma wzorce, dependency locking aktywny,
+konfiguracja kompletna.
 
-**Impact**: Bez skanu CVE ani agent, ani Ty nie macie sygnału o znanych podatnościach w drzewie zależności (w tym tranzytywnych — Firebase, OkHttp, Retrofit ciągną sporo).
+**Opcjonalne ulepszenia (niska priorytet — nie blokujące):**
+
+#### 1. Uruchom `./gradlew dependencyUpdates` przed kolejną serią zmian
+
+**Impact**: weryfikacja aktualności wersji (Room 2.8.x, Firebase BOM 34.x, OkHttp 5.x
+jako kandydaci do minor/major update). Plugin jest zainstalowany, wynik dostępny w <2 min.
 **Severity**: low
 **Effort**: quick (< 5 min)
-**Fix**: dodaj `.github/dependabot.yml`:
+**Fix**:
 
-```yaml
-version: 2
-updates:
-  - package-ecosystem: "gradle"
-    directory: "/"
-    schedule:
-      interval: "weekly"
+```bash
+./gradlew dependencyUpdates
+# Raport: app/build/dependencyUpdates/report.txt
 ```
 
-(Alternatywa lokalna/CI: OWASP dependency-check plugin `org.owasp.dependencycheck`, task `./gradlew dependencyCheckAnalyze`.)
+#### 2. Zaktualizuj `stack-assessment.md` o aktualne wersje z `app/build.gradle`
 
-#### 2. (Opcjonalnie) Włącz Gradle dependency locking
-
-**Impact**: Przypięte wersje bezpośrednie już dają reprodukowalność, ale lock zamraża też zależności tranzytywne — agent może bezpiecznie rozumować o dokładnym stanie drzewa.
+**Impact**: drobna rozbieżność wersji (Compose BOM, Retrofit, Paging) między
+`stack-assessment.md` a rzeczywistym `app/build.gradle` może mylić agenta w przyszłych
+sesjach. `app/build.gradle` jest autorytarne.
 **Severity**: low
 **Effort**: quick (< 5 min)
-**Fix**: w `build.gradle` dodaj `dependencyLocking { lockAllConfigurations() }`, następnie `./gradlew dependencies --write-locks`.
+**Fix**: uruchom `/10x-stack-assess` ponownie lub ręcznie zaktualizuj sekcję
+`stack_components:` w frontmatter `context/foundation/stack-assessment.md`.
 
-#### 3. (Opcjonalnie) Zaktualizuj Room 2.7.0 → 2.8.4
-
-**Impact**: Stabilny minor; projekt aktywnie używa Room (migracje, DAO, testy instrumentowane). Najnowszy patch poziom redukuje ryzyko znanych bugów.
-**Severity**: low
-**Effort**: quick (< 5 min)
-**Fix**: zmień `def room_version = "2.7.0"` → `"2.8.4"` w `app/build.gradle`, przebuduj i uruchom testy instrumentowane Room.
-
-#### 4. (Opcjonalnie) Zaktualizuj ktlint ruleset 1.0.1 → 1.8.0
-
-**Impact**: Linter wymusza spójny styl kodu agenta; ruleset 1.0.1 jest mocno wstecz względem 1.8.0 (lepsze reguły, mniej fałszywych trafień).
-**Severity**: low
-**Effort**: moderate (15–30 min — może wymusić reformat)
-**Fix**: ustaw wersję w bloku `ktlint { version = "1.8.0" }`, uruchom `./gradlew ktlintFormat`, przejrzyj diff.
-
-#### 5. (Opcjonalnie) Rozważ Firebase BOM 33.8.0 → 34.14.1 i OkHttp 4.x → 5.x
-
-**Impact**: Major bumpy z poprawkami i nowym API; nie pilne, ale warto zaplanować, bo z czasem rośnie dystans.
-**Severity**: low
-**Effort**: moderate (15–30 min — major bump, sprawdź changelog/breaking changes)
-**Fix**: zaktualizuj wersje w `app/build.gradle`, przebuduj, przetestuj ścieżki auth/firestore i sieciowe.
+---
 
 ### Addressed in upcoming lessons (Category B)
 
-#### Brak pipeline CI/CD
+#### Brak CI/CD pipeline
 
 **Lesson**: [Sprint Zero z Agentem: infrastruktura, walking skeleton i pierwszy deploy (M1L5)](https://platforma.przeprogramowani.pl/external/10xdevs-3/m1-l5)
-**What you'll do there**: skonfigurujesz CI (np. GitHub Actions z krokami ktlint + testy + build) oraz pierwszy deploy. Na teraz lokalny runner wystarcza.
+**What you'll do there**: skonfigurowanie GitHub Actions workflow uruchamiającego
+`./gradlew testDebugUnitTest` i `./gradlew ktlintCheck` na każdym push. Dependabot
+jest już skonfigurowany — dodanie workflow to ~30 min pracy jednorazowej.
+
+---
 
 ## Summary
 
@@ -208,6 +269,14 @@ updates:
 Health status: healthy
 ```
 
-Projekt CCI Android jest w **dobrej kondycji do pracy z agentem**. Mocne strony: działający i zielony zestaw 23 testów jednostkowych (plus 7 klas testów instrumentowanych), skonfigurowany formatter/linter (ktlint przechodzi bez naruszeń), `CLAUDE.md` z pełnymi konwencjami architektonicznymi, oraz `.gitignore` chroniący sekrety — obie luki kompensacyjne ze stack-assessment zostały realnie wdrożone. Pozostałe braki są drobne i niskiej wagi: brak formalnego skanu CVE (rekomendacja: Dodaj Dependabot), brak prawdziwego lockfile (zmitigowane przypiętymi wersjami), oraz kilka opcjonalnych aktualizacji stabilnych wydań — żadnego CRITICAL/HIGH, żadnej luki blokującej. Brak CI to oczekiwany etap (Category B, M1L5).
+Projekt CCI Android jest w dobrej kondycji do pracy z agentem. Mocne strony: dependency
+locking aktywny (`app/gradle.lockfile` przez `lockAllConfigurations()`), test runner JUnit 4
++ MockK na miejscu z rzeczywistymi testami wszystkich warstw (ViewModel, Repository, PagingSource,
+DAO, migracje Room, write-through Firestore), ktlint egzekwuje styl, a `CLAUDE.md` dokumentuje
+pełne konwencje architektoniczne. Dependabot monitoruje zależności automatycznie.
+Stack-assess dał `ready` (4/4 kryteria), a obie luki z poprzedniej oceny (`ready-with-compensation`)
+zostały zamknięte. Jedyna luka — brak CI/CD pipeline — to Category B, spodziewany etap, który
+adresujesz w lekcji M1L5.
 
-Next step: projekt jest zdrowy — możesz przejść do agent onboarding. Opcjonalnie wdroż szybki fix #1 (Dependabot, <5 min) przed dalszą pracą.
+Następny krok: projekt jest zdrowy — możesz przejść do agent onboarding lub wrócić do
+aktywnej zmiany `collection-resilience` (epilog + testy + weryfikacja manualna).

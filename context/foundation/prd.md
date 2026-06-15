@@ -101,7 +101,7 @@ Motywacja: API crowncaps.info już zwraca `isInCollection` per kapsel dla zalogo
   > Socrates: Brak kontrargumentu — limit domenowy jasno określony.
 - [new] FR-012: Aplikacja blokuje przypisanie dwóch kapsli do tej samej pozycji (klaser, strona, pozycja).
   > Socrates: Brak kontrargumentu — unikalność slotu jest wymogiem bezwzględnym.
-- [new] FR-013: Użytkownik widzi zapełnienie klaserów — ile wolnych pozycji na każdej stronie każdego klasera (każda strona ma zawsze 35 pozycji).
+- [new] FR-013: Użytkownik widzi zapełnienie klaserów — ile wolnych pozycji na każdej stronie każdego klasera (każda strona ma zawsze 35 pozycji). Priority: must-have.
   > Socrates: Kontrargument: starsze klasery mogą mieć inną pojemność. Rozwiązanie: 35 pozycji zawsze — wszystkie klasery użytkownika mają taką pojemność. FR zostaje.
 - [new] FR-014: Użytkownik widzi statystyki kolekcji z crowncaps.info (liczba kapsli, podział wg kraju). Priority: nice-to-have.
   > Socrates: Kontrargument: crowncaps.info może nie mieć API statystyk użytkownika. Rozwiązanie: nice-to-have pozostaje; dostępność API weryfikowana przed implementacją.
@@ -122,6 +122,7 @@ Motywacja: API crowncaps.info już zwraca `isInCollection` per kapsel dla zalogo
 - **Integracja API crowncaps.info**: integracja z 7 istniejącymi endpointami musi pozostać nienaruszona. Anonimowe endpointy (przeglądanie, wyszukiwanie) działają bez zmian; warstwa autentykowana jest dodawana wyłącznie do wywołań wymagających danych użytkownika.
 - **Brak migracji danych**: aplikacja nie ma istniejącej lokalnej bazy danych — brak danych do migracji. Dane na crowncaps.info (kolekcja użytkownika) nie są modyfikowane przez tę zmianę.
 - **Backward compatibility ekranów**: istniejące ekrany przeglądania (CountriesScreen, LatestCapsScreen, QuickSearchScreen, PictureSearchScreen, CapDetailScreen) muszą działać bez regresji dla niezalogowanego użytkownika.
+- **Minimalna wersja Androida**: aplikacja obsługuje Android 7.0+ (API 24) — istniejące minSdk zachowane bez zmian.
 - **Mechanizm autentykacji crowncaps.info**: nieznany (brak publicznej dokumentacji API) — wymaga zbadania przed implementacją. To jedyne zewnętrzne ryzyko blokujące; patrz Open Questions #1.
 
 ## Business Logic Changes
