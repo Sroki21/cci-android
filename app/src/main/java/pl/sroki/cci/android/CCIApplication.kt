@@ -22,8 +22,8 @@ class CCIApplication : Application() {
     private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     override fun onCreate() {
-        SentryAndroid.init(this) { options -> options.isDebug = BuildConfig.DEBUG }
         super.onCreate()
+        SentryAndroid.init(this) { options -> options.isDebug = BuildConfig.DEBUG }
         applicationScope.launch {
             try {
                 firebaseAuthManager.ensureSignedIn()

@@ -55,7 +55,12 @@ class AuthRepository @Inject constructor(
                         }
                     runCatching { firebaseAuthManager.signInWithEmail(email, password) }
                         .onFailure { Log.w("CCI_AUTH", "Firebase signInWithEmail failed: ${it.message}") }
-                    try { firestoreRestoreUseCase.restoreIfEmpty() } catch (_: Exception) {}
+                    try {
+                        firestoreRestoreUseCase.restoreIfEmpty()
+                    } catch (e: Exception) {
+                        Sentry.captureException(e)
+                        Log.w("CCI_AUTH", "restoreIfEmpty after login failed: ${e.message}")
+                    }
                     Result.success(Unit)
                 }
                 422 -> {
