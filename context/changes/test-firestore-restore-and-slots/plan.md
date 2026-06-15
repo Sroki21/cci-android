@@ -280,11 +280,11 @@ class FirestoreRestoreUseCaseTest {
 ### Phase 2: FirestoreRestoreUseCase tests + TOCTOU fix (R4, R5)
 
 #### Automated
-- [x] 2.1 Kompilacja — `./gradlew compileDebugAndroidTestKotlin` — brak błędów po dodaniu mockk-android
-- [x] 2.2 `connectedDebugAndroidTest --tests "*.FirestoreRestoreUseCaseTest"` — oba testy PASS
-- [x] 2.3 `connectedDebugAndroidTest --tests "*.CapPositionRepositoryTest"` — brak regresji
-- [x] 2.4 `connectedDebugAndroidTest --tests "*.FirestoreRestoreTest"` — brak regresji w istniejących testach
+- [x] 2.1 Kompilacja — `./gradlew compileDebugAndroidTestKotlin` — brak błędów po dodaniu mockk-android — 3c1d674
+- [x] 2.2 `connectedDebugAndroidTest --tests "*.FirestoreRestoreUseCaseTest"` — oba testy PASS — 3c1d674
+- [x] 2.3 `connectedDebugAndroidTest --tests "*.CapPositionRepositoryTest"` — brak regresji — 3c1d674
+- [x] 2.4 `connectedDebugAndroidTest --tests "*.FirestoreRestoreTest"` — brak regresji w istniejących testach — 3c1d674
 
 #### Manual
-- [x] 2.5 Sprawdź logi: `restoreFromFirestore_partialFailure_rollsBack` — binderCount=1 po rollback
-- [x] 2.6 Sprawdź logi: `restoreIfEmpty_concurrentCalls_noDuplicates` — binderCount=1 (Mutex)
+- [x] 2.5 Sprawdź logi: `restoreFromFirestore_partialFailure_rollsBack` — binderCount=1 po rollback — 3c1d674
+- [x] 2.6 Sprawdź logi: `restoreIfEmpty_concurrentCalls_noDuplicates` — binderCount=1 (Mutex) — 3c1d674
