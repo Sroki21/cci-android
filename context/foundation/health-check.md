@@ -1,6 +1,6 @@
 ---
 project: "CCI Android — wersja prywatna"
-checked_at: 2026-06-10T00:00:00Z
+checked_at: 2026-06-15T08:50:00Z
 health_status: healthy
 context_type: brownfield
 language_family: java
@@ -19,220 +19,188 @@ audit_findings:
   low: 0
 test_runner_detected: true
 ci_provider: null
-recommended_fixes: 3
+recommended_fixes: 5
 ---
+
+# Health Check — CCI Android
+
+**Sprawdzono**: 2026-06-15 · **Commit**: b8b504c · **Branch**: main · **Repo**: Sroki21/cci-android
+**Rodzina języka**: Kotlin/Android (JVM, Gradle) · **JDK użyty do weryfikacji**: Android Studio JBR (`C:\Program Files\Android\Android Studio\jbr`)
 
 ## Dependency Health
 
 ### Lockfile
 
 ```
-Status:          missing — Gradle nie używa tradycyjnego lockfile
-Package manager: Gradle 8.13 (Groovy DSL)
+Status: missing (brak gradle.lockfile)
+Package manager: Gradle 9.5.1 (wrapper)
 ```
 
-Android/Gradle nie posiada odpowiednika `package-lock.json`. Wersje bibliotek są przechowywane jako literały w `app/build.gradle`. Google Architecture rekomenduje Gradle Version Catalog (`gradle/libs.versions.toml`) jako centralny rejestr wersji — projekt go nie używa.
+Gradle nie ma domyślnie włączonego dependency lockingu i nie wygenerowano `gradle.lockfile`. **Ryzyko jest jednak zmitigowane**: wszystkie zależności w `app/build.gradle` i `build.gradle` są przypięte do dokładnych wersji (brak dynamicznych `+` / `latest.release`), a wersje pluginów są jawne. Buildy są w praktyce reprodukowalne. Prawdziwy lockfile dodałby gwarancję dla zależności tranzytywnych.
 
-Wpływ na agenta: niski. Agent może odczytać wersje bezpośrednio z `build.gradle`. Brak katalogu nie uniemożliwia pracy, ale utrudnia spójne zarządzanie wersjami przy dodawaniu zależności.
-
-Fix (Category A, low): patrz sekcja Recommended Fixes #3.
+Fix (opcjonalny): włącz `dependencyLocking { lockAllConfigurations() }` w `build.gradle` i wygeneruj lock przez `./gradlew dependencies --write-locks`.
 
 ### Security Audit
 
 ```
-Tool:    skipped — brak wbudowanego narzędzia audit dla Android/Gradle
-Summary: 0 CRITICAL, 0 HIGH, 0 MODERATE, 0 LOW
+Tool: skipped — Gradle/Android nie ma wbudowanego narzędzia audytu CVE (jak Java/Dart)
+Summary: 0 CRITICAL, 0 HIGH, 0 MODERATE, 0 LOW (nie skanowano pod kątem CVE)
+Direct vs transitive: nie dotyczy (brak skanu)
+Recommended external tool: GitHub Dependabot (alerts + auto-PR, zero konfiguracji dla repo na GitHub)
+  lub OWASP dependency-check Gradle plugin (org.owasp.dependencycheck) dla skanu lokalnego/CI
 ```
 
-Ekosystem Android/Gradle nie posiada odpowiednika `npm audit`. Zewnętrzne opcje:
-- **OWASP Dependency Check** (plugin Gradle: `org.owasp.dependencycheck`) — skanuje JARy pod kątem CVE
-- **Snyk** (CLI lub GitHub integration) — komercyjne, ale z darmowym planem
-
-Wszystkie biblioteki w projekcie są z Google/JetBrains first-party lub de-facto standard (Retrofit, Coil) i są świeżo zaktualizowane (wersje 2024–2025). Ryzyko znanych CVE oceniane jako niskie.
+Wszystkie zależności to biblioteki first-party Google/JetBrains lub de-facto standardy (Retrofit, Coil, OkHttp, MockK) — niski profil ryzyka, ale formalny skan CVE nie był wykonany.
 
 ### Outdated Dependencies
 
 ```
-Packages with major version gaps: 0
+Packages with major version gaps (stabilne wydania): 0 w kategorii "2+ major behind"
 ```
 
-Ręczna ocena z `app/build.gradle` (narzędzie `./gradlew dependencyUpdates` nie jest zainstalowane):
+Raport `./gradlew dependencyUpdates` (ben-manes 0.54.0) wykonany pomyślnie. Zdecydowana większość pozostających „nowszych" wersji to **pre-release (alpha/rc)** — nie rekomendowane do produkcji (np. material3 1.5.0-alpha21, compose-ui 1.12.0-alpha03, hilt 1.4.0-rc01, lifecycle 2.11.0-rc01, navigation 2.10.0-alpha05, appcompat 1.8.0-alpha01). Pomijamy je świadomie.
 
-| Biblioteka | Wersja w projekcie | Ocena |
-|---|---|---|
-| Kotlin | 2.1.20 | Aktualna (2025) |
-| AGP | 8.13.2 | Aktualna (2025) |
-| Compose BOM | 2025.05.01 | Aktualna (2025) |
-| Hilt | 2.51.1 | Aktualna (2024) |
-| Retrofit | 2.11.0 | Aktualna (2024) |
-| Navigation Compose | 2.9.0 | Aktualna (2025) |
-| Paging 3 | 3.3.4 | Aktualna (2024) |
-| JUnit | 4.13.2 | JUnit 4 (stable, nie przestarzały, JUnit 5 jest alternatywą) |
-| MockK | 1.13.12 | Aktualna (2024) |
+Stabilne wydania pozostające w tyle (informacyjnie, opcjonalna aktualizacja — żadne ≥2 major wstecz):
 
-Brak zależności ze znaczącymi lukami wersji.
+- **androidx.room** 2.7.0 → 2.8.4 (stabilny minor)
+- **com.google.firebase:firebase-bom** 33.8.0 → 34.14.1 (1 major)
+- **com.squareup.okhttp3:logging-interceptor** 4.12.0 → 5.4.0 (1 major)
+- **com.pinterest.ktlint** (CLI rulesetu) 1.0.1 → 1.8.0 (narzędzie, znacząca poprawa reguł)
+- **org.jetbrains.kotlin** 2.3.20 → 2.4.0 — **świadomie zablokowany**: czeka na KSP 2.4.x (zob. notatka projektowa o macierzy wersji)
 
 ## Test Suite
 
 ```
-Test runner:    JUnit 4 + Espresso + Compose UI Test
-Tests found:    9 testów jednostkowych (2 pliki)
-Test execution: nie zweryfikowano (wymaga Gradle sync po dodaniu mockk)
+Test runner: JUnit 4 + MockK 1.14.11 + kotlinx-coroutines-test 1.11.0 + paging-testing 3.5.0
+Tests found: 23 testy jednostkowe (6 klas) + 7 klas testów instrumentowanych
+Test execution: passing (23/23 unit, 0 failures, 0 errors) — zweryfikowane realnym przebiegiem
 ```
 
 ```
-Konfiguracja:  app/build.gradle (testImplementation / androidTestImplementation)
-Framework:     JUnit 4.13.2 (unit), Espresso 3.6.1 + Compose UI Test (instrumented)
-Mocking:       MockK 1.13.12 (dodany w tej sesji)
-Coroutines:    kotlinx-coroutines-test 1.8.1 (dodany w tej sesji)
+Configuration: app/build.gradle (testOptions.unitTests.returnDefaultValues = true)
+Framework: JUnit 4.13.2; mock przez MockK (constructor injection); korutyny przez runTest
 ```
 
-Pliki testowe:
+Testy jednostkowe uruchomione przez `./gradlew testDebugUnitTest` — **BUILD SUCCESSFUL**, wszystkie zielone:
 
-- `app/src/test/java/pl/sroki/cci/android/data/LatestCapsPagingSourceTest.kt` — 4 testy (paginacja: pierwsza strona, ostatnia, środkowa, błąd sieci)
-- `app/src/test/java/pl/sroki/cci/android/data/CapsRepositoryTest.kt` — 5 testów (delegacja do API service, tworzenie PagingSource)
+| Klasa testowa | Testy | Wynik |
+|---|---|---|
+| `data.AuthRepositoryTest` | 5 | ✓ |
+| `data.CapsRepositoryTest` | 5 | ✓ |
+| `data.LatestCapsPagingSourceTest` | 4 | ✓ |
+| `ui.binders.BindersViewModelTest` | 5 | ✓ |
+| `ui.home.HomeViewModelTest` | 3 | ✓ |
+| `ExampleUnitTest` (stub) | 1 | ✓ |
 
-**Następny krok weryfikacji**: po otwarciu projektu w Android Studio, uruchom:
-```
-./gradlew test
-```
-Oczekiwany wynik: 9 testów PASSED. Jeśli Gradle zgłosi błąd zależności (MockK nie pobrane), wykonaj Gradle Sync (File → Sync Project with Gradle Files).
+Testy instrumentowane (`app/src/androidTest`, wymagają emulatora/urządzenia — **nieuruchamiane w tym health-checku**): `BinderRepositoryTest`, `CapPositionRepositoryTest`, `FirestoreRestoreTest`, `FirestoreWriteThroughTest`, `MigrationTest`, `PendingCapDaoTest`, `ExampleInstrumentedTest`.
+
+To radykalna poprawa względem oceny stosu z 2026-06-10, gdzie istniały wyłącznie autogenerowane stuby. Agent ma teraz działający mechanizm weryfikacji własnych zmian oraz wzorce testowe do naśladowania (ViewModel, Repository, PagingSource, DAO, migracje Room, write-through Firestore).
 
 ## CI/CD
 
 ```
-Provider:      not detected
-Configuration: not found
+Provider: not detected
+Configuration: not found (brak .github/workflows/, brak innej konfiguracji CI)
 ```
 
-| Stage      | Status | Notes                              |
-|------------|--------|------------------------------------|
-| Lint       | ✗      | Brak ktlint/detekt w konfiguracji  |
-| Test       | ✗      | Brak automatycznego uruchamiania   |
-| Build      | ✗      | Brak pipeline budowania            |
-| Type check | ✗      | Kotlin typuje statycznie — kompiler |
-| Security   | ✗      | Brak OWASP/Snyk integration        |
+| Stage      | Status | Notes |
+|------------|--------|-------|
+| Lint       | ✗      | ktlint skonfigurowany lokalnie (plugin), ale brak pipeline CI |
+| Test       | ✗      | runner działa lokalnie, ale brak pipeline CI |
+| Build      | ✗      | nie skonfigurowane w CI |
+| Type check | ✗      | kompilator Kotlin (wbudowany), brak osobnego kroku CI |
+| Security   | ✗      | brak Dependabot/skanu w CI |
 
-```
-ℹ Brak konfiguracji CI/CD. Dla projektu prywatnego (jeden deweloper, bez PR review)
-  jest to akceptowalne na tym etapie. Lokalny test runner (`./gradlew test`)
-  zastępuje CI w codziennej pracy.
-```
+ℹ Brak konfiguracji CI/CD. To skonfigurujesz na lekcji o infrastrukturze i deploy ([Sprint Zero z Agentem — M1L5](https://platforma.przeprogramowani.pl/external/10xdevs-3/m1-l5)). Na ten moment działający lokalny runner testów wystarcza do współpracy z agentem.
 
 ## Configuration
 
+### High severity
+
+Brak luk wysokiej wagi. `.gitignore` obecny i poprawnie wyklucza sekrety (`keystore.properties`, `*.jks`, `*.keystore`, `local.properties`, `/build`, `.claude/`).
+
 ### Medium severity
 
-- **Brak Kotlin lintera (ktlint lub detekt)** — bez automatycznego formatowania kod agenta będzie niespójny stylistycznie z istniejącym kodem (wcięcia, kolejność importów, konwencje nazewnictwa Kotlin). Fix: dodaj ktlint przez Gradle plugin (patrz Category A fix #1).
+Brak luk średniej wagi. Formatter/linter (**ktlint** `org.jlleitschuh.gradle.ktlint` 12.1.2) jest skonfigurowany — `./gradlew ktlintCheck` przechodzi bez naruszeń. `.editorconfig` obecny i spójny z regułami ktlint (4 spacje, max line 120, LF, UTF-8).
 
 ### Low severity
 
-- **Brak `.editorconfig`** — bez niego editory mogą używać różnych ustawień dla spacji/tabulatorów/końców linii, co prowadzi do niepotrzebnych diff-ów w git. Fix: utwórz `.editorconfig` z ustawieniami dla Kotlin (patrz Category A fix #2).
+- **`.env.example`** — brak, ale **nie dotyczy** tego stacku. Android nie używa plików `.env`; konfiguracja środowiskowa to `keystore.properties` (poza VCS) oraz `google-services.json` (Firebase). Dokumentacja zmiennych nie jest tu potrzebna.
 
-- **Brak Gradle Version Catalog** (`gradle/libs.versions.toml`) — wersje zależności są rozrzucone jako literały w `app/build.gradle`. Agent dodający nowe zależności nie ma centralnego rejestru do sprawdzenia. Fix: opcjonalna migracja (patrz Category A fix #3).
-
-### Obecne (bez luk)
-
-- `.gitignore` ✓ — standardowy Android gitignore (wyklucza `.gradle/`, `build/`, `local.properties`, `.idea/`)
-- `CLAUDE.md` ✓ — dodany w tej sesji z konwencjami architektonicznymi projektu
-- `local.properties` ✓ — obecny (wykluczone z gita)
-- `proguard-rules.pro` ✓ — obecny
+Pozostałe oczekiwane pliki obecne: `.editorconfig` ✓, `.gitignore` ✓, `CLAUDE.md` ✓. `tsconfig` nie dotyczy (Kotlin jest statycznie typowany natywnie).
 
 ## Stack Assessment Cross-Reference
 
 ```
-Stack assessment:          context/foundation/stack-assessment.md
-Agent readiness (stack-assess): ready-with-compensation
+Stack assessment: context/foundation/stack-assessment.md
+Agent readiness (from stack-assess): ready-with-compensation
 ```
 
-| Luka z stack-assess | Wynik health-check | Status |
-|---|---|---|
-| Convention-based partial: brak CLAUDE.md | CLAUDE.md dodany z konwencjami architektonicznymi | Mitigated |
-| Zero testów — brak wzorca testowego | 9 testów jednostkowych dodanych (LatestCapsPagingSourceTest, CapsRepositoryTest) | Mitigated |
+Obie luki kompensacyjne ze stack-assessment zostały **wdrożone od czasu oceny (2026-06-10)**:
 
-Obie luki zidentyfikowane w stack-assess zostały zlikwidowane w tej sesji. Projekt wchodzi w fazę implementacji z solidną bazą.
+| Quality Gate Gap | Health-Check Finding | Status |
+|------------------|----------------------|--------|
+| convention_based: partial (brak pliku instrukcji) | `CLAUDE.md` obecny, z pełną sekcją konwencji architektonicznych (struktura pakietów, reguła podziału modeli, granice MVVM+Repository, wzorzec Hilt, nawigacja, testowanie) | Zmitigowane |
+| test runner: brak realnych testów (tylko stuby) | 23 działające testy jednostkowe (ViewModel/Repository/PagingSource) + 7 klas testów instrumentowanych (Room, Firestore, migracje) | Zmitigowane |
+
+Verdict `ready-with-compensation` ze stack-assess jest teraz w pełni pokryty — rekomendowane kompensacje istnieją w kodzie.
 
 ## Recommended Fixes
 
 ### Fix before agent work (Category A)
 
-#### 1. Brak Kotlin lintera
+#### 1. Dodaj automatyczny skan podatności zależności (Dependabot)
 
-**Impact**: Agent generujący Kotlin nie będzie wymuszał konwencji formatowania — kolejność importów, spacje, długości linii, nazewnictwo — prowadząc do niespójności z istniejącym kodem. Każdy review będzie pełen komentarzy o stylu.
-**Severity**: medium
-**Effort**: moderate (15–30 min)
-**Fix**: Dodaj ktlint przez plugin Gradle do `app/build.gradle`:
-
-```groovy
-// W root build.gradle dodaj plugin:
-id "org.jlleitschuh.gradle.ktlint" version "12.1.2" apply false
-
-// W app/build.gradle dodaj:
-id "org.jlleitschuh.gradle.ktlint"
-
-ktlint {
-    version = "1.3.1"
-    android = true
-}
-```
-
-Następnie uruchom:
-```
-./gradlew ktlintFormat   # automatyczne formatowanie
-./gradlew ktlintCheck    # weryfikacja
-```
-
-Alternatywa: detekt (statyczna analiza + formatowanie), bardziej konfigurowalna niż ktlint.
-
-#### 2. Brak `.editorconfig`
-
-**Impact**: Android Studio i nowe edytory będą używać domyślnych ustawień — ryzyko mieszania spacji/tabulatorów i różnych końców linii w diff-ach git.
+**Impact**: Bez skanu CVE ani agent, ani Ty nie macie sygnału o znanych podatnościach w drzewie zależności (w tym tranzytywnych — Firebase, OkHttp, Retrofit ciągną sporo).
 **Severity**: low
 **Effort**: quick (< 5 min)
-**Fix**: Utwórz `.editorconfig` w katalogu głównym projektu:
+**Fix**: dodaj `.github/dependabot.yml`:
 
-```ini
-root = true
-
-[*]
-charset = utf-8
-end_of_line = lf
-insert_final_newline = true
-trim_trailing_whitespace = true
-
-[*.{kt,kts}]
-indent_style = space
-indent_size = 4
-
-[*.gradle]
-indent_style = space
-indent_size = 4
-
-[*.xml]
-indent_style = space
-indent_size = 4
+```yaml
+version: 2
+updates:
+  - package-ecosystem: "gradle"
+    directory: "/"
+    schedule:
+      interval: "weekly"
 ```
 
-#### 3. Brak Gradle Version Catalog (opcjonalne)
+(Alternatywa lokalna/CI: OWASP dependency-check plugin `org.owasp.dependencycheck`, task `./gradlew dependencyCheckAnalyze`.)
 
-**Impact**: Agent dodający nowe zależności musi szukać wersji w `app/build.gradle` zamiast scentralizowanego rejestru. Przy wzroście liczby modułów staje się problemem.
+#### 2. (Opcjonalnie) Włącz Gradle dependency locking
+
+**Impact**: Przypięte wersje bezpośrednie już dają reprodukowalność, ale lock zamraża też zależności tranzytywne — agent może bezpiecznie rozumować o dokładnym stanie drzewa.
 **Severity**: low
-**Effort**: moderate (15–30 min)
-**Fix**: Utwórz `gradle/libs.versions.toml` i zmigruj wersje z `app/build.gradle`. Szczegóły: [Gradle Version Catalogs](https://developer.android.com/build/migrate-to-catalogs).
+**Effort**: quick (< 5 min)
+**Fix**: w `build.gradle` dodaj `dependencyLocking { lockAllConfigurations() }`, następnie `./gradlew dependencies --write-locks`.
 
-Uwaga: migracja jest opcjonalna i warto ją rozważyć przy dodawaniu nowych modułów.
+#### 3. (Opcjonalnie) Zaktualizuj Room 2.7.0 → 2.8.4
+
+**Impact**: Stabilny minor; projekt aktywnie używa Room (migracje, DAO, testy instrumentowane). Najnowszy patch poziom redukuje ryzyko znanych bugów.
+**Severity**: low
+**Effort**: quick (< 5 min)
+**Fix**: zmień `def room_version = "2.7.0"` → `"2.8.4"` w `app/build.gradle`, przebuduj i uruchom testy instrumentowane Room.
+
+#### 4. (Opcjonalnie) Zaktualizuj ktlint ruleset 1.0.1 → 1.8.0
+
+**Impact**: Linter wymusza spójny styl kodu agenta; ruleset 1.0.1 jest mocno wstecz względem 1.8.0 (lepsze reguły, mniej fałszywych trafień).
+**Severity**: low
+**Effort**: moderate (15–30 min — może wymusić reformat)
+**Fix**: ustaw wersję w bloku `ktlint { version = "1.8.0" }`, uruchom `./gradlew ktlintFormat`, przejrzyj diff.
+
+#### 5. (Opcjonalnie) Rozważ Firebase BOM 33.8.0 → 34.14.1 i OkHttp 4.x → 5.x
+
+**Impact**: Major bumpy z poprawkami i nowym API; nie pilne, ale warto zaplanować, bo z czasem rośnie dystans.
+**Severity**: low
+**Effort**: moderate (15–30 min — major bump, sprawdź changelog/breaking changes)
+**Fix**: zaktualizuj wersje w `app/build.gradle`, przebuduj, przetestuj ścieżki auth/firestore i sieciowe.
 
 ### Addressed in upcoming lessons (Category B)
 
-#### Brak CI/CD pipeline
+#### Brak pipeline CI/CD
 
-**Sytuacja**: projekt prywatny, jeden deweloper — CI nie jest pilnie wymagane. Lokalny `./gradlew test` zapewnia weryfikację dla agenta.
-**Co dodać w przyszłości**: GitHub Actions z krokami `ktlintCheck` + `./gradlew test` przy każdym push.
-
-#### Brak security audit tooling
-
-**Sytuacja**: wszystkie biblioteki są z wiarygodnych źródeł (Google/JetBrains first-party lub dobrze utrzymane open source) i mają aktualne wersje. Ryzyko CVE oceniane jako niskie.
-**Co dodać w przyszłości**: OWASP Dependency Check plugin lub integracja Snyk przy uruchamianiu projektu publicznie.
+**Lesson**: [Sprint Zero z Agentem: infrastruktura, walking skeleton i pierwszy deploy (M1L5)](https://platforma.przeprogramowani.pl/external/10xdevs-3/m1-l5)
+**What you'll do there**: skonfigurujesz CI (np. GitHub Actions z krokami ktlint + testy + build) oraz pierwszy deploy. Na teraz lokalny runner wystarcza.
 
 ## Summary
 
@@ -240,8 +208,6 @@ Uwaga: migracja jest opcjonalna i warto ją rozważyć przy dodawaniu nowych mod
 Health status: healthy
 ```
 
-Projekt jest w dobrej kondycji dla pracy agentowej. Stos (Kotlin + Jetpack Compose + Hilt + Retrofit) jest statycznie typowany, dobrze znany z danych treningowych, i posiada aktualną dokumentację — żadne z czterech kryteriów agent-friendliness nie odpada całkowicie. Obie luki zidentyfikowane w stack-assess (brak CLAUDE.md i brak testów) zostały zlikwidowane w tej sesji. Zależności są aktualne, bez znanych CVE.
+Projekt CCI Android jest w **dobrej kondycji do pracy z agentem**. Mocne strony: działający i zielony zestaw 23 testów jednostkowych (plus 7 klas testów instrumentowanych), skonfigurowany formatter/linter (ktlint przechodzi bez naruszeń), `CLAUDE.md` z pełnymi konwencjami architektonicznymi, oraz `.gitignore` chroniący sekrety — obie luki kompensacyjne ze stack-assessment zostały realnie wdrożone. Pozostałe braki są drobne i niskiej wagi: brak formalnego skanu CVE (rekomendacja: Dodaj Dependabot), brak prawdziwego lockfile (zmitigowane przypiętymi wersjami), oraz kilka opcjonalnych aktualizacji stabilnych wydań — żadnego CRITICAL/HIGH, żadnej luki blokującej. Brak CI to oczekiwany etap (Category B, M1L5).
 
-Główna luka do adresowania przed intensywną pracą z agentem: brak Kotlin lintera (ktlint/detekt). Bez niego styl kodu generowanego przez agenta będzie niespójny z istniejącą bazą kodu. Jest to szybka do naprawy kwestia (15–30 min).
-
-Następny krok: dodaj ktlint (Category A fix #1), a następnie przejdź do planowania implementacji pierwszego zakresu zmian z `/10x-roadmap` → `/10x-new`.
+Next step: projekt jest zdrowy — możesz przejść do agent onboarding. Opcjonalnie wdroż szybki fix #1 (Dependabot, <5 min) przed dalszą pracą.
