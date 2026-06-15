@@ -283,8 +283,8 @@ uruchomienia wszystkich 7 testów powinien być poniżej 10 sekund.
 
 #### Automated
 
-- [ ] 2.1 `./gradlew connectedDebugAndroidTest` — wszystkie 7 testów MigrationTest PASS
+- [x] 2.1 `./gradlew connectedDebugAndroidTest` — wszystkie 7 testów MigrationTest PASS
 
 #### Manual
 
-- [ ] 2.2 Uruchom MigrationTest w Android Studio — 7 zielonych testów potwierdzone
+- [x] 2.2 Uruchom MigrationTest w Android Studio — 7 zielonych testów potwierdzone
