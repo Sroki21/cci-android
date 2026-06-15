@@ -1,10 +1,10 @@
 ---
 change_id: room-local-data
 title: Room local data layer — schemat klaserów i PendingCap
-status: implemented
+status: archived
 created: 2026-06-11
-updated: 2026-06-11
-archived_at: null
+updated: 2026-06-15
+archived_at: 2026-06-15T08:45:44Z
 ---
 
 ## Notes
