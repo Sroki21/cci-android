@@ -275,32 +275,49 @@ Jeden rdzeń weryfikacji napędzany trzema trybami (auto-backfill po aktualizacj
 - [x] 1.1 Kompilacja przechodzi: `gradlew :app:compileDebugKotlin` — 3468cdf
 - [x] 1.2 Testy jednostkowe przechodzą: `gradlew :app:testDebugUnitTest` — 3468cdf
 - [x] 1.3 ktlint przechodzi: `gradlew :app:ktlintCheck` — 3468cdf
-- [ ] 1.4 Test migracji 6→7 (Room) przechodzi
-- [ ] 1.5 `FirestoreRestoreTest` rozszerzony o pola snapshotu przechodzi
+- [x] 1.4 Test migracji 6→7 (Room) przechodzi
+- [x] 1.5 `FirestoreRestoreTest` rozszerzony o pola snapshotu przechodzi
 
 #### Manual
 
-- [ ] 1.6 Dodanie kapsla zapisuje pełny snapshot, widoczny offline
-- [ ] 1.7 Po reinstalacji + restore klasery renderują się offline (nazwy + zdjęcia)
-- [ ] 1.8 Istniejące pozycje bez snapshotu w Firestore wyświetlają się bez crasha
-- [ ] 1.9 Brak regresji w Klaserach/Statystykach/Mapie
+- [x] 1.6 Dodanie kapsla zapisuje pełny snapshot, widoczny offline
+- [x] 1.7 Po reinstalacji + restore klasery renderują się offline (nazwy + zdjęcia)
+- [x] 1.8 Istniejące pozycje bez snapshotu w Firestore wyświetlają się bez crasha
+- [x] 1.9 Brak regresji w Klaserach/Statystykach/Mapie
 
 ### Phase 2: Silnik weryfikacji (B) + przegląd rozjazdów
 
 #### Automated
 
-- [x] 2.1 Kompilacja przechodzi: `gradlew :app:compileDebugKotlin`
-- [x] 2.2 Testy jednostkowe przechodzą: `gradlew :app:testDebugUnitTest`
-- [x] 2.3 ktlint przechodzi: `gradlew :app:ktlintCheck`
-- [ ] 2.4 `CollectionVerifierTest`: 3 poziomy + baseline-bez-porównania
-- [ ] 2.5 Test wyboru pozycji wg najstarszego `last_verified_at`
+- [x] 2.1 Kompilacja przechodzi: `gradlew :app:compileDebugKotlin` — b8b504c
+- [x] 2.2 Testy jednostkowe przechodzą: `gradlew :app:testDebugUnitTest` — b8b504c
+- [x] 2.3 ktlint przechodzi: `gradlew :app:ktlintCheck` — b8b504c
+- [x] 2.4 `CollectionVerifierTest`: 3 poziomy + baseline-bez-porównania
+- [x] 2.5 Test wyboru pozycji wg najstarszego `last_verified_at`
 
 #### Manual
 
-- [ ] 2.6 Backfill w tle po aktualizacji ustanawia fingerprint bez obciążenia UI
-- [ ] 2.7 Pasywny przebieg ~50/sesję przy wejściu w Klasery/Statystyki
-- [ ] 2.8 Ręczny pełny skan: postęp, anulowanie, wznawianie
-- [ ] 2.9 Sztuczny rozjazd pojawia się w przeglądzie z właściwym statusem
-- [ ] 2.10 Oflagowany kapsel/strona/klaser w Klaserach: czerwona pogrubiona czcionka (propagacja w górę)
-- [ ] 2.11 Rozstrzygnięcie rozjazdu z poziomu szczegółów kapsla (zachowaj / zaakceptuj / odepnij) działa i aktualizuje odznakę + oznaczenia
-- [ ] 2.12 Tempo zapytań grzecznościowe (brak nawały do crowncaps)
+- [x] 2.6 Backfill w tle po aktualizacji ustanawia fingerprint bez obciążenia UI
+- [x] 2.7 Pasywny przebieg ~50/sesję przy wejściu w Klasery/Statystyki
+- [x] 2.8 Ręczny pełny skan: postęp, anulowanie, wznawianie
+- [x] 2.9 Sztuczny rozjazd pojawia się w przeglądzie z właściwym statusem
+- [x] 2.10 Oflagowany kapsel/strona/klaser w Klaserach: czerwona pogrubiona czcionka (propagacja w górę)
+- [x] 2.11 Rozstrzygnięcie rozjazdu z poziomu szczegółów kapsla (zachowaj / zaakceptuj / odepnij) działa i aktualizuje odznakę + oznaczenia
+- [x] 2.12 Tempo zapytań grzecznościowe (brak nawały do crowncaps)
+
+---
+
+## Epilog
+
+**Status implementacji**: obie fazy wdrożone na branchu `main`.
+
+| Faza | Commit | Co dostarcza |
+|---|---|---|
+| 1 — Snapshot | 3468cdf | Room v7 (migracja 6→7), `CapCache` z fingerprintem, `upsertSnapshot`, przechwycenie przy dodawaniu, sync Firestore, restore offline, render ze snapshotu |
+| 2 — Weryfikacja | b8b504c | `CollectionVerifier` (3-poziomowy rdzeń), auto-backfill po aktualizacji, inkrementalny ~50/sesję, `CollectionVerificationScreen` + odznaka, oznaczenia w Klaserach (propagacja kapsel→strona→klaser), akcje naprawcze w `CapDetailScreen` |
+
+**Automatyczne kryteria sukcesu**: kompilacja + unit testy + ktlint przechodzą na obu commitach (1.1–1.3 ✓, 2.1–2.3 ✓).
+
+**Wszystkie kryteria sukcesu potwierdzone** — zmiana gotowa do archiwizacji.
+
+Uruchom `/10x-archive collection-resilience` aby zamknąć zmianę.
