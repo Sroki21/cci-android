@@ -22,7 +22,9 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import dagger.hilt.android.AndroidEntryPoint
+import pl.sroki.cci.android.data.SessionRepository
 import pl.sroki.cci.android.navigation.Screen
+import javax.inject.Inject
 import pl.sroki.cci.android.ui.HomeScreen
 import pl.sroki.cci.android.ui.catalog.caps.AssignedCapsViewModel
 import pl.sroki.cci.android.ui.catalog.caps.LocalAssignedCapIds
@@ -46,15 +48,18 @@ import pl.sroki.cci.android.ui.theme.CCITheme
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+    @Inject lateinit var sessionRepository: SessionRepository
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val isLoggedIn = sessionRepository.loadCachedToken() != null
         setContent {
             CCITheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    Navigation()
+                    Navigation(isLoggedIn = isLoggedIn)
                 }
             }
         }
@@ -63,6 +68,7 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun Navigation(
+    isLoggedIn: Boolean = false,
     countriesViewModel: CountriesViewModel = viewModel(),
     assignedCapsViewModel: AssignedCapsViewModel = hiltViewModel(),
 ) {
@@ -72,7 +78,7 @@ fun Navigation(
     CompositionLocalProvider(LocalAssignedCapIds provides assignedCapIds) {
     NavHost(
         navController = navController,
-        startDestination = Screen.Home.route
+        startDestination = if (isLoggedIn) Screen.Home.route else Screen.Login.route
     ) {
         composable(route = Screen.Home.route) {
             HomeScreen(
