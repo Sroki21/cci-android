@@ -271,13 +271,13 @@ uruchomienia wszystkich 7 testów powinien być poniżej 10 sekund.
 
 #### Automated
 
-- [x] 1.1 `./gradlew kspDebugKotlin` przechodzi z `exportSchema = true`
-- [x] 1.2 `app/schemas/.../7.json` istnieje po buildzie
+- [x] 1.1 `./gradlew kspDebugKotlin` przechodzi z `exportSchema = true` — 73c4520
+- [x] 1.2 `app/schemas/.../7.json` istnieje po buildzie — 73c4520
 
 #### Manual
 
-- [x] 1.3 Wszystkie 7 plików schema JSON (1.json–7.json) present i commitowane
-- [x] 1.4 Istniejące testy `migrate1To2` i `migrate6To7` przechodzą na urządzeniu/emulatorze
+- [x] 1.3 Wszystkie 7 plików schema JSON (1.json–7.json) present i commitowane — 73c4520
+- [x] 1.4 Istniejące testy `migrate1To2` i `migrate6To7` przechodzą na urządzeniu/emulatorze — 73c4520
 
 ### Phase 2: Nowe testy migracji
 
