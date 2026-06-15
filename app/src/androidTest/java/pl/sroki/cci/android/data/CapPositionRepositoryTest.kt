@@ -13,6 +13,7 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.fail
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -82,5 +83,25 @@ class CapPositionRepositoryTest {
         repo.unassign(42L)
         val positions = repo.getByPage(binderPageId).first()
         assertEquals(0, positions.size)
+    }
+
+    @Test
+    fun reassignFull_targetOccupied_rollsBack() = runBlocking {
+        // Setup: cap A at slot 1, cap B at slot 2
+        repo.assign(binderPageId, 1, 42L)
+        repo.assign(binderPageId, 2, 99L)
+
+        // Attempt to move cap A into slot 2 (occupied by B) — @Insert(ABORT) throws
+        try {
+            repo.reassign(42L, binderPageId, 2)
+            fail("Expected SQLiteConstraintException — slot (page=$binderPageId, pos=2) is occupied by cap 99")
+        } catch (e: android.database.sqlite.SQLiteConstraintException) {
+            // expected: @Transaction rolls back deleteByCapId when @Insert fails
+        }
+
+        // Both caps must still be in their original slots (transaction rolled back)
+        val positions = repo.getByPage(binderPageId).first()
+        assertEquals(42L, positions.first { it.position == 1 }.capId)
+        assertEquals(99L, positions.first { it.position == 2 }.capId)
     }
 }
