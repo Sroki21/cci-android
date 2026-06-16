@@ -17,6 +17,7 @@ import javax.inject.Singleton
 @Singleton
 class SessionRepository @Inject constructor(
     @ApplicationContext context: Context,
+    // Lazy: SessionRepository ← NetworkModule.provideAuthOkHttpClient ← BearerTokenInterceptor ← SessionRepository (cykl Hilt)
     private val authApiService: Lazy<AuthApiService>
 ) {
 
@@ -69,7 +70,7 @@ class SessionRepository @Inject constructor(
             raw.trimStart().startsWith('{') -> json.decodeFromString<LoginResponse>(raw).token
             else -> raw.trim().takeIf { it.isNotBlank() }
         }
-        Log.d("CCI_AUTH", "api token fetched: ${token != null}, raw prefix=${raw.take(40)}")
+        Log.d("CCI_AUTH", "api token fetched: ${token != null}, raw length=${raw.length}")
         setToken(token)
     }
 }

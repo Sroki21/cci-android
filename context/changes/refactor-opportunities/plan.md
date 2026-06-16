@@ -177,6 +177,8 @@ Przenieść `fetchApiToken()` z `AuthRepository` do `SessionRepository` jako `su
 - Uruchom aplikację na emulatorze, przejdź przez flow logowania: email + hasło → sukces → aplikacja wyświetla dane kolekcji
 - Sprawdź Logcat: `CCI_AUTH` logi pokazują `api token fetched: true` lub `api token: reusing cached`
 
+**Addendum (impl-review)**: Circular dependency Hilt wymusił `dagger.Lazy<AuthApiService>` zamiast bezpośredniego `AuthApiService`. Zmiana sygnatury konstruktora SessionRepository wymagała aktualizacji dwóch dodatkowych plików testowych: `SessionAuthenticatorTest.kt:27` i `HomeViewModelTest.kt:41` — oba otrzymały `dagger.Lazy { mockk(relaxed = true) }` jako argument.
+
 **Implementation Note**: Po przejściu wszystkich 6 testów CI i manualnej weryfikacji logowania — zatrzymaj się i poczekaj na potwierdzenie przed zmergowaniem PR.
 
 ---
