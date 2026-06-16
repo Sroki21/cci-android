@@ -1,0 +1,13 @@
+{
+  "name": "ai-review",
+  "version": "1.0.0",
+  "description": "AI code review action for CCI Android",
+  "type": "commonjs",
+  "main": "index.js",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.30.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
