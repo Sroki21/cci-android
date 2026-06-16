@@ -1,0 +1,12 @@
+diff --git a/app/src/main/java/pl/sroki/cci/android/model/Category.kt b/app/src/main/java/pl/sroki/cci/android/model/Category.kt
+index b66cd69..d1b6e85 100644
+--- a/app/src/main/java/pl/sroki/cci/android/model/Category.kt
++++ b/app/src/main/java/pl/sroki/cci/android/model/Category.kt
+@@ -3,4 +3,6 @@ package pl.sroki.cci.android.model
+ import kotlinx.serialization.Serializable
+
+ @Serializable
+-data class Category(val id: Int, val name: String)
++data class Category(val id: Int, val name: String) {
++    val displayName: String get() = name.trim()
++}
