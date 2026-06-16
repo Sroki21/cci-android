@@ -1,52 +1,54 @@
-description: "AI code review — model comparison: haiku vs sonnet vs opus"
+description: "AI code review — model comparison: gemini-flash vs gemini-pro vs gemini-2.5-pro (Vertex AI)"
+# Auth: gcloud auth application-default login  LUB  GOOGLE_APPLICATION_CREDENTIALS=/path/to/sa-key.json
+# Projekt: VERTEX_PROJECT_ID=<twój-projekt>   Region: VERTEX_REGION=us-central1 (domyślnie)
 
 providers:
-  - id: anthropic:claude-haiku-4-5-20251001
-    label: haiku-4-5
+  - id: vertex:gemini-2.0-flash-001
+    label: flash-2.0
     config: &shared
-      max_tokens: 1024
-      tool_choice:
-        type: tool
-        name: submit_review
+      generationConfig:
+        maxOutputTokens: 1024
+      toolConfig:
+        functionCallingConfig:
+          mode: ANY
+          allowedFunctionNames:
+            - submit_review
       tools:
-        - name: submit_review
-          description: Submit the structured code review result
-          input_schema:
-            type: object
-            required: [criteria, verdict, summary]
-            additionalProperties: false
-            properties:
-              criteria:
-                type: array
-                minItems: 5
-                maxItems: 5
-                items:
-                  type: object
-                  required: [id, score, findings]
-                  additionalProperties: false
-                  properties:
-                    id:
-                      type: string
-                      enum:
-                        - implementation_correctness
-                        - architectural_compliance
-                        - kotlin_compose_idiomaticity
-                        - test_coverage
-                        - security_and_data_safety
-                    score:
-                      type: integer
-                      minimum: 1
-                      maximum: 10
-                    findings:
-                      type: array
-                      items:
-                        type: string
-              verdict:
-                type: string
-                enum: [passed, failed]
-              summary:
-                type: string
-      system: |
+        - functionDeclarations:
+            - name: submit_review
+              description: Submit the structured code review result
+              parameters:
+                type: object
+                required: [criteria, verdict, summary]
+                properties:
+                  criteria:
+                    type: array
+                    items:
+                      type: object
+                      required: [id, score, findings]
+                      properties:
+                        id:
+                          type: string
+                          enum:
+                            - implementation_correctness
+                            - architectural_compliance
+                            - kotlin_compose_idiomaticity
+                            - test_coverage
+                            - security_and_data_safety
+                        score:
+                          type: integer
+                          minimum: 1
+                          maximum: 10
+                        findings:
+                          type: array
+                          items:
+                            type: string
+                  verdict:
+                    type: string
+                    enum: [passed, failed]
+                  summary:
+                    type: string
+      systemInstruction: |
         You are an expert Android code reviewer specializing in Kotlin, Jetpack Compose, and clean architecture. Review the provided pull request diff against these 5 criteria:
 
         1. **Implementation Correctness** (implementation_correctness)
@@ -83,12 +85,12 @@ providers:
         Score each criterion 1–10 (1 = worst, 10 = best). Verdict: "passed" if ALL scores >= 6; "failed" if ANY score <= 5.
         Provide actionable findings for each criterion (empty array if fully satisfied). Write a neutral 2–4 sentence summary.
 
-  - id: anthropic:claude-sonnet-4-6
-    label: sonnet-4-6
+  - id: vertex:gemini-1.5-pro-002
+    label: pro-1.5
     config: *shared
 
-  - id: anthropic:claude-opus-4-8
-    label: opus-4-8
+  - id: vertex:gemini-2.5-pro-preview-06-05
+    label: pro-2.5
     config: *shared
 
 prompts:
