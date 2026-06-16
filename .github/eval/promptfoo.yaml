@@ -1,100 +1,104 @@
-description: "AI code review — model comparison: gemini-flash vs gemini-pro vs gemini-2.5-pro (Vertex AI)"
-# Auth: gcloud auth application-default login  LUB  GOOGLE_APPLICATION_CREDENTIALS=/path/to/sa-key.json
-# Projekt: VERTEX_PROJECT_ID=<twój-projekt>   Region: VERTEX_REGION=us-central1 (domyślnie)
+description: "AI code review — model comparison: claude-haiku vs claude-sonnet vs claude-opus (Anthropic)"
+# Auth: ANTHROPIC_API_KEY
 
 providers:
-  - id: vertex:gemini-2.0-flash-001
-    label: flash-2.0
+  - id: anthropic:claude-haiku-4-5
+    label: haiku-4.5
     config: &shared
-      generationConfig:
-        maxOutputTokens: 1024
-      toolConfig:
-        functionCallingConfig:
-          mode: ANY
-          allowedFunctionNames:
-            - submit_review
+      max_tokens: 2048
       tools:
-        - functionDeclarations:
-            - name: submit_review
-              description: Submit the structured code review result
-              parameters:
-                type: object
-                required: [criteria, verdict, summary]
-                properties:
-                  criteria:
-                    type: array
-                    items:
-                      type: object
-                      required: [id, score, findings]
-                      properties:
-                        id:
-                          type: string
-                          enum:
-                            - implementation_correctness
-                            - architectural_compliance
-                            - kotlin_compose_idiomaticity
-                            - test_coverage
-                            - security_and_data_safety
-                        score:
-                          type: integer
-                          minimum: 1
-                          maximum: 10
-                        findings:
-                          type: array
-                          items:
-                            type: string
-                  verdict:
-                    type: string
-                    enum: [passed, failed]
-                  summary:
-                    type: string
-      systemInstruction: |
-        You are an expert Android code reviewer specializing in Kotlin, Jetpack Compose, and clean architecture. Review the provided pull request diff against these 5 criteria:
+        - name: submit_review
+          description: Submit the structured code review result
+          input_schema:
+            type: object
+            required: [criteria, verdict, summary]
+            properties:
+              criteria:
+                type: array
+                items:
+                  type: object
+                  required: [id, score, findings]
+                  properties:
+                    id:
+                      type: string
+                      enum:
+                        - implementation_correctness
+                        - architectural_compliance
+                        - kotlin_compose_idiomaticity
+                        - test_coverage
+                        - security_and_data_safety
+                    score:
+                      type: integer
+                      minimum: 1
+                      maximum: 10
+                    findings:
+                      type: array
+                      items:
+                        type: string
+              verdict:
+                type: string
+                enum: [passed, failed]
+              summary:
+                type: string
+      tool_choice:
+        type: tool
+        name: submit_review
 
-        1. **Implementation Correctness** (implementation_correctness)
-           - Logic matches PR description; null safety and edge cases handled
-           - Dual-write pattern respected: write to Room AND Firestore; always read from Room
-           - Room migrations not skipped; autoMigrations or migration file present
-           - suspend functions and coroutine scopes correct (no GlobalScope, cancellation handled)
-
-        2. **Architectural Compliance** (architectural_compliance)
-           - Composable = render + event propagation only; no business logic
-           - ViewModel = StateFlow/Flow; no direct Retrofit or Room DAO imports
-           - Repository = data source coordination; no UI knowledge
-           - New @HiltViewModel with @Inject constructor; new API services as @Singleton in NetworkModule
-           - Models: domain models in model/, internal models in data/model/
-
-        3. **Kotlin/Compose Idiomaticity** (kotlin_compose_idiomaticity)
-           - State hoisting respected; no state in Composable beyond remember {}
-           - Flow collected via collectAsStateWithLifecycle() (not collectAsState())
-           - No unnecessary !! or unsafe as? casts where Kotlin offers better tools
-           - New Composables accept data as parameters — do not inject ViewModel internally
-
-        4. **Test Coverage Proportional to Risk** (test_coverage)
-           - ViewModel and Repository: unit test with MockK + runTest
-           - New PagingSource: test created via Repository (not ViewModel)
-           - New critical paths (auth, Firestore sync): at minimum happy path + one error case
-           - Composable JVM tests not required; instrumented tests optional
-
-        5. **Security and Data Safety** (security_and_data_safety)
-           - No hardcoded credentials, API keys, or tokens in code or strings
-           - No Context/Activity leak in ViewModel (only ApplicationContext via Hilt)
-           - Destructive DB operations (DROP, DELETE *) require explicit justification comment
-           - If PR changes Firestore document structure, verify alignment with Security Rules
-
-        Score each criterion 1–10 (1 = worst, 10 = best). Verdict: "passed" if ALL scores >= 6; "failed" if ANY score <= 5.
-        Provide actionable findings for each criterion (empty array if fully satisfied). Write a neutral 2–4 sentence summary.
-
-  - id: vertex:gemini-1.5-pro-002
-    label: pro-1.5
+  - id: anthropic:claude-sonnet-4-6
+    label: sonnet-4.6
     config: *shared
 
-  - id: vertex:gemini-2.5-pro-preview-06-05
-    label: pro-2.5
+  - id: anthropic:claude-opus-4-8
+    label: opus-4.8
     config: *shared
 
 prompts:
-  - "PR: {{pr_title}}\n\nDescription: {{pr_body}}\n\nDiff:\n{{diff}}"
+  - |
+    <system>
+    You are an expert Android code reviewer specializing in Kotlin, Jetpack Compose, and clean architecture. Review the provided pull request diff against these 5 criteria:
+
+    1. **Implementation Correctness** (implementation_correctness)
+       - Logic matches PR description; null safety and edge cases handled
+       - Dual-write pattern respected: write to Room AND Firestore; always read from Room
+       - Room migrations not skipped; autoMigrations or migration file present
+       - suspend functions and coroutine scopes correct (no GlobalScope, cancellation handled)
+
+    2. **Architectural Compliance** (architectural_compliance)
+       - Composable = render + event propagation only; no business logic
+       - ViewModel = StateFlow/Flow; no direct Retrofit or Room DAO imports
+       - Repository = data source coordination; no UI knowledge
+       - New @HiltViewModel with @Inject constructor; new API services as @Singleton in NetworkModule
+       - Models: domain models in model/, internal models in data/model/
+
+    3. **Kotlin/Compose Idiomaticity** (kotlin_compose_idiomaticity)
+       - State hoisting respected; no state in Composable beyond remember {}
+       - Flow collected via collectAsStateWithLifecycle() (not collectAsState())
+       - No unnecessary !! or unsafe as? casts where Kotlin offers better tools
+       - New Composables accept data as parameters — do not inject ViewModel internally
+
+    4. **Test Coverage Proportional to Risk** (test_coverage)
+       - ViewModel and Repository: unit test with MockK + runTest
+       - New PagingSource: test created via Repository (not ViewModel)
+       - New critical paths (auth, Firestore sync): at minimum happy path + one error case
+       - Composable JVM tests not required; instrumented tests optional
+
+    5. **Security and Data Safety** (security_and_data_safety)
+       - No hardcoded credentials, API keys, or tokens in code or strings
+       - No Context/Activity leak in ViewModel (only ApplicationContext via Hilt)
+       - Destructive DB operations (DROP, DELETE *) require explicit justification comment
+       - If PR changes Firestore document structure, verify alignment with Security Rules
+
+    Score each criterion 1–10 (1 = worst, 10 = best). Verdict: "passed" if ALL scores >= 6; "failed" if ANY score <= 5.
+    Provide actionable findings for each criterion (empty array if fully satisfied). Write a neutral 2–4 sentence summary.
+    Call the submit_review tool with your assessment.
+    </system>
+
+    PR: {{pr_title}}
+
+    Description: {{pr_body}}
+
+    Diff:
+    {{diff}}
 
 tests:
   - description: "clean — mała zmiana computed property (oczekiwane: passed)"
@@ -108,10 +112,10 @@ tests:
         value: "(() => { try { JSON.parse(output); return true; } catch(e) { return false; } })()"
       - type: javascript
         description: "5 kryteriów, score 1-10"
-        value: "(() => { try { const r = JSON.parse(output); return r.criteria?.length === 5 && r.criteria.every(c => c.score >= 1 && c.score <= 10); } catch(e) { return false; } })()"
+        value: "(() => { try { const raw = JSON.parse(output); const r = raw.input || raw; return r.criteria?.length === 5 && r.criteria.every(c => c.score >= 1 && c.score <= 10); } catch(e) { return false; } })()"
       - type: javascript
         description: "verdict === passed"
-        value: "(() => { try { return JSON.parse(output).verdict === 'passed'; } catch(e) { return false; } })()"
+        value: "(() => { try { const raw = JSON.parse(output); const r = raw.input || raw; return r.verdict === 'passed'; } catch(e) { return false; } })()"
 
   - description: "violation — naruszenia arch + security + idiomaticity (oczekiwane: failed)"
     vars:
@@ -124,10 +128,10 @@ tests:
         value: "(() => { try { JSON.parse(output); return true; } catch(e) { return false; } })()"
       - type: javascript
         description: "5 kryteriów, score 1-10"
-        value: "(() => { try { const r = JSON.parse(output); return r.criteria?.length === 5 && r.criteria.every(c => c.score >= 1 && c.score <= 10); } catch(e) { return false; } })()"
+        value: "(() => { try { const raw = JSON.parse(output); const r = raw.input || raw; return r.criteria?.length === 5 && r.criteria.every(c => c.score >= 1 && c.score <= 10); } catch(e) { return false; } })()"
       - type: javascript
         description: "verdict === failed"
-        value: "(() => { try { return JSON.parse(output).verdict === 'failed'; } catch(e) { return false; } })()"
+        value: "(() => { try { const raw = JSON.parse(output); const r = raw.input || raw; return r.verdict === 'failed'; } catch(e) { return false; } })()"
 
   - description: "medium — refactor z aktualizacją testów (tylko sprawdzenie struktury)"
     vars:
@@ -140,7 +144,7 @@ tests:
         value: "(() => { try { JSON.parse(output); return true; } catch(e) { return false; } })()"
       - type: javascript
         description: "5 kryteriów, score 1-10"
-        value: "(() => { try { const r = JSON.parse(output); return r.criteria?.length === 5 && r.criteria.every(c => c.score >= 1 && c.score <= 10); } catch(e) { return false; } })()"
+        value: "(() => { try { const raw = JSON.parse(output); const r = raw.input || raw; return r.criteria?.length === 5 && r.criteria.every(c => c.score >= 1 && c.score <= 10); } catch(e) { return false; } })()"
       - type: javascript
         description: "verdict jest prawidłową wartością enum"
-        value: "(() => { try { return ['passed','failed'].includes(JSON.parse(output).verdict); } catch(e) { return false; } })()"
+        value: "(() => { try { const raw = JSON.parse(output); const r = raw.input || raw; return ['passed','failed'].includes(r.verdict); } catch(e) { return false; } })()"
