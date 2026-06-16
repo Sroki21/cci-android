@@ -209,10 +209,10 @@ _Label swap:_
 
 #### Automated
 
-- [x] 2.1 `node --check index.js` exits 0
+- [x] 2.1 `node --check index.js` exits 0 — 0473b17
 
 #### Manual
 
-- [ ] 2.2 Test PR with `.kt` change → comment + verdict label appears
-- [ ] 2.3 `ai-cr:review` label → comment updated in-place, label replaced
-- [ ] 2.4 PR with no `.kt`/`.gradle` changes → skip comment appears
+- [x] 2.2 Test PR with `.kt` change → comment + verdict label appears
+- [x] 2.3 `ai-cr:review` label → comment updated in-place, label replaced
+- [x] 2.4 PR with no `.kt`/`.gradle` changes → skip comment appears
