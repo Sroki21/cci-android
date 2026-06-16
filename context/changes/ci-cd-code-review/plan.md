@@ -197,19 +197,19 @@ _Label swap:_
 
 #### Automated
 
-- [x] 1.1 `npm install` in `.github/actions/ai-review/` exits 0
-- [x] 1.2 `pr-review.yml` parses without YAML errors
-- [x] 1.3 `action.yml` parses without YAML errors
+- [x] 1.1 `npm install` in `.github/actions/ai-review/` exits 0 — b895382
+- [x] 1.2 `pr-review.yml` parses without YAML errors — b895382
+- [x] 1.3 `action.yml` parses without YAML errors — b895382
 
 #### Manual
 
-- [x] 1.4 Workflow "AI Code Review" visible in GitHub Actions UI
+- [x] 1.4 Workflow "AI Code Review" visible in GitHub Actions UI — b895382
 
 ### Phase 2: Review script + GitHub feedback
 
 #### Automated
 
-- [ ] 2.1 `node --check index.js` exits 0
+- [x] 2.1 `node --check index.js` exits 0
 
 #### Manual
 
