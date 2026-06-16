@@ -1,0 +1,8 @@
+id: no-android-log
+language: Kotlin
+severity: warning
+message: >
+  android.util.Log zamiast loggera. Gdy Timber zostanie dodany do projektu,
+  zastąp Log.* wywołaniem Timber.*. Na razie każdy nowy Log.* powiększa dług (repo-map TD).
+rule:
+  pattern: Log.$METHOD($$$)

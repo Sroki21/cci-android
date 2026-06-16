@@ -1,0 +1,9 @@
+id: no-force-unwrap
+language: Kotlin
+severity: hint
+message: >
+  Operator !! rzuca KotlinNullPointerException bez kontekstu w crashlogu.
+  Rozważ: ?: return / ?: throw / requireNotNull() z komunikatem / safe call ?. .
+  Wyjątek: maxByOrNull { }!! gdy lista jest gwarantowanie niepusta — wtedy dodaj komentarz.
+rule:
+  pattern: $EXPR!!

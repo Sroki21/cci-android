@@ -1,0 +1,9 @@
+id: no-thread-sleep
+language: Kotlin
+severity: warning
+message: >
+  Thread.sleep() jest niedeterministyczny. W testach Firestore (FirestoreRestoreTest:70)
+  powoduje fałszywe failures przy wolnym połączeniu. Zastąp pętlą retry lub
+  mechanizmem await na konkretnym stanie (np. awaitUntil { condition }).
+rule:
+  pattern: Thread.sleep($MILLIS)
