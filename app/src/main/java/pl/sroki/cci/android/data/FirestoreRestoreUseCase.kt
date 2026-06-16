@@ -63,18 +63,19 @@ class FirestoreRestoreUseCase @Inject constructor(
      */
     suspend fun restoreFromFirestore(): RestoreResult {
         val uid = authManager.uid.value ?: return RestoreResult.NotLoggedIn
+        return restoreIfEmptyMutex.withLock {
+            val allBinders = binderService.fetchAll(uid)
+            val allPages = binderPageService.fetchAll(uid)
+            val allCaps = capPositionService.fetchAll(uid)
+            if (allBinders.isEmpty()) return RestoreResult.Empty
 
-        val allBinders = binderService.fetchAll(uid)
-        val allPages = binderPageService.fetchAll(uid)
-        val allCaps = capPositionService.fetchAll(uid)
-        if (allBinders.isEmpty()) return RestoreResult.Empty
-
-        val chosen = chooseBinders(allBinders, allPages, allCaps)
-        database.withTransaction {
-            binderDao.deleteAll() // kaskada usuwa binder_page i cap_position
-            insertRestored(chosen, allPages, allCaps)
+            val chosen = chooseBinders(allBinders, allPages, allCaps)
+            database.withTransaction {
+                binderDao.deleteAll() // kaskada usuwa binder_page i cap_position
+                insertRestored(chosen, allPages, allCaps)
+            }
+            RestoreResult.Success(chosen.size, allPages.size, allCaps.size)
         }
-        return RestoreResult.Success(chosen.size, allPages.size, allCaps.size)
     }
 
     // Deduplikacja po nazwie: na nazwę zostaje kopia z największą liczbą kapsli (najpełniejsza).

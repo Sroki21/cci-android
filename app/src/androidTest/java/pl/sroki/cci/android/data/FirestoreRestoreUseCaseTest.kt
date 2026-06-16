@@ -130,4 +130,25 @@ class FirestoreRestoreUseCaseTest {
             1, db.binderDao().countAll()
         )
     }
+
+    @Test
+    fun restoreIfEmpty_and_restoreFromFirestore_concurrent_noDuplicates() = runBlocking {
+        // runBlocking: jednowątkowy BlockingEventLoop, interleaving przez kooperatywne zawieszenie.
+        // NIE zamieniaj na runTest — scheduler wirtualnego czasu nie replikuje tego interleavingu.
+        coEvery { binderService.fetchAll(TEST_UID) } coAnswers {
+            delay(50)
+            listOf(BinderDocument("fsB1", "Test Klaser"))
+        }
+        coEvery { binderPageService.fetchAll(TEST_UID) } returns emptyList()
+        coEvery { capPositionService.fetchAll(TEST_UID) } returns emptyList()
+
+        val job1 = launch { useCase.restoreIfEmpty() }
+        val job2 = launch { useCase.restoreFromFirestore() }
+        joinAll(job1, job2)
+
+        assertEquals(
+            "Mutex serializuje restoreIfEmpty i restoreFromFirestore — brak duplikatów",
+            1, db.binderDao().countAll()
+        )
+    }
 }
