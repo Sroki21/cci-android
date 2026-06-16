@@ -213,6 +213,6 @@ _Label swap:_
 
 #### Manual
 
-- [x] 2.2 Test PR with `.kt` change → comment + verdict label appears
-- [x] 2.3 `ai-cr:review` label → comment updated in-place, label replaced
-- [x] 2.4 PR with no `.kt`/`.gradle` changes → skip comment appears
+- [x] 2.2 Test PR with `.kt` change → comment + verdict label appears — 0473b17
+- [x] 2.3 `ai-cr:review` label → comment updated in-place, label replaced — 0473b17
+- [x] 2.4 PR with no `.kt`/`.gradle` changes → skip comment appears — 0473b17
