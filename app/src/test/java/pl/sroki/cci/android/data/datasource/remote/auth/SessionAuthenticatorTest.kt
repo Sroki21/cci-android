@@ -24,7 +24,7 @@ class SessionAuthenticatorTest {
     @Before
     fun setUp() {
         cookieJar = mockk(relaxed = true)
-        sessionRepository = SessionRepository(mockContext())
+        sessionRepository = SessionRepository(mockContext(), dagger.Lazy { mockk(relaxed = true) })
         authenticator = SessionAuthenticator(cookieJar, sessionRepository)
     }
 

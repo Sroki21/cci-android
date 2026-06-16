@@ -231,23 +231,23 @@ Przenieść `fetchApiToken()` z `AuthRepository` do `SessionRepository` jako `su
 
 #### Automated
 
-- [x] 2.1 `./gradlew testDebugUnitTest` przechodzi
-- [x] 2.2 `./gradlew ktlintCheck` przechodzi
+- [x] 2.1 `./gradlew testDebugUnitTest` przechodzi — 42a9b1b
+- [x] 2.2 `./gradlew ktlintCheck` przechodzi — 42a9b1b
 
 #### Manual
 
-- [x] 2.3 androidTest `FirestoreRestoreUseCaseTest` — wszystkie testy przechodzą lokalnie
-- [x] 2.4 `CapPositionFirestoreService.fetchAll()` ma ≤ 5 linii ciała
+- [x] 2.3 androidTest `FirestoreRestoreUseCaseTest` — wszystkie testy przechodzą lokalnie — 42a9b1b
+- [x] 2.4 `CapPositionFirestoreService.fetchAll()` ma ≤ 5 linii ciała — 42a9b1b
 
 ### Phase 3: K5 — fetchApiToken() → SessionRepository
 
 #### Automated
 
-- [ ] 3.1 `./gradlew testDebugUnitTest` przechodzi (6 testów AuthRepositoryTest)
-- [ ] 3.2 `./gradlew ktlintCheck` przechodzi
-- [ ] 3.3 `grep -rn "fetchApiToken" app/src/` — 0 wyników
-- [ ] 3.4 `grep -n "fetchAndStoreApiToken" SessionRepository.kt` — 1 wynik
+- [x] 3.1 `./gradlew testDebugUnitTest` przechodzi (6 testów AuthRepositoryTest)
+- [x] 3.2 `./gradlew ktlintCheck` przechodzi
+- [x] 3.3 `grep -rn "fetchApiToken" app/src/` — 0 wyników
+- [x] 3.4 `grep -n "fetchAndStoreApiToken" SessionRepository.kt` — 1 wynik
 
 #### Manual
 
-- [ ] 3.5 Manualny flow logowania na emulatorze — sukces + Logcat `CCI_AUTH: api token fetched`
+- [x] 3.5 Manualny flow logowania na emulatorze — sukces + Logcat `CCI_AUTH: api token fetched`

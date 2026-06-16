@@ -38,7 +38,7 @@ class HomeViewModelTest {
     @Before
     fun setUp() {
         Dispatchers.setMain(testDispatcher)
-        sessionRepository = SessionRepository(mockContext())
+        sessionRepository = SessionRepository(mockContext(), dagger.Lazy { mockk(relaxed = true) })
         authRepository = mockk(relaxed = true)
         firestoreRestoreUseCase = mockk(relaxed = true)
         coEvery { authRepository.logout() } returns Unit

@@ -31,7 +31,7 @@ class AuthRepositoryTest {
     fun setUp() {
         authApiService = mockk()
         cookieJar = mockk(relaxed = true)
-        sessionRepository = SessionRepository(mockContext())
+        sessionRepository = SessionRepository(mockContext(), dagger.Lazy { authApiService })
         firebaseAuthManager = mockk(relaxed = true)
         firestoreRestoreUseCase = mockk(relaxed = true)
         coEvery { authApiService.apiToken(any()) } returns mockk(relaxed = true)
@@ -96,7 +96,7 @@ class AuthRepositoryTest {
     @Test
     fun `init — brak cookie, jest token — isLoggedIn true`() {
         every { cookieJar.loadForRequest(any()) } returns emptyList()
-        sessionRepository = SessionRepository(mockContextWithToken("bearer-token"))
+        sessionRepository = SessionRepository(mockContextWithToken("bearer-token"), dagger.Lazy { authApiService })
 
         buildRepo()
 

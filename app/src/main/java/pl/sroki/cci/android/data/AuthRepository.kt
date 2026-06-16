@@ -8,8 +8,6 @@ import okhttp3.HttpUrl.Companion.toHttpUrl
 import pl.sroki.cci.android.data.datasource.remote.auth.AuthApiService
 import pl.sroki.cci.android.model.LoginErrorResponse
 import pl.sroki.cci.android.model.LoginRequest
-import pl.sroki.cci.android.model.LoginResponse
-import pl.sroki.cci.android.model.TokenRequest
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -48,7 +46,7 @@ class AuthRepository @Inject constructor(
                     // CookieJar zapisał już uwierzytelnioną sesję z tej odpowiedzi.
                     sessionRepository.setLoggedIn(true)
                     sessionRepository.setUserName(email)
-                    runCatching { fetchApiToken(email, password) }
+                    runCatching { sessionRepository.fetchAndStoreApiToken(email, password) }
                         .onFailure {
                             Sentry.captureException(it)
                             Log.w("CCI_AUTH", "api token fetch failed: ${it.message}")
@@ -73,27 +71,6 @@ class AuthRepository @Inject constructor(
         } catch (e: Exception) {
             Result.failure(e)
         }
-    }
-
-    private suspend fun fetchApiToken(email: String, password: String) {
-        val cached = sessionRepository.loadCachedToken()
-        if (cached != null) {
-            Log.d("CCI_AUTH", "api token: reusing cached")
-            sessionRepository.setToken(cached)
-            return
-        }
-        val resp = authApiService.apiToken(TokenRequest(email, password, "android"))
-        Log.d("CCI_AUTH", "api token code=${resp.code()}")
-        val raw = resp.body()?.string()
-            ?: resp.errorBody()?.string()
-            ?: run { Log.d("CCI_AUTH", "api token: empty body"); return }
-        val token = when {
-            raw.trimStart().startsWith('"') -> raw.trim().removeSurrounding("\"")
-            raw.trimStart().startsWith('{') -> json.decodeFromString<LoginResponse>(raw).token
-            else -> raw.trim().takeIf { it.isNotBlank() }
-        }
-        Log.d("CCI_AUTH", "api token fetched: ${token != null}, raw prefix=${raw.take(40)}")
-        sessionRepository.setToken(token)
     }
 
     suspend fun logout() {
