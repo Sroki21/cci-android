@@ -219,25 +219,25 @@ Przenieść `fetchApiToken()` z `AuthRepository` do `SessionRepository` jako `su
 
 #### Automated
 
-- [x] 1.1 `./gradlew testDebugUnitTest` przechodzi
-- [x] 1.2 `./gradlew ktlintCheck` przechodzi
+- [x] 1.1 `./gradlew testDebugUnitTest` przechodzi — eb76be8
+- [x] 1.2 `./gradlew ktlintCheck` przechodzi — eb76be8
 
 #### Manual
 
-- [x] 1.3 androidTest `FirestoreRestoreUseCaseTest` — wszystkie testy (stary + nowy) przechodzą lokalnie
-- [x] 1.4 `grep -n "withLock" FirestoreRestoreUseCase.kt` zwraca 2 wyniki
+- [x] 1.3 androidTest `FirestoreRestoreUseCaseTest` — wszystkie testy (stary + nowy) przechodzą lokalnie — eb76be8
+- [x] 1.4 `grep -n "withLock" FirestoreRestoreUseCase.kt` zwraca 2 wyniki — eb76be8
 
 ### Phase 2: K2 — CapPositionMapper
 
 #### Automated
 
-- [ ] 2.1 `./gradlew testDebugUnitTest` przechodzi
-- [ ] 2.2 `./gradlew ktlintCheck` przechodzi
+- [x] 2.1 `./gradlew testDebugUnitTest` przechodzi
+- [x] 2.2 `./gradlew ktlintCheck` przechodzi
 
 #### Manual
 
-- [ ] 2.3 androidTest `FirestoreRestoreUseCaseTest` — wszystkie testy przechodzą lokalnie
-- [ ] 2.4 `CapPositionFirestoreService.fetchAll()` ma ≤ 5 linii ciała
+- [x] 2.3 androidTest `FirestoreRestoreUseCaseTest` — wszystkie testy przechodzą lokalnie
+- [x] 2.4 `CapPositionFirestoreService.fetchAll()` ma ≤ 5 linii ciała
 
 ### Phase 3: K5 — fetchApiToken() → SessionRepository
 

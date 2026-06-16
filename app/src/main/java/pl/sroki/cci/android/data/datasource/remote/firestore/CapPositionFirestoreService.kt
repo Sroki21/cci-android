@@ -63,25 +63,7 @@ class CapPositionFirestoreService @Inject constructor(private val firestore: Fir
     }
 
     suspend fun fetchAll(uid: String): List<CapPositionDocument> =
-        col(uid).get().await().documents.mapNotNull { doc ->
-            val snapshot = doc.getString("capImageUrl")?.let {
-                CapSnapshot(
-                    name = doc.getString("capName") ?: "",
-                    country = doc.getString("capCountry") ?: "",
-                    imageUrl = it,
-                    createdAt = doc.getString("capCreatedAt"),
-                    createdById = doc.getLong("capCreatedById")?.toInt(),
-                    updatedAt = doc.getString("capUpdatedAt")
-                )
-            }
-            CapPositionDocument(
-                firestoreId = doc.id,
-                binderPageFirestoreId = doc.getString("binderPageFirestoreId") ?: return@mapNotNull null,
-                position = (doc.getLong("position") ?: return@mapNotNull null).toInt(),
-                capId = doc.getLong("capId") ?: return@mapNotNull null,
-                snapshot = snapshot
-            )
-        }
+        col(uid).get().await().documents.mapNotNull { it.toCapPositionDocument() }
 }
 
 data class CapPositionDocument(
