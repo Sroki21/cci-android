@@ -243,11 +243,11 @@ Przenieść `fetchApiToken()` z `AuthRepository` do `SessionRepository` jako `su
 
 #### Automated
 
-- [x] 3.1 `./gradlew testDebugUnitTest` przechodzi (6 testów AuthRepositoryTest)
-- [x] 3.2 `./gradlew ktlintCheck` przechodzi
-- [x] 3.3 `grep -rn "fetchApiToken" app/src/` — 0 wyników
-- [x] 3.4 `grep -n "fetchAndStoreApiToken" SessionRepository.kt` — 1 wynik
+- [x] 3.1 `./gradlew testDebugUnitTest` przechodzi (6 testów AuthRepositoryTest) — c69184f
+- [x] 3.2 `./gradlew ktlintCheck` przechodzi — c69184f
+- [x] 3.3 `grep -rn "fetchApiToken" app/src/` — 0 wyników — c69184f
+- [x] 3.4 `grep -n "fetchAndStoreApiToken" SessionRepository.kt` — 1 wynik — c69184f
 
 #### Manual
 
-- [x] 3.5 Manualny flow logowania na emulatorze — sukces + Logcat `CCI_AUTH: api token fetched`
+- [x] 3.5 Manualny flow logowania na emulatorze — sukces + Logcat `CCI_AUTH: api token fetched` — c69184f
