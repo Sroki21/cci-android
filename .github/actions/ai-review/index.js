@@ -11,7 +11,7 @@ const PR_BODY = process.env.PR_BODY || '';
 const GITHUB_REPOSITORY = process.env.GITHUB_REPOSITORY;
 
 const DIFF_MAX_CHARS = 80000;
-const DIFF_PATH = '/tmp/review_diff.txt';
+const DIFF_PATH = process.env.DIFF_PATH || '/tmp/review_diff.txt';
 const REVIEW_MARKER = '<!-- ai-code-review -->';
 const MODEL = 'claude-haiku-4-5-20251001';
 
@@ -140,22 +140,33 @@ async function findExistingComment(repo, prNumber) {
       `/repos/${repo}/issues/${prNumber}/comments?per_page=100&page=${page}`,
       'GET'
     );
-    if (!res.ok) return null;
-    const comments = await res.json();
+    if (!res.ok) throw new Error(`GitHub API error ${res.status} fetching comments`);
+    let comments;
+    try {
+      comments = await res.json();
+    } catch (e) {
+      console.warn('JSON parse error in pagination:', e.message);
+      return null;
+    }
     if (comments.length === 0) return null;
     const found = comments.find((c) => c.body && c.body.startsWith(REVIEW_MARKER));
     if (found) return found.id;
     if (comments.length < 100) return null;
+    if (page >= 50) { console.warn('Pagination limit reached'); return null; }
     page++;
   }
 }
 
 async function postOrUpdateComment(repo, prNumber, body) {
   const existingId = await findExistingComment(repo, prNumber);
+  let res;
   if (existingId) {
-    await githubRequest(`/repos/${repo}/issues/comments/${existingId}`, 'PATCH', { body });
+    res = await githubRequest(`/repos/${repo}/issues/comments/${existingId}`, 'PATCH', { body });
   } else {
-    await githubRequest(`/repos/${repo}/issues/${prNumber}/comments`, 'POST', { body });
+    res = await githubRequest(`/repos/${repo}/issues/${prNumber}/comments`, 'POST', { body });
+  }
+  if (!res.ok) {
+    throw new Error(`Failed to post/update PR comment: ${res.status}`);
   }
 }
 
@@ -178,14 +189,14 @@ async function swapLabels(repo, prNumber, verdict) {
   const toAdd = verdict === 'passed' ? 'ai-cr:passed' : 'ai-cr:failed';
   const toRemove = verdict === 'passed' ? 'ai-cr:failed' : 'ai-cr:passed';
 
+  // Add verdict label first to avoid a window without any ai-cr:* label
+  await githubRequest(`/repos/${repo}/issues/${prNumber}/labels`, 'POST', { labels: [toAdd] });
+
   // Remove opposite verdict label
   await githubRequest(
     `/repos/${repo}/issues/${prNumber}/labels/${encodeURIComponent(toRemove)}`,
     'DELETE'
   );
-
-  // Add verdict label
-  await githubRequest(`/repos/${repo}/issues/${prNumber}/labels`, 'POST', { labels: [toAdd] });
 
   // Remove retry trigger label
   await githubRequest(
@@ -275,20 +286,22 @@ async function main() {
 
   let truncated = false;
   if (diffContent.length > DIFF_MAX_CHARS) {
-    diffContent = diffContent.slice(0, DIFF_MAX_CHARS);
+    const boundary = diffContent.lastIndexOf('\n@@', DIFF_MAX_CHARS);
+    diffContent = diffContent.slice(0, boundary > 0 ? boundary : DIFF_MAX_CHARS);
     truncated = true;
-    console.log(`Diff truncated to ${DIFF_MAX_CHARS} chars.`);
+    console.log(`Diff truncated to ${diffContent.length} chars.`);
   }
 
   // Anthropic API call
   const client = new Anthropic({ apiKey: ANTHROPIC_API_KEY });
 
-  const userMessage = `PR: ${PR_TITLE}\n\nDescription: ${PR_BODY}\n\nDiff:\n${diffContent}`;
+  const safeBody = PR_BODY.slice(0, 2000);
+  const userMessage = `PR: ${PR_TITLE}\n\n=== Description (user-provided) ===\n${safeBody}\n=== End Description ===\n\nDiff:\n${diffContent}`;
 
   console.log('Calling Anthropic API...');
   const response = await client.messages.create({
     model: MODEL,
-    max_tokens: 1024,
+    max_tokens: 4096,
     tools: [reviewTool],
     tool_choice: { type: 'tool', name: 'submit_review' },
     system: SYSTEM_PROMPT,
@@ -301,6 +314,10 @@ async function main() {
     process.exit(1);
   }
   const review = toolUseBlock.input;
+  if (!review?.criteria || !review?.verdict || !review?.summary) {
+    console.error('Malformed tool_use input:', JSON.stringify(review));
+    process.exit(1);
+  }
   console.log(`Verdict: ${review.verdict}`);
 
   // Bootstrap labels and format comment

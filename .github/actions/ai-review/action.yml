@@ -30,17 +30,17 @@ runs:
       env:
         BASE_REF: ${{ inputs.base-ref }}
       run: |
-        git -C "$GITHUB_WORKSPACE" diff "origin/$BASE_REF"...HEAD -- '*.kt' '*.gradle' > /tmp/review_diff.txt
+        git -C "$GITHUB_WORKSPACE" diff "origin/$BASE_REF"...HEAD -- '*.kt' '*.gradle' > "$RUNNER_TEMP/review_diff_$GITHUB_RUN_ID.txt"
 
     - name: Setup Node.js
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
       with:
         node-version: '20'
 
     - name: Install dependencies
       shell: bash
       working-directory: ${{ github.action_path }}
-      run: npm install
+      run: npm ci
 
     - name: Run review script
       shell: bash
@@ -52,4 +52,5 @@ runs:
         PR_TITLE: ${{ inputs.pr-title }}
         PR_BODY: ${{ inputs.pr-body }}
         BASE_REF: ${{ inputs.base-ref }}
+        DIFF_PATH: ${{ runner.temp }}/review_diff_${{ github.run_id }}.txt
       run: node index.js

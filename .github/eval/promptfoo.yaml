@@ -2,7 +2,7 @@ description: "AI code review — model comparison: claude-haiku vs claude-sonnet
 # Auth: ANTHROPIC_API_KEY
 
 providers:
-  - id: anthropic:claude-haiku-4-5
+  - id: anthropic:claude-haiku-4-5-20251001
     label: haiku-4.5
     config: &shared
       max_tokens: 2048
