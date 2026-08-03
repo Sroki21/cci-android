@@ -1,5 +1,6 @@
 package pl.sroki.cci.android.data
 
+import android.database.sqlite.SQLiteConstraintException
 import androidx.room.withTransaction
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -37,6 +38,20 @@ class BinderPageRepository @Inject constructor(
                 }
             } else null
             dao.insert(BinderPage(binderId = binderId, pageNumber = count + 1, firestoreId = firestoreId))
+        }
+    }
+
+    suspend fun updatePageNumber(pageId: Long, newPageNumber: Int) {
+        require(newPageNumber >= 1) { "Numer strony musi być większy od zera" }
+        try {
+            dao.updatePageNumber(pageId, newPageNumber)
+        } catch (e: SQLiteConstraintException) {
+            throw IllegalStateException("Strona o numerze $newPageNumber już istnieje w tym klaserze")
+        }
+        val uid = authManager.uid.value
+        if (uid != null) {
+            val page = dao.getById(pageId)
+            page?.firestoreId?.let { binderPageFirestoreService.scheduleUpdate(uid, it, newPageNumber) }
         }
     }
 

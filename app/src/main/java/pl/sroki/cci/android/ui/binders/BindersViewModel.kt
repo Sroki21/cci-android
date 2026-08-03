@@ -48,7 +48,8 @@ data class BindersUiState(
     val isCreateDialogOpen: Boolean = false,
     val isLoading: Boolean = false,
     val deleteBinderConfirmId: Long? = null,
-    val deletePageConfirmId: Long? = null
+    val deletePageConfirmId: Long? = null,
+    val renamePageTargetId: Long? = null
 )
 
 sealed interface BindersEvent {
@@ -303,4 +304,24 @@ class BindersViewModel @Inject constructor(
     }
 
     fun dismissDeletePage() = _uiState.update { it.copy(deletePageConfirmId = null) }
+
+    fun requestRenamePage(pageId: Long) = _uiState.update { it.copy(renamePageTargetId = pageId) }
+
+    fun dismissRenamePage() = _uiState.update { it.copy(renamePageTargetId = null) }
+
+    fun confirmRenamePage(newPageNumber: Int) {
+        val pageId = _uiState.value.renamePageTargetId ?: return
+        _uiState.update { it.copy(renamePageTargetId = null) }
+        viewModelScope.launch {
+            try {
+                binderPageRepository.updatePageNumber(pageId, newPageNumber)
+            } catch (e: IllegalStateException) {
+                _events.send(BindersEvent.ShowSnackbar(e.message ?: "Błąd"))
+            } catch (e: IllegalArgumentException) {
+                _events.send(BindersEvent.ShowSnackbar(e.message ?: "Błąd"))
+            } catch (e: Exception) {
+                _events.send(BindersEvent.ShowSnackbar("Nie udało się zmienić numeru strony"))
+            }
+        }
+    }
 }

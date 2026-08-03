@@ -1,8 +1,11 @@
 package pl.sroki.cci.android.ui.binders
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -12,14 +15,16 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -36,6 +41,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -44,6 +50,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.compose.foundation.shape.CircleShape
@@ -137,6 +144,7 @@ fun BindersScreen(
                     onDeleteBinder = { vm.requestDeleteBinder(binder.id) },
                     onAddPage = { vm.addPage(binder.id) },
                     onDeletePage = { vm.requestDeletePage(it) },
+                    onRenamePage = { vm.requestRenamePage(it) },
                     onCapClick = onCapClick
                 )
             }
@@ -186,6 +194,20 @@ fun BindersScreen(
             dismissButton = {
                 TextButton(onClick = vm::dismissDeletePage) { Text("Anuluj") }
             }
+        )
+    }
+
+    val renamePageTargetId = uiState.renamePageTargetId
+    if (renamePageTargetId != null) {
+        val currentPageNumber = uiState.binderPages.values
+            .flatten()
+            .firstOrNull { it.id == renamePageTargetId }
+            ?.pageNumber
+            ?: 1
+        RenamePageDialog(
+            currentPageNumber = currentPageNumber,
+            onDismiss = vm::dismissRenamePage,
+            onConfirm = vm::confirmRenamePage
         )
     }
 }
@@ -262,6 +284,7 @@ private fun CountryFilterRow(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun ExpandableBinderRow(
     binder: Binder,
@@ -279,98 +302,140 @@ private fun ExpandableBinderRow(
     onDeleteBinder: () -> Unit,
     onAddPage: () -> Unit,
     onDeletePage: (Long) -> Unit,
+    onRenamePage: (Long) -> Unit,
     onCapClick: (Long) -> Unit,
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
         val binderFlagged = pages.any { page ->
             (capPositions[page.id] ?: emptyList()).any { isFlagged(capStatus[it.capId]) }
         }
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 2.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            val binderLabel = if (totalCaps > 0) "${binder.name} - $totalCaps" else binder.name
-            Text(
-                text = binderLabel,
-                modifier = Modifier.weight(1f),
-                color = if (binderFlagged) MaterialTheme.colorScheme.error else Color.Unspecified,
-                fontWeight = if (binderFlagged) FontWeight.Bold else null
-            )
-            IconButton(onClick = onToggle) {
-                Icon(
-                    imageVector = if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
-                    contentDescription = if (expanded) "Zwiń" else "Rozwiń"
+        var showBinderMenu by remember { mutableStateOf(false) }
+        Box {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .combinedClickable(
+                        onClick = onToggle,
+                        onLongClick = { showBinderMenu = true }
+                    )
+                    .padding(horizontal = 16.dp, vertical = 2.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                val binderLabel = if (totalCaps > 0) "${binder.name} - $totalCaps" else binder.name
+                Text(
+                    text = binderLabel,
+                    modifier = Modifier.weight(1f),
+                    color = if (binderFlagged) MaterialTheme.colorScheme.error else Color.Unspecified,
+                    fontWeight = if (binderFlagged) FontWeight.Bold else null
                 )
+                IconButton(onClick = onToggle) {
+                    Icon(
+                        imageVector = if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                        contentDescription = if (expanded) "Zwiń" else "Rozwiń"
+                    )
+                }
             }
-            IconButton(onClick = onDeleteBinder) {
-                Icon(imageVector = Icons.Filled.Delete, contentDescription = "Usuń klaser")
+            DropdownMenu(
+                expanded = showBinderMenu,
+                onDismissRequest = { showBinderMenu = false }
+            ) {
+                DropdownMenuItem(
+                    text = { Text("Usuń klaser") },
+                    onClick = {
+                        showBinderMenu = false
+                        onDeleteBinder()
+                    }
+                )
             }
         }
         if (expanded) {
             pages.forEach { page ->
-                val pageExpanded = page.id in expandedPageIds
-                val allCaps = capPositions[page.id]?.sortedBy { it.position } ?: emptyList()
-                val caps = if (selectedCountry.isEmpty()) allCaps
-                else allCaps.filter { capInfo[it.capId]?.country == selectedCountry }
-                val countries = caps.mapNotNull { capInfo[it.capId]?.country }.distinct().sorted()
-                val countriesSuffix = if (countries.isEmpty()) "" else " (${countries.joinToString(", ")})"
-                val pageLabel = "Strona ${page.pageNumber}$countriesSuffix${if (caps.isNotEmpty()) " - ${caps.size}" else ""}"
-                val pageFlagged = allCaps.any { isFlagged(capStatus[it.capId]) }
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(start = 32.dp, end = 16.dp, top = 2.dp, bottom = 2.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = pageLabel,
-                        modifier = Modifier.weight(1f),
-                        color = if (pageFlagged) MaterialTheme.colorScheme.error else Color.Unspecified,
-                        fontWeight = if (pageFlagged) FontWeight.Bold else null
-                    )
-                    IconButton(onClick = { onTogglePage(page.id) }) {
-                        Icon(
-                            imageVector = if (pageExpanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
-                            contentDescription = if (pageExpanded) "Zwiń stronę" else "Rozwiń stronę"
-                        )
-                    }
-                    IconButton(onClick = { onDeletePage(page.id) }) {
-                        Icon(imageVector = Icons.Filled.Delete, contentDescription = "Usuń stronę")
-                    }
-                }
-                if (pageExpanded) {
-                    caps.forEach { cap ->
-                        val info = capInfo[cap.capId]
+                key(page.id) {
+                    val pageExpanded = page.id in expandedPageIds
+                    val allCaps = capPositions[page.id]?.sortedBy { it.position } ?: emptyList()
+                    val caps = if (selectedCountry.isEmpty()) allCaps
+                    else allCaps.filter { capInfo[it.capId]?.country == selectedCountry }
+                    val countries = caps.mapNotNull { capInfo[it.capId]?.country }.distinct().sorted()
+                    val countriesSuffix = if (countries.isEmpty()) "" else " (${countries.joinToString(", ")})"
+                    val pageLabel = "Strona ${page.pageNumber}$countriesSuffix${if (caps.isNotEmpty()) " - ${caps.size}" else ""}"
+                    val pageFlagged = allCaps.any { isFlagged(capStatus[it.capId]) }
+                    var showPageMenu by remember { mutableStateOf(false) }
+                    Box {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable { onCapClick(cap.capId) }
-                                .padding(start = 48.dp, end = 16.dp, top = 2.dp, bottom = 2.dp),
+                                .combinedClickable(
+                                    onClick = { onTogglePage(page.id) },
+                                    onLongClick = { showPageMenu = true }
+                                )
+                                .padding(start = 32.dp, end = 16.dp, top = 2.dp, bottom = 2.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            AsyncImage(
-                                model = info?.imageUrl,
-                                contentDescription = null,
-                                modifier = Modifier
-                                    .size(40.dp)
-                                    .clip(CircleShape)
+                            Text(
+                                text = pageLabel,
+                                modifier = Modifier.weight(1f),
+                                color = if (pageFlagged) MaterialTheme.colorScheme.error else Color.Unspecified,
+                                fontWeight = if (pageFlagged) FontWeight.Bold else null
                             )
-                            val capFlagged = isFlagged(capStatus[cap.capId])
-                            Column(modifier = Modifier.padding(start = 8.dp)) {
-                                Text(
-                                    text = "Pozycja ${cap.position}: ${cap.capId}",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = if (capFlagged) MaterialTheme.colorScheme.error else Color.Unspecified,
-                                    fontWeight = if (capFlagged) FontWeight.Bold else null
+                            IconButton(onClick = { onTogglePage(page.id) }) {
+                                Icon(
+                                    imageVector = if (pageExpanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                                    contentDescription = if (pageExpanded) "Zwiń stronę" else "Rozwiń stronę"
                                 )
-                                if (info != null) {
+                            }
+                        }
+                        DropdownMenu(
+                            expanded = showPageMenu,
+                            onDismissRequest = { showPageMenu = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("Zmień numer strony") },
+                                onClick = {
+                                    showPageMenu = false
+                                    onRenamePage(page.id)
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Usuń stronę") },
+                                onClick = {
+                                    showPageMenu = false
+                                    onDeletePage(page.id)
+                                }
+                            )
+                        }
+                    }
+                    if (pageExpanded) {
+                        caps.forEach { cap ->
+                            val info = capInfo[cap.capId]
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { onCapClick(cap.capId) }
+                                    .padding(start = 48.dp, end = 16.dp, top = 2.dp, bottom = 2.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                AsyncImage(
+                                    model = info?.imageUrl,
+                                    contentDescription = null,
+                                    modifier = Modifier
+                                        .size(40.dp)
+                                        .clip(CircleShape)
+                                )
+                                val capFlagged = isFlagged(capStatus[cap.capId])
+                                Column(modifier = Modifier.padding(start = 8.dp)) {
                                     Text(
-                                        text = info.country,
+                                        text = "Pozycja ${cap.position}: ${cap.capId}",
                                         style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        color = if (capFlagged) MaterialTheme.colorScheme.error else Color.Unspecified,
+                                        fontWeight = if (capFlagged) FontWeight.Bold else null
                                     )
+                                    if (info != null) {
+                                        Text(
+                                            text = info.country,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -413,6 +478,38 @@ private fun CreateBinderDialog(
             TextButton(
                 onClick = { onCreate(name) },
                 enabled = name.isNotBlank() && !isLoading
+            ) { Text("Zapisz") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Anuluj") }
+        }
+    )
+}
+
+@Composable
+private fun RenamePageDialog(
+    currentPageNumber: Int,
+    onDismiss: () -> Unit,
+    onConfirm: (Int) -> Unit,
+) {
+    var numberText by remember { mutableStateOf(currentPageNumber.toString()) }
+    val newNumber = numberText.toIntOrNull()
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Zmień numer strony") },
+        text = {
+            OutlinedTextField(
+                value = numberText,
+                onValueChange = { numberText = it },
+                label = { Text("Numer strony") },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+            )
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { if (newNumber != null) onConfirm(newNumber) },
+                enabled = newNumber != null && newNumber >= 1
             ) { Text("Zapisz") }
         },
         dismissButton = {

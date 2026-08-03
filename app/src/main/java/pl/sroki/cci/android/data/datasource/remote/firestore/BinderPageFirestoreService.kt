@@ -27,6 +27,15 @@ class BinderPageFirestoreService @Inject constructor(private val firestore: Fire
         col(uid).document(firestoreId).delete()
     }
 
+    fun scheduleUpdate(uid: String, firestoreId: String, pageNumber: Int) {
+        col(uid).document(firestoreId).update(
+            mapOf(
+                "pageNumber" to pageNumber,
+                "updatedAt" to FieldValue.serverTimestamp()
+            )
+        )
+    }
+
     suspend fun fetchAll(uid: String): List<BinderPageDocument> =
         col(uid).get().await().documents.mapNotNull { doc ->
             BinderPageDocument(

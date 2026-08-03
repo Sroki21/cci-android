@@ -109,4 +109,33 @@ class BindersViewModelTest {
 
         assertEquals(42L, viewModel.uiState.value.deleteBinderConfirmId)
     }
+
+    @Test
+    fun `requestRenamePage_setsTargetId`() = runTest {
+        viewModel.requestRenamePage(7L)
+
+        assertEquals(7L, viewModel.uiState.value.renamePageTargetId)
+    }
+
+    @Test
+    fun `confirmRenamePage_success_clearsTargetId`() = runTest {
+        coEvery { binderPageRepository.updatePageNumber(7L, 3) } returns Unit
+
+        viewModel.requestRenamePage(7L)
+        viewModel.confirmRenamePage(3)
+
+        assertEquals(null, viewModel.uiState.value.renamePageTargetId)
+    }
+
+    @Test
+    fun `confirmRenamePage_duplicateNumber_showsSnackbar`() = runTest {
+        coEvery { binderPageRepository.updatePageNumber(7L, 3) } throws
+            IllegalStateException("Strona o numerze 3 już istnieje w tym klaserze")
+
+        viewModel.requestRenamePage(7L)
+        viewModel.confirmRenamePage(3)
+
+        val event = withTimeout(1_000) { viewModel.events.first() }
+        assertTrue(event is BindersEvent.ShowSnackbar)
+    }
 }
