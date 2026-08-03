@@ -16,7 +16,8 @@ import javax.inject.Singleton
 @Singleton
 class CapsRepository @Inject constructor(
     private val capApiService: CapApiService,
-    private val purchasedCapsLocalStore: PurchasedCapsLocalStore
+    private val purchasedCapsLocalStore: PurchasedCapsLocalStore,
+    private val capPositionRepository: CapPositionRepository
 ) {
 
     private val perPage = Cap.PER_PAGE
@@ -34,7 +35,23 @@ class CapsRepository @Inject constructor(
         SimilarCapsPagingSource(imageBytes, mimeType, this)
 
     suspend fun searchSimilar(image: MultipartBody.Part): SimilarCapsResponse {
-        return capApiService.searchSimilar(image)
+        val response = capApiService.searchSimilar(image)
+        return response.copy(caps = enrichWithLocalCollectionStatus(response.caps))
+    }
+
+    // Endpoint wyszukiwania po zdjęciu nie zwraca poprawnie isInCollection dla wyników
+    // (CapGridCard zawsze pokazywał brak ramki). Dopinamy status z lokalnej prawdy: pozycje
+    // w klaserach + lokalny magazyn zakupionych — to samo źródło, z którego korzysta
+    // LocalAssignedCapIds na pozostałych ekranach.
+    private suspend fun enrichWithLocalCollectionStatus(caps: List<Cap>): List<Cap> {
+        if (caps.isEmpty()) return caps
+        val assignedIds = capPositionRepository.getAllCapIds().toSet()
+        val purchasedIds = purchasedCapsLocalStore.getIds()
+        return caps.map { cap ->
+            if (!cap.isInCollection && (cap.id in assignedIds || cap.id in purchasedIds)) {
+                cap.copy(isInCollection = true)
+            } else cap
+        }
     }
 
     fun advancedSearchPagingSource(

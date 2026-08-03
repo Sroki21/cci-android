@@ -10,18 +10,23 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
+import okhttp3.MultipartBody
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import pl.sroki.cci.android.data.datasource.remote.CapApiService
 import pl.sroki.cci.android.model.Cap
 import pl.sroki.cci.android.model.Page
+import pl.sroki.cci.android.model.SimilarCapsResponse
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class CapsRepositoryTest {
 
     private lateinit var capApiService: CapApiService
     private lateinit var purchasedCapsLocalStore: PurchasedCapsLocalStore
+    private lateinit var capPositionRepository: CapPositionRepository
     private lateinit var repository: CapsRepository
 
     private val fakePage = Page(
@@ -39,7 +44,8 @@ class CapsRepositoryTest {
     fun setUp() {
         capApiService = mockk()
         purchasedCapsLocalStore = mockk()
-        repository = CapsRepository(capApiService, purchasedCapsLocalStore)
+        capPositionRepository = mockk()
+        repository = CapsRepository(capApiService, purchasedCapsLocalStore, capPositionRepository)
     }
 
     @Test
@@ -119,5 +125,24 @@ class CapsRepositoryTest {
 
         received.await()
         verify(exactly = 1) { purchasedCapsLocalStore.remove(1L) }
+    }
+
+    @Test
+    fun `searchSimilar dopina isInCollection na podstawie przypisanych i zakupionych id`() = runTest {
+        val part = mockk<MultipartBody.Part>()
+        fun cap(id: Long) = Cap(
+            id = id, country = "Poland", product = "Beer", liner = "Plastic",
+            purpose = "Bottle closure", imageUrl = "https://example.com/$id.jpg"
+        )
+        coEvery { capApiService.searchSimilar(part) } returns
+            SimilarCapsResponse(id = 1L, caps = listOf(cap(1L), cap(2L), cap(3L)))
+        coEvery { capPositionRepository.getAllCapIds() } returns listOf(1L)
+        every { purchasedCapsLocalStore.getIds() } returns setOf(2L)
+
+        val result = repository.searchSimilar(part)
+
+        assertTrue(result.caps.first { it.id == 1L }.isInCollection)
+        assertTrue(result.caps.first { it.id == 2L }.isInCollection)
+        assertFalse(result.caps.first { it.id == 3L }.isInCollection)
     }
 }

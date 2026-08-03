@@ -3,6 +3,8 @@ package pl.sroki.cci.android.ui.catalog.picturesearch
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Matrix
+import android.media.ExifInterface
 import android.net.Uri
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.rememberTransformableState
@@ -53,9 +55,10 @@ fun CropScreen(
 
     LaunchedEffect(sourceUri) {
         withContext(Dispatchers.IO) {
-            bitmap = context.contentResolver.openInputStream(sourceUri)?.use {
+            val decoded = context.contentResolver.openInputStream(sourceUri)?.use {
                 BitmapFactory.decodeStream(it)
             }
+            bitmap = decoded?.let { applyExifOrientation(context, sourceUri, it) }
         }
     }
 
@@ -71,6 +74,30 @@ fun CropScreen(
             onDismiss = onDismiss
         )
     }
+}
+
+// Zdjęcia z aparatu mają piksele zapisane poziomo z tagiem EXIF Orientation opisującym
+// docelowy obrót — BitmapFactory go ignoruje, więc trzeba obrócić ręcznie. Galeria zwraca
+// zwykle już wyprostowane bitmapy, ale funkcja jest bezpieczna też dla ORIENTATION_NORMAL.
+private fun applyExifOrientation(context: Context, uri: Uri, bitmap: Bitmap): Bitmap {
+    val orientation = context.contentResolver.openInputStream(uri)?.use { stream ->
+        ExifInterface(stream).getAttributeInt(
+            ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL
+        )
+    } ?: ExifInterface.ORIENTATION_NORMAL
+
+    val matrix = Matrix()
+    when (orientation) {
+        ExifInterface.ORIENTATION_ROTATE_90 -> matrix.postRotate(90f)
+        ExifInterface.ORIENTATION_ROTATE_180 -> matrix.postRotate(180f)
+        ExifInterface.ORIENTATION_ROTATE_270 -> matrix.postRotate(270f)
+        ExifInterface.ORIENTATION_FLIP_HORIZONTAL -> matrix.postScale(-1f, 1f)
+        ExifInterface.ORIENTATION_FLIP_VERTICAL -> matrix.postScale(1f, -1f)
+        else -> return bitmap
+    }
+    val rotated = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+    if (rotated !== bitmap) bitmap.recycle()
+    return rotated
 }
 
 @Composable
