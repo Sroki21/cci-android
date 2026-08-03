@@ -3,6 +3,7 @@ package pl.sroki.cci.android.ui.catalog.caps.advanced
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.paging.Pager
@@ -35,10 +36,15 @@ class AdvancedSearchViewModel @Inject constructor(
     private val capsRepository: CapsRepository,
     private val countriesRepository: CountriesRepository,
     private val producersRepository: ProducersRepository,
-    private val sessionRepository: SessionRepository
+    private val sessionRepository: SessionRepository,
+    savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
-    var filter by mutableStateOf(AdvancedSearchFilter())
+    private val initialProducer: String? = savedStateHandle.get<String>("producer")
+
+    var filter by mutableStateOf(
+        AdvancedSearchFilter(producerName = initialProducer ?: "")
+    )
         private set
 
     var countries by mutableStateOf<List<Country>>(emptyList())
@@ -85,6 +91,7 @@ class AdvancedSearchViewModel @Inject constructor(
         viewModelScope.launch {
             countries = try { countriesRepository.getCountries() } catch (e: Exception) { emptyList() }
         }
+        if (!initialProducer.isNullOrBlank()) search()
     }
 
     fun updateFilter(updated: AdvancedSearchFilter) { filter = updated }

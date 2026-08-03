@@ -62,6 +62,7 @@ private fun DriftBanner(
 fun CapDetailScreen(
     id: Int,
     onBack: () -> Unit,
+    onProducerClick: (String) -> Unit = {},
 ) {
     val viewModel = hiltViewModel<CapDetailViewModel>()
     val uiState = viewModel.capDetailUiState
@@ -165,6 +166,7 @@ fun CapDetailScreen(
                         onBinderSelected = viewModel::onBinderSelected,
                         onPageSelected = viewModel::onPageSelected,
                         onPositionSelected = viewModel::onPositionSelected,
+                        onProducerClick = onProducerClick,
                     )
                 }
             }

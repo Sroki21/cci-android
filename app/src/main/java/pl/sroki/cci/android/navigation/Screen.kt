@@ -34,6 +34,9 @@ sealed class Screen(val route: String) {
     }
 
     object AdvancedSearch : Screen("advanced-search")
+    object AdvancedSearchByProducer : Screen("advanced-search?producer={producer}") {
+        fun createUrl(producerName: String) = "advanced-search?producer=${Uri.encode(producerName)}"
+    }
     object Purchased : Screen("purchased")
     object Login : Screen("login")
     object Binders : Screen("binders")

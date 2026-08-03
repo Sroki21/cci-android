@@ -175,10 +175,26 @@ fun Navigation(
         ) { backEntryState ->
             CapDetailScreen(
                 id = backEntryState.arguments?.getInt("capId") ?: 0,
-                onBack = { navController.popBackStack() }
+                onBack = { navController.popBackStack() },
+                onProducerClick = { producerName ->
+                    navController.navigate(Screen.AdvancedSearchByProducer.createUrl(producerName))
+                }
             )
         }
         composable(route = Screen.AdvancedSearch.route) {
+            AdvancedSearchScreen(
+                onBack = { navController.popBackStack() },
+                onCapClick = { navController.navigate(Screen.CapDetail.createUrl(it.id)) }
+            )
+        }
+        composable(
+            route = Screen.AdvancedSearchByProducer.route,
+            arguments = listOf(
+                navArgument("producer") {
+                    type = NavType.StringType
+                }
+            )
+        ) {
             AdvancedSearchScreen(
                 onBack = { navController.popBackStack() },
                 onCapClick = { navController.navigate(Screen.CapDetail.createUrl(it.id)) }

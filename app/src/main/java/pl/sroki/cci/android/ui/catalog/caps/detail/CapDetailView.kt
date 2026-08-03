@@ -26,6 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
@@ -54,6 +55,7 @@ fun CapDetailView(
     onBinderSelected: (Long) -> Unit = {},
     onPageSelected: (Long) -> Unit = {},
     onPositionSelected: (Int) -> Unit = {},
+    onProducerClick: (String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -78,7 +80,7 @@ fun CapDetailView(
             CapDetailTextView(label = "Kraj", text = cap.country.name)
             CapDetailTextView(label = "Rok", text = cap.year?.toString())
             if (cap.producers.isNotEmpty()) {
-                CapDetailTextView(label = "Producent", text = cap.producers.joinToString { it.name })
+                CapDetailProducersView(producers = cap.producers, onProducerClick = onProducerClick)
             }
             if (status == CapStatus.PURCHASED || status == CapStatus.IN_COLLECTION) {
                 Row(
@@ -129,6 +131,39 @@ fun CapDetailView(
                             .fillMaxWidth()
                             .padding(horizontal = 16.dp)
                     )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CapDetailProducersView(
+    producers: List<Producer>,
+    onProducerClick: (String) -> Unit,
+) {
+    Row(
+        horizontalArrangement = Arrangement.SpaceBetween,
+        modifier = Modifier
+            .padding(horizontal = 16.dp)
+            .fillMaxWidth()
+    ) {
+        Text(
+            text = "Producent",
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(end = 8.dp)
+        )
+        Row(modifier = Modifier.padding(start = 8.dp)) {
+            producers.forEachIndexed { index, producer ->
+                Text(
+                    text = producer.name,
+                    color = MaterialTheme.colorScheme.primary,
+                    textDecoration = TextDecoration.Underline,
+                    textAlign = TextAlign.End,
+                    modifier = Modifier.clickable { onProducerClick(producer.name) }
+                )
+                if (index != producers.lastIndex) {
+                    Text(text = ", ", textAlign = TextAlign.End)
                 }
             }
         }
