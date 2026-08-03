@@ -102,4 +102,17 @@ class CapsRepository @Inject constructor(
         purchasedCapsLocalStore.remove(id.toLong())
         _collectionChanged.tryEmit(Unit)
     }
+
+    // Zmiana statusu na "Zakupione" bez odpięcia z kolekcji (np. z W kolekcji) nie woła
+    // addToCollection — kapsel już tam jest po stronie API. Trzeba jednak zaktualizować
+    // lokalny magazyn "zakupionych", od którego zależy zakładka Zakupione.
+    fun markPurchasedLocally(id: Int) {
+        purchasedCapsLocalStore.add(id.toLong())
+        _collectionChanged.tryEmit(Unit)
+    }
+
+    fun unmarkPurchasedLocally(id: Int) {
+        purchasedCapsLocalStore.remove(id.toLong())
+        _collectionChanged.tryEmit(Unit)
+    }
 }

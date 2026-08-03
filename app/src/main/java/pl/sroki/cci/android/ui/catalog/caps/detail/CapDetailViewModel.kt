@@ -203,9 +203,13 @@ class CapDetailViewModel @Inject constructor(
         }
         if (status == CapStatus.PURCHASED) {
             launchSuggestion(current.cap.country.name, current.cap.id.toLong())
+            repository.markPurchasedLocally(current.cap.id)
         } else {
             suggestionJob?.cancel()
             binderSuggestion = null
+            if (status == CapStatus.MISSING) {
+                repository.unmarkPurchasedLocally(current.cap.id)
+            }
         }
         viewModelScope.launch {
             try {

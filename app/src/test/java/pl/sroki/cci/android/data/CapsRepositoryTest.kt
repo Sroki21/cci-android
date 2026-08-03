@@ -2,7 +2,13 @@ package pl.sroki.cci.android.data
 
 import io.mockk.coEvery
 import io.mockk.coVerify
+import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.async
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Before
@@ -11,6 +17,7 @@ import pl.sroki.cci.android.data.datasource.remote.CapApiService
 import pl.sroki.cci.android.model.Cap
 import pl.sroki.cci.android.model.Page
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class CapsRepositoryTest {
 
     private lateinit var capApiService: CapApiService
@@ -88,5 +95,29 @@ class CapsRepositoryTest {
         val source = repository.countryCapsPagingSource(id = 7)
 
         assert(source is CountryCapsPagingSource)
+    }
+
+    @Test
+    fun `markPurchasedLocally dopisuje id i emituje collectionChanged`() = runTest {
+        every { purchasedCapsLocalStore.add(1L) } returns Unit
+        val received = async { repository.collectionChanged.first() }
+        runCurrent()
+
+        repository.markPurchasedLocally(1)
+
+        received.await()
+        verify(exactly = 1) { purchasedCapsLocalStore.add(1L) }
+    }
+
+    @Test
+    fun `unmarkPurchasedLocally usuwa id i emituje collectionChanged`() = runTest {
+        every { purchasedCapsLocalStore.remove(1L) } returns Unit
+        val received = async { repository.collectionChanged.first() }
+        runCurrent()
+
+        repository.unmarkPurchasedLocally(1)
+
+        received.await()
+        verify(exactly = 1) { purchasedCapsLocalStore.remove(1L) }
     }
 }
