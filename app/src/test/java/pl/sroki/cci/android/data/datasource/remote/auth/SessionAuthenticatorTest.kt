@@ -2,30 +2,28 @@ package pl.sroki.cci.android.data.datasource.remote.auth
 
 import android.content.Context
 import android.content.SharedPreferences
-import com.franmontiel.persistentcookiejar.PersistentCookieJar
 import io.mockk.every
 import io.mockk.mockk
-import io.mockk.verify
 import okhttp3.Protocol
 import okhttp3.Request
 import okhttp3.Response
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import pl.sroki.cci.android.data.SessionRepository
 
 class SessionAuthenticatorTest {
 
-    private lateinit var cookieJar: PersistentCookieJar
     private lateinit var sessionRepository: SessionRepository
     private lateinit var authenticator: SessionAuthenticator
 
     @Before
     fun setUp() {
-        cookieJar = mockk(relaxed = true)
         sessionRepository = SessionRepository(mockContext(), dagger.Lazy { mockk(relaxed = true) })
-        authenticator = SessionAuthenticator(cookieJar, sessionRepository)
+        authenticator = SessionAuthenticator(sessionRepository)
     }
 
     private fun mockContext(): Context {
@@ -41,9 +39,9 @@ class SessionAuthenticatorTest {
         return context
     }
 
-    private fun build401Response(): Response {
+    private fun build401Response(url: String): Response {
         val request = Request.Builder()
-            .url("https://crowncaps.info/api")
+            .url(url)
             .build()
         return Response.Builder()
             .code(401)
@@ -54,14 +52,32 @@ class SessionAuthenticatorTest {
     }
 
     @Test
-    fun `authenticate — 401 — czysci cookies i ustawia isLoggedIn=false`() {
+    fun `authenticate — 401 z api — czysci token i ustawia isLoggedIn=false`() {
         sessionRepository.setLoggedIn(true)
+        sessionRepository.setToken("token-123")
 
-        val result = authenticator.authenticate(route = null, response = build401Response())
+        val result = authenticator.authenticate(
+            route = null,
+            response = build401Response("https://crowncaps.info/api/v1/caps/1")
+        )
 
         assertFalse(sessionRepository.isLoggedIn.value)
-        verify { cookieJar.clear() }
+        assertNull(sessionRepository.token.value)
         assertNull(result)
     }
 
+    @Test
+    fun `authenticate — 401 z web-route — zostawia sesje i token nietkniete`() {
+        sessionRepository.setLoggedIn(true)
+        sessionRepository.setToken("token-123")
+
+        val result = authenticator.authenticate(
+            route = null,
+            response = build401Response("https://crowncaps.info/data/catalog/caps/1/collection")
+        )
+
+        assertTrue(sessionRepository.isLoggedIn.value)
+        assertEquals("token-123", sessionRepository.token.value)
+        assertNull(result)
+    }
 }

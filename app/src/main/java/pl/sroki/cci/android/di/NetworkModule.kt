@@ -57,10 +57,9 @@ object NetworkModule {
     @Singleton
     @Provides
     fun provideSessionAuthenticator(
-        cookieJar: PersistentCookieJar,
         sessionRepository: SessionRepository
     ): Authenticator {
-        return SessionAuthenticator(cookieJar, sessionRepository)
+        return SessionAuthenticator(sessionRepository)
     }
 
     @Singleton
