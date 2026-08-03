@@ -174,8 +174,11 @@ class CapDetailViewModel @Inject constructor(
                     cap = current.cap.copy(isInCollection = true)
                 )
                 binderSuggestion = null
+            } catch (e: IllegalStateException) {
+                assignmentError = e.message ?: "Nie udało się przypisać kapsla"
+                selectedPosition = null
             } catch (e: Exception) {
-                assignmentError = "Nie udało się przypisać: ${e.message}"
+                assignmentError = "Nie udało się przypisać kapsla"
                 selectedPosition = null
             } finally {
                 isSaving = false
@@ -216,7 +219,7 @@ class CapDetailViewModel @Inject constructor(
                 }
             } catch (e: Exception) {
                 capDetailUiState = current
-                assignmentError = "Błąd zmiany statusu: ${e.message}"
+                assignmentError = (e as? IllegalStateException)?.message ?: "Nie udało się zmienić statusu"
                 if (leavingCollection && current.binderInfo != null) {
                     initBinderPreFill(current.binderInfo)
                 }

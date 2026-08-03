@@ -1,7 +1,6 @@
 package pl.sroki.cci.android.data
 
 import android.content.Context
-import android.database.sqlite.SQLiteConstraintException
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -58,7 +57,7 @@ class CapPositionRepositoryTest {
         assertEquals(42L, positions[0].capId)
     }
 
-    @Test(expected = SQLiteConstraintException::class)
+    @Test(expected = IllegalStateException::class)
     fun assign_duplicateSlot_throws() = runBlocking {
         repo.assign(binderPageId, 1, 42L)
         repo.assign(binderPageId, 1, 99L)
@@ -91,11 +90,12 @@ class CapPositionRepositoryTest {
         repo.assign(binderPageId, 1, 42L)
         repo.assign(binderPageId, 2, 99L)
 
-        // Attempt to move cap A into slot 2 (occupied by B) — @Insert(ABORT) throws
+        // Attempt to move cap A into slot 2 (occupied by B) — @Insert(ABORT) throws,
+        // repo re-wraps it into a friendly IllegalStateException.
         try {
             repo.reassign(42L, binderPageId, 2)
-            fail("Expected SQLiteConstraintException — slot (page=$binderPageId, pos=2) is occupied by cap 99")
-        } catch (e: SQLiteConstraintException) {
+            fail("Expected IllegalStateException — slot (page=$binderPageId, pos=2) is occupied by cap 99")
+        } catch (e: IllegalStateException) {
             // expected: @Transaction rolls back deleteByCapId when @Insert fails
         }
 

@@ -1,5 +1,6 @@
 package pl.sroki.cci.android.data
 
+import android.database.sqlite.SQLiteConstraintException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import pl.sroki.cci.android.data.datasource.local.dao.BinderPageDao
@@ -35,7 +36,11 @@ class CapPositionRepository @Inject constructor(
             val page = binderPageDao.getById(binderPageId)
             page?.firestoreId?.let { capPositionFirestoreService.scheduleCreate(uid, it, position, capId, snapshot) }
         } else null
-        return dao.insert(CapPosition(binderPageId = binderPageId, position = position, capId = capId, firestoreId = firestoreId))
+        try {
+            return dao.insert(CapPosition(binderPageId = binderPageId, position = position, capId = capId, firestoreId = firestoreId))
+        } catch (e: SQLiteConstraintException) {
+            throw IllegalStateException("Pozycja $position jest już zajęta na tej stronie")
+        }
     }
 
     suspend fun reassign(capId: Long, newBinderPageId: Long, newPosition: Int, snapshot: CapSnapshot? = null) {
@@ -47,7 +52,11 @@ class CapPositionRepository @Inject constructor(
             val newPage = binderPageDao.getById(newBinderPageId)
             newPage?.firestoreId?.let { capPositionFirestoreService.scheduleCreate(uid, it, newPosition, capId, snapshot) }
         } else null
-        dao.reassignFull(capId, CapPosition(binderPageId = newBinderPageId, position = newPosition, capId = capId, firestoreId = newFirestoreId))
+        try {
+            dao.reassignFull(capId, CapPosition(binderPageId = newBinderPageId, position = newPosition, capId = capId, firestoreId = newFirestoreId))
+        } catch (e: SQLiteConstraintException) {
+            throw IllegalStateException("Pozycja $newPosition jest już zajęta na tej stronie")
+        }
     }
 
     /** Odśwież snapshot pozycji w Firestore (po „zaakceptuj nowy" w rozjeździe). */
