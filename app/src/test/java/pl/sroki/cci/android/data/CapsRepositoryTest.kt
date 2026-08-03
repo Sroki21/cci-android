@@ -18,6 +18,7 @@ import org.junit.Before
 import org.junit.Test
 import pl.sroki.cci.android.data.datasource.remote.CapApiService
 import pl.sroki.cci.android.model.Cap
+import pl.sroki.cci.android.model.CapsSearchRequest
 import pl.sroki.cci.android.model.Page
 import pl.sroki.cci.android.model.SimilarCapsResponse
 
@@ -144,5 +145,25 @@ class CapsRepositoryTest {
         assertTrue(result.caps.first { it.id == 1L }.isInCollection)
         assertTrue(result.caps.first { it.id == 2L }.isInCollection)
         assertFalse(result.caps.first { it.id == 3L }.isInCollection)
+    }
+
+    @Test
+    fun `searchByFilter dopina isInCollection na podstawie przypisanych i zakupionych id`() = runTest {
+        val request = CapsSearchRequest(producer = "Heineken")
+        fun cap(id: Long) = Cap(
+            id = id, country = "Poland", product = "Beer", liner = "Plastic",
+            purpose = "Bottle closure", imageUrl = "https://example.com/$id.jpg"
+        )
+        coEvery { capApiService.searchCapsByFilter(request, 1, Cap.PER_PAGE) } returns Page(
+            data = listOf(cap(1L), cap(2L)),
+            lastPage = 1, currentPage = 1, perPage = Cap.PER_PAGE, total = 2
+        )
+        coEvery { capPositionRepository.getAllCapIds() } returns listOf(1L)
+        every { purchasedCapsLocalStore.getIds() } returns emptySet()
+
+        val result = repository.searchByFilter(request, page = 1)
+
+        assertTrue(result.data.first { it.id == 1L }.isInCollection)
+        assertFalse(result.data.first { it.id == 2L }.isInCollection)
     }
 }

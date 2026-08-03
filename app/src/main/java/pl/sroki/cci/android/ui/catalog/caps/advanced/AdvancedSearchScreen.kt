@@ -1,5 +1,8 @@
 package pl.sroki.cci.android.ui.catalog.caps.advanced
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
@@ -50,6 +53,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -73,6 +80,17 @@ fun AdvancedSearchScreen(
     val producerSuggestions by viewModel.producerSuggestions.collectAsState()
     val caps = viewModel.caps.collectAsLazyPagingItems()
 
+    var filterFormVisible by remember { mutableStateOf(true) }
+    val nestedScrollConnection = remember {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                if (available.y < -1f) filterFormVisible = false
+                else if (available.y > 1f) filterFormVisible = true
+                return Offset.Zero
+            }
+        }
+    }
+
     Scaffold(topBar = {
         TopAppBar(
             title = { Text("Szukanie zaawansowane") },
@@ -88,17 +106,24 @@ fun AdvancedSearchScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
+                .nestedScroll(nestedScrollConnection)
         ) {
-            FilterForm(
-                filter = viewModel.filter,
-                countries = viewModel.countries,
-                producerSuggestions = producerSuggestions,
-                isLoggedIn = isLoggedIn,
-                onFilterChange = viewModel::updateFilter,
-                onProducerSearch = viewModel::searchProducers,
-                onProducerSuggestionsDismiss = viewModel::clearProducerSuggestions,
-                onSearch = viewModel::search
-            )
+            AnimatedVisibility(
+                visible = filterFormVisible,
+                enter = expandVertically(),
+                exit = shrinkVertically()
+            ) {
+                FilterForm(
+                    filter = viewModel.filter,
+                    countries = viewModel.countries,
+                    producerSuggestions = producerSuggestions,
+                    isLoggedIn = isLoggedIn,
+                    onFilterChange = viewModel::updateFilter,
+                    onProducerSearch = viewModel::searchProducers,
+                    onProducerSuggestionsDismiss = viewModel::clearProducerSuggestions,
+                    onSearch = viewModel::search
+                )
+            }
             HorizontalDivider()
             if (hasSearched) {
                 totalResults?.let {

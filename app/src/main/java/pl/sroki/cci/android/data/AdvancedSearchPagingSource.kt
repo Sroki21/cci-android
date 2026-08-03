@@ -117,7 +117,11 @@ class AdvancedSearchPagingSource(
         if (!isPureCountry && filter.countryId != null && filter.countryName.isNotBlank()) {
             result = result.filter { it.country.equals(filter.countryName, ignoreCase = true) }
         }
-        if (filter.onlyInCollection) {
+        // isPureCountry (getByCountryId) nie przyjmuje parametru inCollection, więc trzeba
+        // dofiltrować lokalnie. Pozostałe gałęzie (hasProducer, advancedSearch) już proszą API
+        // o inCollection=true — powtórne filtrowanie po isInCollection potrafiło wycinać
+        // wszystko, gdy ten endpoint nie zwracał tego pola poprawnie.
+        if (filter.onlyInCollection && isPureCountry) {
             result = result.filter { it.isInCollection }
         }
         return result

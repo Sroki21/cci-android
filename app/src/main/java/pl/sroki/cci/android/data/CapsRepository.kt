@@ -39,10 +39,11 @@ class CapsRepository @Inject constructor(
         return response.copy(caps = enrichWithLocalCollectionStatus(response.caps))
     }
 
-    // Endpoint wyszukiwania po zdjęciu nie zwraca poprawnie isInCollection dla wyników
-    // (CapGridCard zawsze pokazywał brak ramki). Dopinamy status z lokalnej prawdy: pozycje
-    // w klaserach + lokalny magazyn zakupionych — to samo źródło, z którego korzysta
-    // LocalAssignedCapIds na pozostałych ekranach.
+    // Endpointy wyszukiwania po zdjęciu i po filtrach (producent) nie zwracają poprawnie
+    // isInCollection dla wyników (CapGridCard zawsze pokazywał brak ramki, a client-side
+    // filtr "tylko w kolekcji" w AdvancedSearchPagingSource wycinał wszystko). Dopinamy status
+    // z lokalnej prawdy: pozycje w klaserach + lokalny magazyn zakupionych — to samo źródło,
+    // z którego korzysta LocalAssignedCapIds na pozostałych ekranach.
     private suspend fun enrichWithLocalCollectionStatus(caps: List<Cap>): List<Cap> {
         if (caps.isEmpty()) return caps
         val assignedIds = capPositionRepository.getAllCapIds().toSet()
@@ -101,7 +102,8 @@ class CapsRepository @Inject constructor(
     }
 
     suspend fun searchByFilter(request: CapsSearchRequest, page: Int = 1): Page<Cap> {
-        return capApiService.searchCapsByFilter(request, page, perPage)
+        val result = capApiService.searchCapsByFilter(request, page, perPage)
+        return result.copy(data = enrichWithLocalCollectionStatus(result.data))
     }
 
     suspend fun addToCollection(id: Int) {
