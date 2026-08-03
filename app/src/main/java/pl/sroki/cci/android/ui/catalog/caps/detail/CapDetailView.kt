@@ -23,6 +23,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
@@ -77,7 +78,7 @@ fun CapDetailView(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             CapDetailTextView(label = "Tekst", text = cap.description)
-            CapDetailTextView(label = "Kraj", text = cap.country.name)
+            CapDetailCountryView(countryName = cap.country.name, producers = cap.producers)
             CapDetailTextView(label = "Rok", text = cap.year?.toString())
             if (cap.producers.isNotEmpty()) {
                 CapDetailProducersView(producers = cap.producers, onProducerClick = onProducerClick)
@@ -134,6 +135,69 @@ fun CapDetailView(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun CapDetailCountryView(
+    countryName: String,
+    producers: List<Producer>,
+) {
+    // "-Multiple countries" nie ma tłumaczenia lokalnego (wartość surowa z API) — traktujemy
+    // kapsel jako wielokrajowy strukturalnie: gdy jego producenci mają różne kraje. Wtedy dane
+    // do listy (nazwa browaru + kraj) są już w cap.producers, bez potrzeby dodatkowego zapytania.
+    val distinctCountries = remember(producers) { producers.map { it.country.id }.distinct() }
+    val clickable = distinctCountries.size > 1
+    var showDialog by remember { mutableStateOf(false) }
+
+    Row(
+        horizontalArrangement = Arrangement.SpaceBetween,
+        modifier = Modifier
+            .padding(horizontal = 16.dp)
+            .fillMaxWidth()
+            .then(if (clickable) Modifier.clickable { showDialog = true } else Modifier)
+    ) {
+        Text(
+            text = "Kraj",
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(end = 8.dp)
+        )
+        Text(
+            text = countryName,
+            color = if (clickable) MaterialTheme.colorScheme.primary else Color.Unspecified,
+            textDecoration = if (clickable) TextDecoration.Underline else null,
+            textAlign = TextAlign.End,
+            modifier = Modifier.padding(start = 8.dp)
+        )
+    }
+
+    if (showDialog) {
+        AlertDialog(
+            onDismissRequest = { showDialog = false },
+            title = { Text("Kraje producentów") },
+            text = {
+                Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                    producers.forEach { producer ->
+                        Row(
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 8.dp)
+                        ) {
+                            Text(text = producer.name, modifier = Modifier.padding(end = 8.dp))
+                            Text(
+                                text = producer.country.name,
+                                textAlign = TextAlign.End,
+                                modifier = Modifier.padding(start = 8.dp)
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showDialog = false }) { Text("Zamknij") }
+            }
+        )
     }
 }
 
