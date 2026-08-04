@@ -16,7 +16,11 @@ class AdvancedSearchPagingSource(
     private val onPageLoaded: (filteredCount: Int, apiTotal: Int?) -> Unit
 ) : PagingSource<Int, Cap>() {
 
-    override fun getRefreshKey(state: PagingState<Int, Cap>): Int? = state.anchorPosition
+    override fun getRefreshKey(state: PagingState<Int, Cap>): Int? {
+        val anchorPosition = state.anchorPosition ?: return null
+        val anchorPage = state.closestPageToPosition(anchorPosition) ?: return null
+        return anchorPage.prevKey?.plus(1) ?: anchorPage.nextKey?.minus(1)
+    }
 
     override suspend fun load(params: LoadParams<Int>): LoadResult<Int, Cap> {
         return try {
