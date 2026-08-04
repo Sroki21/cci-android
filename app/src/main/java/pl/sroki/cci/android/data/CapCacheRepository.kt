@@ -36,6 +36,9 @@ class CapCacheRepository @Inject constructor(private val dao: CapCacheDao) {
     suspend fun markVerified(capId: Long, status: String, verifiedAt: Long) =
         dao.markVerified(capId, status, verifiedAt)
 
+    suspend fun selectProducer(capId: Long, producerId: Int, producer: String, country: String) =
+        dao.selectProducer(capId, producerId, producer, country)
+
     suspend fun getCapIdsToVerify(limit: Int): List<Long> = dao.getCapIdsToVerify(limit)
 
     fun flaggedCountFlow(): Flow<Int> = dao.flaggedCountFlow()

@@ -136,5 +136,6 @@ private fun statusLabel(status: String): String = when (status) {
     "swapped" -> "Podmieniony — inny kapsel pod tym ID"
     "updated" -> "Zmieniony w katalogu"
     "missing" -> "Usunięty z katalogu"
+    "producer_removed" -> "Wybrany producent/kraj już nie istnieje"
     else -> status
 }

@@ -19,7 +19,7 @@ import pl.sroki.cci.android.data.datasource.local.entity.PendingCap
 
 @Database(
     entities = [PendingCap::class, Binder::class, BinderPage::class, CapPosition::class, CapCache::class, CountryFlag::class],
-    version = 7,
+    version = 8,
     exportSchema = true
 )
 abstract class CciDatabase : RoomDatabase() {
@@ -110,6 +110,13 @@ abstract class CciDatabase : RoomDatabase() {
                 db.execSQL("ALTER TABLE `cap_cache` ADD COLUMN `updated_at` TEXT")
                 db.execSQL("ALTER TABLE `cap_cache` ADD COLUMN `last_verified_at` INTEGER")
                 db.execSQL("ALTER TABLE `cap_cache` ADD COLUMN `catalog_status` TEXT NOT NULL DEFAULT 'unknown'")
+            }
+        }
+        val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Ręczny wybór producenta dla kapsli "-Multiple countries" (nadpisuje country/producer).
+                db.execSQL("ALTER TABLE `cap_cache` ADD COLUMN `selected_producer_id` INTEGER")
+                db.execSQL("ALTER TABLE `cap_cache` ADD COLUMN `producer` TEXT NOT NULL DEFAULT ''")
             }
         }
     }

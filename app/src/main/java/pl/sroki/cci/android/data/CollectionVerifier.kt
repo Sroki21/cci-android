@@ -21,6 +21,7 @@ object CatalogStatus {
     const val UPDATED = "updated"
     const val SWAPPED = "swapped"
     const val MISSING = "missing"
+    const val PRODUCER_REMOVED = "producer_removed"
 }
 
 /**
@@ -69,6 +70,26 @@ class CollectionVerifier @Inject constructor(
         if (stored.createdAt != fresh.createdAt || stored.createdById != fresh.createdById) {
             capCacheRepository.markVerified(capId, CatalogStatus.SWAPPED, now())
             return CatalogStatus.SWAPPED
+        }
+
+        // Ręcznie wybrany producent (kapsel "-Multiple countries"): surowy cap.country to stały
+        // placeholder, więc porównujemy z aktualnym wpisem wybranego producenta, nie z fresh.country.
+        val producerId = stored.selectedProducerId
+        if (producerId != null) {
+            val matchedProducer = cap.producers.firstOrNull { it.id == producerId }
+            if (matchedProducer == null) {
+                capCacheRepository.markVerified(capId, CatalogStatus.PRODUCER_REMOVED, now())
+                return CatalogStatus.PRODUCER_REMOVED
+            }
+            if (stored.updatedAt != fresh.updatedAt || stored.imageUrl != fresh.imageUrl ||
+                stored.name != fresh.name || stored.country != matchedProducer.country.name ||
+                stored.producer != matchedProducer.name
+            ) {
+                capCacheRepository.markVerified(capId, CatalogStatus.UPDATED, now())
+                return CatalogStatus.UPDATED
+            }
+            capCacheRepository.markVerified(capId, CatalogStatus.OK, now())
+            return CatalogStatus.OK
         }
 
         // Zwykła edycja w katalogu. Snapshotu NIE ruszamy — decyzja należy do użytkownika.

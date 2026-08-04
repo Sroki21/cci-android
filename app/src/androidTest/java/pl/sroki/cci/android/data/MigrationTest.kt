@@ -173,4 +173,19 @@ class MigrationTest {
             }
         }
     }
+
+    @Test
+    fun migrate7To8_addsSelectedProducerColumns() {
+        helper.createDatabase(TEST_DB, 7).use { db ->
+            db.execSQL("INSERT INTO cap_cache (cap_id, country, image_url) VALUES (9, 'Poland', 'u')")
+        }
+
+        helper.runMigrationsAndValidate(TEST_DB, 8, true, CciDatabase.MIGRATION_7_8).use { db ->
+            db.query("SELECT selected_producer_id, producer FROM cap_cache WHERE cap_id = 9").use { cursor ->
+                assert(cursor.moveToFirst())
+                assertNull(cursor.getString(cursor.getColumnIndexOrThrow("selected_producer_id")))
+                assertEquals("", cursor.getString(cursor.getColumnIndexOrThrow("producer")))
+            }
+        }
+    }
 }

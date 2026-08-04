@@ -25,6 +25,7 @@ import pl.sroki.cci.android.data.datasource.local.entity.BinderPage
 import pl.sroki.cci.android.data.model.CapBinderInfo
 import pl.sroki.cci.android.model.BinderSuggestion
 import pl.sroki.cci.android.model.CapExtended
+import pl.sroki.cci.android.model.Producer
 import pl.sroki.cci.android.model.toSnapshot
 import java.io.IOException
 import javax.inject.Inject
@@ -134,6 +135,18 @@ class CapDetailViewModel @Inject constructor(
         }
     }
 
+    /** Ręczny wybór producenta dla kapsla "-Multiple countries" — nadpisuje kraj/producenta wszędzie. */
+    fun selectProducer(producer: Producer) {
+        val current = capDetailUiState as? CapDetailUiState.Success ?: return
+        val capId = current.cap.id.toLong()
+        viewModelScope.launch {
+            capCacheRepository.selectProducer(capId, producer.id, producer.name, producer.country.name)
+            capCacheRepository.markVerified(capId, "ok", System.currentTimeMillis())
+            catalogStatus = "ok"
+            capDetailUiState = current.copy(cap = current.cap.copy(country = producer.country))
+        }
+    }
+
     /** Rozjazd: odepnij kapsel z klasera. */
     fun unlinkFlagged() {
         val current = capDetailUiState as? CapDetailUiState.Success ?: return
@@ -234,7 +247,7 @@ class CapDetailViewModel @Inject constructor(
     fun getCap(id: Int) {
         viewModelScope.launch {
             capDetailUiState = try {
-                val cap = repository.getById(id)
+                var cap = repository.getById(id)
                 val binderInfo = capPositionRepository.getBinderInfoByCapId(id.toLong())
                 val status = when {
                     binderInfo != null -> CapStatus.IN_COLLECTION
@@ -247,8 +260,16 @@ class CapDetailViewModel @Inject constructor(
                     else -> Unit
                 }
                 if (binderInfo != null) initBinderPreFill(binderInfo)
+                val stored = capCacheRepository.getOne(id.toLong())
+                // Ręcznie wybrany producent nadal istnieje na liście -> pokaż jego kraj zamiast
+                // surowego cap.country ("-Multiple countries"). Jeśli zniknął, verify() go oflaguje.
+                stored?.selectedProducerId?.let { producerId ->
+                    cap.producers.firstOrNull { it.id == producerId }?.let { producer ->
+                        cap = cap.copy(country = producer.country)
+                    }
+                }
                 if (status == CapStatus.PURCHASED) launchSuggestion(cap.country.name, id.toLong())
-                catalogStatus = capCacheRepository.getOne(id.toLong())?.catalogStatus
+                catalogStatus = stored?.catalogStatus
                 CapDetailUiState.Success(cap = cap, status = status, binderInfo = binderInfo)
             } catch (e: IOException) {
                 CapDetailUiState.Error

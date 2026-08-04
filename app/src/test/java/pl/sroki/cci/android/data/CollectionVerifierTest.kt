@@ -22,6 +22,7 @@ import pl.sroki.cci.android.data.datasource.remote.firestore.CapPositionFirestor
 import pl.sroki.cci.android.data.model.Country
 import pl.sroki.cci.android.model.CapExtended
 import pl.sroki.cci.android.model.Liner
+import pl.sroki.cci.android.model.Producer
 import pl.sroki.cci.android.model.Product
 import pl.sroki.cci.android.model.Purpose
 import pl.sroki.cci.android.model.UserPublic
@@ -68,7 +69,8 @@ class CollectionVerifierTest {
         updatedAt: Instant? = t2,
         description: String = "Test Cap",
         countryName: String = "Poland",
-        imageUrl: String = "https://example.com/cap.jpg"
+        imageUrl: String = "https://example.com/cap.jpg",
+        producers: List<Producer> = emptyList()
     ) = CapExtended(
         id = id,
         description = description,
@@ -76,6 +78,7 @@ class CollectionVerifierTest {
         product = Product(1, "Żywiec"),
         purpose = Purpose(1, "Beer"),
         liner = Liner(1, "PVC"),
+        producers = producers,
         seriesSortOrder = null,
         series = null,
         periodUsed = null,
@@ -96,7 +99,9 @@ class CollectionVerifierTest {
         updatedAt: String? = t2.toString(),
         name: String = "Test Cap",
         country: String = "Poland",
-        imageUrl: String = "https://example.com/cap.jpg"
+        imageUrl: String = "https://example.com/cap.jpg",
+        selectedProducerId: Int? = null,
+        producer: String = ""
     ) = CapCache(
         capId = capId,
         createdAt = createdAt,
@@ -104,7 +109,9 @@ class CollectionVerifierTest {
         updatedAt = updatedAt,
         name = name,
         country = country,
-        imageUrl = imageUrl
+        imageUrl = imageUrl,
+        selectedProducerId = selectedProducerId,
+        producer = producer
     )
 
     @Test
@@ -154,6 +161,56 @@ class CollectionVerifierTest {
         val result = verifier.verify(1L)
 
         assertEquals(CatalogStatus.SWAPPED, result)
+        coVerify(exactly = 0) {
+            capCacheRepository.upsertSnapshot(any(), any(), any(), any(), any(), any(), any())
+        }
+    }
+
+    @Test
+    fun `verify — override producenta, producent nadal istnieje — zwraca OK mimo rozjazdu surowego cap country`() = runTest {
+        val producer = Producer(id = 7, name = "Browar X", country = Country(2L, "Czechy", ""))
+        coEvery { capCacheRepository.getOne(1L) } returns capCache(
+            country = "Czechy", selectedProducerId = 7, producer = "Browar X"
+        )
+        coEvery { capsRepository.getById(1) } returns capExtended(
+            countryName = "-Multiple countries", producers = listOf(producer)
+        )
+
+        val result = verifier.verify(1L)
+
+        assertEquals(CatalogStatus.OK, result)
+        coVerify(exactly = 1) { capCacheRepository.markVerified(1L, CatalogStatus.OK, any()) }
+    }
+
+    @Test
+    fun `verify — override producenta, producent zniknal z listy — zwraca PRODUCER_REMOVED`() = runTest {
+        coEvery { capCacheRepository.getOne(1L) } returns capCache(
+            country = "Czechy", selectedProducerId = 7, producer = "Browar X"
+        )
+        coEvery { capsRepository.getById(1) } returns capExtended(
+            countryName = "-Multiple countries",
+            producers = listOf(Producer(id = 9, name = "Inny browar", country = Country(3L, "Niemcy", "")))
+        )
+
+        val result = verifier.verify(1L)
+
+        assertEquals(CatalogStatus.PRODUCER_REMOVED, result)
+        coVerify(exactly = 1) { capCacheRepository.markVerified(1L, CatalogStatus.PRODUCER_REMOVED, any()) }
+    }
+
+    @Test
+    fun `verify — override producenta, kraj wybranego producenta sie zmienil — zwraca UPDATED`() = runTest {
+        val producer = Producer(id = 7, name = "Browar X", country = Country(2L, "Niemcy", ""))
+        coEvery { capCacheRepository.getOne(1L) } returns capCache(
+            country = "Czechy", selectedProducerId = 7, producer = "Browar X"
+        )
+        coEvery { capsRepository.getById(1) } returns capExtended(
+            countryName = "-Multiple countries", producers = listOf(producer)
+        )
+
+        val result = verifier.verify(1L)
+
+        assertEquals(CatalogStatus.UPDATED, result)
         coVerify(exactly = 0) {
             capCacheRepository.upsertSnapshot(any(), any(), any(), any(), any(), any(), any())
         }

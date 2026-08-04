@@ -34,6 +34,7 @@ private fun DriftBanner(
         "swapped" -> "Uwaga: pod tym ID jest teraz inny kapsel niż zapisany."
         "updated" -> "Ten kapsel zmienił się w katalogu."
         "missing" -> "Ten kapsel zniknął z katalogu."
+        "producer_removed" -> "Wybrany producent/kraj już nie istnieje w katalogu — wybierz ponownie w polu \"Kraj\"."
         else -> return
     }
     Surface(
@@ -167,6 +168,7 @@ fun CapDetailScreen(
                         onPageSelected = viewModel::onPageSelected,
                         onPositionSelected = viewModel::onPositionSelected,
                         onProducerClick = onProducerClick,
+                        onProducerSelected = viewModel::selectProducer,
                     )
                 }
             }

@@ -17,5 +17,10 @@ data class CapCache(
     @ColumnInfo(name = "updated_at") val updatedAt: String? = null,
     // Stan weryfikacji.
     @ColumnInfo(name = "last_verified_at") val lastVerifiedAt: Long? = null,
-    @ColumnInfo(name = "catalog_status") val catalogStatus: String = "unknown"
+    @ColumnInfo(name = "catalog_status") val catalogStatus: String = "unknown",
+    // Ręczny wybór producenta dla kapsli "-Multiple countries" — nadpisuje country/producer
+    // ponad surowy wpis z API. selectedProducerId identyfikuje wpis w cap.producers do
+    // porównania przy weryfikacji (patrz CollectionVerifier).
+    @ColumnInfo(name = "selected_producer_id") val selectedProducerId: Int? = null,
+    @ColumnInfo(name = "producer") val producer: String = ""
 )

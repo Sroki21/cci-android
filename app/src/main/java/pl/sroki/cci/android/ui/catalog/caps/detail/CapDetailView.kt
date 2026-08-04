@@ -57,6 +57,7 @@ fun CapDetailView(
     onPageSelected: (Long) -> Unit = {},
     onPositionSelected: (Int) -> Unit = {},
     onProducerClick: (String) -> Unit = {},
+    onProducerSelected: (Producer) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -78,7 +79,11 @@ fun CapDetailView(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             CapDetailTextView(label = "Tekst", text = cap.description)
-            CapDetailCountryView(countryName = cap.country.name, producers = cap.producers)
+            CapDetailCountryView(
+                countryName = cap.country.name,
+                producers = cap.producers,
+                onProducerSelected = onProducerSelected,
+            )
             CapDetailTextView(label = "Rok", text = cap.year?.toString())
             if (cap.producers.isNotEmpty()) {
                 CapDetailProducersView(producers = cap.producers, onProducerClick = onProducerClick)
@@ -142,6 +147,7 @@ fun CapDetailView(
 private fun CapDetailCountryView(
     countryName: String,
     producers: List<Producer>,
+    onProducerSelected: (Producer) -> Unit,
 ) {
     // "-Multiple countries" nie ma tłumaczenia lokalnego (wartość surowa z API) — traktujemy
     // kapsel jako wielokrajowy strukturalnie: gdy jego producenci mają różne kraje. Wtedy dane
@@ -174,7 +180,7 @@ private fun CapDetailCountryView(
     if (showDialog) {
         AlertDialog(
             onDismissRequest = { showDialog = false },
-            title = { Text("Kraje producentów") },
+            title = { Text("Wybierz kraj/producenta") },
             text = {
                 Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                     producers.forEach { producer ->
@@ -182,6 +188,10 @@ private fun CapDetailCountryView(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             modifier = Modifier
                                 .fillMaxWidth()
+                                .clickable {
+                                    onProducerSelected(producer)
+                                    showDialog = false
+                                }
                                 .padding(vertical = 8.dp)
                         ) {
                             Text(text = producer.name, modifier = Modifier.padding(end = 8.dp))
@@ -195,7 +205,7 @@ private fun CapDetailCountryView(
                 }
             },
             confirmButton = {
-                TextButton(onClick = { showDialog = false }) { Text("Zamknij") }
+                TextButton(onClick = { showDialog = false }) { Text("Anuluj") }
             }
         )
     }
