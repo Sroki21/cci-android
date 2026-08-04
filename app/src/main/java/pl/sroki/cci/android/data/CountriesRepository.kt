@@ -40,6 +40,18 @@ class CountriesRepository @Inject constructor(
 
     private fun isoFromFlagUrl(url: String): String? {
         val file = url.substringAfterLast('/').substringBeforeLast('.')
-        return file.takeIf { it.length == 2 && it.all(Char::isLetter) }?.lowercase()
+        val iso = file.takeIf { it.length == 2 && it.all(Char::isLetter) }?.lowercase() ?: return null
+        return FLAG_ISO_ALIASES[iso] ?: iso
+    }
+
+    private companion object {
+        // crowncaps.info używa dla kilku krajów nazw plików flag innych niż aktualny
+        // ISO 3166-1 alpha-2 (używany przez id ścieżek na mapie świata) — potwierdzone
+        // przez porównanie pełnej listy krajów z id-kami w assets/world_map.svg:
+        // "UK" (potoczny skrót) zamiast "GB", "SF" (stary kod "Suomi/Finland") zamiast "FI".
+        val FLAG_ISO_ALIASES = mapOf(
+            "uk" to "gb",
+            "sf" to "fi",
+        )
     }
 }
