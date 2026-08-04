@@ -209,16 +209,21 @@ private fun WorldMapCanvas(
                         val pinnedMaxXFlag = userOffset.x >= prevMaxX - eps
                         val pinnedMinY = userOffset.y <= -prevMaxY + eps
                         val pinnedMaxYFlag = userOffset.y >= prevMaxY - eps
+                        // Prawdziwy pinch rzadko jest idealnie symetryczny — nawet czysty zoom
+                        // "w miejscu" generuje kilka pikseli szumu w pan. Zbyt ostry próg (0f)
+                        // sprawiał, że ten szum losowo wyłączał przypięcie do granicy. Tolerancja
+                        // pochłania szum, a wciąż reaguje na świadome przeciągnięcie w stronę środka.
+                        val panEps = 8f
 
                         val next = (userOffset - centroid) * k + centroid + pan
                         val nx = when {
-                            pinnedMinX && pan.x <= 0f -> -maxX
-                            pinnedMaxXFlag && pan.x >= 0f -> maxX
+                            pinnedMinX && pan.x <= panEps -> -maxX
+                            pinnedMaxXFlag && pan.x >= -panEps -> maxX
                             else -> next.x.coerceIn(-maxX, maxX)
                         }
                         val ny = when {
-                            pinnedMinY && pan.y <= 0f -> -maxY
-                            pinnedMaxYFlag && pan.y >= 0f -> maxY
+                            pinnedMinY && pan.y <= panEps -> -maxY
+                            pinnedMaxYFlag && pan.y >= -panEps -> maxY
                             else -> next.y.coerceIn(-maxY, maxY)
                         }
                         userScale = newScale
