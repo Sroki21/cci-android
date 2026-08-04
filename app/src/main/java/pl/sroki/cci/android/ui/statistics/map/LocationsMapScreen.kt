@@ -159,7 +159,13 @@ private fun SuccessContent(
     }
 }
 
-private const val MAX_ZOOM = 8f
+// Zasięg przesuwania od punktu startowego rośnie z zoomem asymptotycznie do połowy
+// szerokości mapy (przy 8x to ~44%, przy 16x ~47%) — samo podniesienie MAX_ZOOM nie
+// rozwiązuje więc w pełni dotarcia do odległego regionu z dala od miejsca zoomowania.
+// Kluczowy fix jest w gestach wyżej (przypięcie do granicy bez dryfu przy kontynuacji
+// zoomu) — dzięki niemu dalsze dociskanie zoomu W TYM SAMYM miejscu realnie zwiększa
+// zasięg zamiast go cofać. 16x daje po prostu wygodniejszy margines niż 8x.
+private const val MAX_ZOOM = 16f
 
 @Composable
 private fun WorldMapCanvas(
