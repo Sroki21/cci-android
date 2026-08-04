@@ -145,6 +145,7 @@ fun BindersScreen(
                     onAddPage = { vm.addPage(binder.id) },
                     onDeletePage = { vm.requestDeletePage(it) },
                     onRenamePage = { vm.requestRenamePage(it) },
+                    onMovePage = { vm.requestMovePage(it) },
                     onCapClick = onCapClick
                 )
             }
@@ -208,6 +209,19 @@ fun BindersScreen(
             currentPageNumber = currentPageNumber,
             onDismiss = vm::dismissRenamePage,
             onConfirm = vm::confirmRenamePage
+        )
+    }
+
+    val movePageTargetId = uiState.movePageTargetId
+    if (movePageTargetId != null) {
+        val currentBinderId = uiState.binderPages.entries
+            .firstOrNull { (_, pages) -> pages.any { it.id == movePageTargetId } }
+            ?.key
+        MovePageDialog(
+            binders = uiState.binders,
+            currentBinderId = currentBinderId,
+            onDismiss = vm::dismissMovePage,
+            onConfirm = vm::confirmMovePage
         )
     }
 }
@@ -303,6 +317,7 @@ private fun ExpandableBinderRow(
     onAddPage: () -> Unit,
     onDeletePage: (Long) -> Unit,
     onRenamePage: (Long) -> Unit,
+    onMovePage: (Long) -> Unit,
     onCapClick: (Long) -> Unit,
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
@@ -396,6 +411,13 @@ private fun ExpandableBinderRow(
                                 }
                             )
                             DropdownMenuItem(
+                                text = { Text("Zmień klaser") },
+                                onClick = {
+                                    showPageMenu = false
+                                    onMovePage(page.id)
+                                }
+                            )
+                            DropdownMenuItem(
                                 text = { Text("Usuń stronę") },
                                 onClick = {
                                     showPageMenu = false
@@ -480,6 +502,38 @@ private fun CreateBinderDialog(
                 enabled = name.isNotBlank() && !isLoading
             ) { Text("Zapisz") }
         },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Anuluj") }
+        }
+    )
+}
+
+@Composable
+private fun MovePageDialog(
+    binders: List<Binder>,
+    currentBinderId: Long?,
+    onDismiss: () -> Unit,
+    onConfirm: (Long) -> Unit,
+) {
+    val targets = binders.filter { it.id != currentBinderId }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Zmień klaser") },
+        text = {
+            if (targets.isEmpty()) {
+                Text("Brak innych klaserów do wyboru.")
+            } else {
+                LazyColumn {
+                    items(targets, key = { it.id }) { binder ->
+                        ListItem(
+                            headlineContent = { Text(binder.name) },
+                            modifier = Modifier.clickable { onConfirm(binder.id) }
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {},
         dismissButton = {
             TextButton(onClick = onDismiss) { Text("Anuluj") }
         }

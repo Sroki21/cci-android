@@ -49,7 +49,8 @@ data class BindersUiState(
     val isLoading: Boolean = false,
     val deleteBinderConfirmId: Long? = null,
     val deletePageConfirmId: Long? = null,
-    val renamePageTargetId: Long? = null
+    val renamePageTargetId: Long? = null,
+    val movePageTargetId: Long? = null
 )
 
 sealed interface BindersEvent {
@@ -321,6 +322,24 @@ class BindersViewModel @Inject constructor(
                 _events.send(BindersEvent.ShowSnackbar(e.message ?: "Błąd"))
             } catch (e: Exception) {
                 _events.send(BindersEvent.ShowSnackbar("Nie udało się zmienić numeru strony"))
+            }
+        }
+    }
+
+    fun requestMovePage(pageId: Long) = _uiState.update { it.copy(movePageTargetId = pageId) }
+
+    fun dismissMovePage() = _uiState.update { it.copy(movePageTargetId = null) }
+
+    fun confirmMovePage(newBinderId: Long) {
+        val pageId = _uiState.value.movePageTargetId ?: return
+        _uiState.update { it.copy(movePageTargetId = null) }
+        viewModelScope.launch {
+            try {
+                binderPageRepository.moveToBinder(pageId, newBinderId)
+            } catch (e: IllegalStateException) {
+                _events.send(BindersEvent.ShowSnackbar(e.message ?: "Błąd"))
+            } catch (e: Exception) {
+                _events.send(BindersEvent.ShowSnackbar("Nie udało się przenieść strony"))
             }
         }
     }

@@ -36,6 +36,15 @@ class BinderPageFirestoreService @Inject constructor(private val firestore: Fire
         )
     }
 
+    fun scheduleMove(uid: String, firestoreId: String, newBinderFirestoreId: String) {
+        col(uid).document(firestoreId).update(
+            mapOf(
+                "binderFirestoreId" to newBinderFirestoreId,
+                "updatedAt" to FieldValue.serverTimestamp()
+            )
+        )
+    }
+
     suspend fun fetchAll(uid: String): List<BinderPageDocument> =
         col(uid).get().await().documents.mapNotNull { doc ->
             BinderPageDocument(

@@ -55,6 +55,26 @@ class BinderPageRepository @Inject constructor(
         }
     }
 
+    suspend fun moveToBinder(pageId: Long, newBinderId: Long) {
+        val page = dao.getById(pageId) ?: return
+        if (page.binderId == newBinderId) return
+        check(dao.countByBinderId(newBinderId) < 15) { "Docelowy klaser może mieć maksymalnie 15 stron" }
+        try {
+            dao.updateBinderId(pageId, newBinderId)
+        } catch (e: SQLiteConstraintException) {
+            throw IllegalStateException(
+                "Strona o numerze ${page.pageNumber} już istnieje w docelowym klaserze — zmień najpierw numer strony"
+            )
+        }
+        val uid = authManager.uid.value
+        if (uid != null) {
+            val targetFirestoreId = binderDao.getById(newBinderId)?.firestoreId
+            if (page.firestoreId != null && targetFirestoreId != null) {
+                binderPageFirestoreService.scheduleMove(uid, page.firestoreId, targetFirestoreId)
+            }
+        }
+    }
+
     suspend fun deletePage(pageId: Long) {
         val uid = authManager.uid.value
         if (uid != null) {
