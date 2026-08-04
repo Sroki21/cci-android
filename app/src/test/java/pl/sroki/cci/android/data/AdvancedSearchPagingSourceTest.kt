@@ -23,21 +23,23 @@ class AdvancedSearchPagingSourceTest {
     )
 
     @Test
-    fun `producent plus tylko w kolekcji nie wycina wynikow gdy API juz przefiltrowalo`() = runTest {
+    fun `producent plus tylko w kolekcji filtruje lokalnie gdy API nie honoruje inCollection`() = runTest {
         val capsRepository = mockk<CapsRepository>()
         val filter = AdvancedSearchFilter(producerName = "Heineken", onlyInCollection = true)
-        // isInCollection=false symuluje endpoint, który nie zwraca tego pola poprawnie —
-        // serwer i tak już przefiltrował wyniki przez inCollection=true w zapytaniu, więc
-        // ponowne filtrowanie klienckie po isInCollection nie powinno nic wycinać.
+        // Endpoint producenta (data/catalog/caps/search) bywa zawodny w honorowaniu inCollection=true
+        // w zapytaniu — zwraca kapsle spoza kolekcji mimo filtra. CapsRepository.searchByFilter
+        // naprawia isInCollection lokalnie przed zwróceniem, więc client-side filtr po tym
+        // (już zenrichowanym) polu musi je odciąć.
         coEvery { capsRepository.searchByFilter(any(), 1) } returns Page(
-            data = listOf(cap(1L, isInCollection = false)),
-            lastPage = 1, currentPage = 1, perPage = Cap.PER_PAGE, total = 1
+            data = listOf(cap(1L, isInCollection = false), cap(2L, isInCollection = true)),
+            lastPage = 1, currentPage = 1, perPage = Cap.PER_PAGE, total = 2
         )
         val source = AdvancedSearchPagingSource(filter, capsRepository) { _, _ -> }
 
         val result = source.load(loadParams()) as PagingSource.LoadResult.Page
 
         assertEquals(1, result.data.size)
+        assertEquals(2L, result.data[0].id)
     }
 
     @Test

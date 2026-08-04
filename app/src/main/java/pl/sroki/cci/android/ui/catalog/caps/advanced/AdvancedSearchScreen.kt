@@ -322,17 +322,27 @@ private fun ProducerFilterRow(
 ) {
     val state = rememberTextFieldState(producerName)
     var showSuggestions by remember { mutableStateOf(false) }
+    // Ustawiane przed programowym state.edit (wybór sugestii / wyczyszczenie), żeby snapshotFlow
+    // poniżej nie potraktował tej zmiany jak wpisywania przez użytkownika — inaczej dropdown
+    // natychmiast otwierał się ponownie po wyborze (showSuggestions = value.length >= 2 wygrywał
+    // wyścig z ręcznym showSuggestions = false).
+    var suppressNextChange by remember { mutableStateOf(false) }
     val currentOnQuerySearch by rememberUpdatedState(onQuerySearch)
     val currentOnProducerChange by rememberUpdatedState(onProducerChange)
 
     LaunchedEffect(producerName) {
         if (producerName.isEmpty() && state.text.isNotEmpty()) {
+            suppressNextChange = true
             state.edit { replace(0, length, "") }
             showSuggestions = false
         }
     }
     LaunchedEffect(state) {
         snapshotFlow { state.text.toString() }.collect { value ->
+            if (suppressNextChange) {
+                suppressNextChange = false
+                return@collect
+            }
             currentOnQuerySearch(value)
             currentOnProducerChange(value.takeIf { it.isNotBlank() })
             showSuggestions = value.length >= 2
@@ -348,6 +358,7 @@ private fun ProducerFilterRow(
             trailingIcon = {
                 if (state.text.isNotEmpty()) {
                     IconButton(onClick = {
+                        suppressNextChange = true
                         state.edit { replace(0, length, "") }
                         onProducerChange(null)
                         onDismiss()
@@ -367,6 +378,7 @@ private fun ProducerFilterRow(
                 DropdownMenuItem(
                     text = { Text(name) },
                     onClick = {
+                        suppressNextChange = true
                         state.edit { replace(0, length, name) }
                         onProducerChange(name)
                         onDismiss()

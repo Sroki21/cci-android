@@ -118,10 +118,13 @@ class AdvancedSearchPagingSource(
             result = result.filter { it.country.equals(filter.countryName, ignoreCase = true) }
         }
         // isPureCountry (getByCountryId) nie przyjmuje parametru inCollection, więc trzeba
-        // dofiltrować lokalnie. Pozostałe gałęzie (hasProducer, advancedSearch) już proszą API
-        // o inCollection=true — powtórne filtrowanie po isInCollection potrafiło wycinać
-        // wszystko, gdy ten endpoint nie zwracał tego pola poprawnie.
-        if (filter.onlyInCollection && isPureCountry) {
+        // dofiltrować lokalnie. Gałąź hasProducer (data/catalog/caps/search) prosi API o
+        // inCollection=true, ale ten endpoint bywa zawodny w honorowaniu tego parametru —
+        // CapsRepository.searchByFilter naprawia już pole isInCollection lokalnie
+        // (enrichWithLocalCollectionStatus), więc filtrowanie po nim tutaj jest bezpieczne
+        // i konieczne jako siatka bezpieczeństwa. advancedSearch (zwykłe query/kraj) tego
+        // problemu nie ma — zostaje bez zmian.
+        if (filter.onlyInCollection && (isPureCountry || filter.producerName.isNotBlank())) {
             result = result.filter { it.isInCollection }
         }
         return result
