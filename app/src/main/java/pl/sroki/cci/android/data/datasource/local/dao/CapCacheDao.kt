@@ -18,14 +18,14 @@ interface CapCacheDao {
 
     // Zapisuje tylko kraj, nie ruszając już zapisanego image_url (Statystyki/Detal).
     @Query("""
-        INSERT INTO cap_cache (cap_id, country, image_url, name, catalog_status) VALUES (:capId, :country, '', '', 'unknown')
+        INSERT INTO cap_cache (cap_id, country, image_url, name, catalog_status, producer) VALUES (:capId, :country, '', '', 'unknown', '')
         ON CONFLICT(cap_id) DO UPDATE SET country = :country
     """)
     suspend fun upsertCountry(capId: Long, country: String)
 
     // Pełny wpis z kraju i zdjęcia (zakładka Klasery).
     @Query("""
-        INSERT INTO cap_cache (cap_id, country, image_url, name, catalog_status) VALUES (:capId, :country, :imageUrl, '', 'unknown')
+        INSERT INTO cap_cache (cap_id, country, image_url, name, catalog_status, producer) VALUES (:capId, :country, :imageUrl, '', 'unknown', '')
         ON CONFLICT(cap_id) DO UPDATE SET country = :country, image_url = :imageUrl
     """)
     suspend fun upsertFull(capId: Long, country: String, imageUrl: String)
@@ -33,8 +33,8 @@ interface CapCacheDao {
     // Snapshot identyfikujący kapsel + fingerprint; nie rusza pól weryfikacji
     // (last_verified_at, catalog_status), więc bezpieczny przy ponownym zapisie.
     @Query("""
-        INSERT INTO cap_cache (cap_id, name, country, image_url, created_at, created_by_id, updated_at, catalog_status)
-        VALUES (:capId, :name, :country, :imageUrl, :createdAt, :createdById, :updatedAt, 'unknown')
+        INSERT INTO cap_cache (cap_id, name, country, image_url, created_at, created_by_id, updated_at, catalog_status, producer)
+        VALUES (:capId, :name, :country, :imageUrl, :createdAt, :createdById, :updatedAt, 'unknown', '')
         ON CONFLICT(cap_id) DO UPDATE SET
             name = :name, country = :country, image_url = :imageUrl,
             created_at = :createdAt, created_by_id = :createdById, updated_at = :updatedAt
