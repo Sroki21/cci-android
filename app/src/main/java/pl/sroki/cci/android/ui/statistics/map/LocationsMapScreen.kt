@@ -159,12 +159,6 @@ private fun SuccessContent(
     }
 }
 
-// Zasięg przesuwania od punktu startowego rośnie z zoomem asymptotycznie do połowy
-// szerokości mapy (przy 8x to ~44%, przy 16x ~47%) — samo podniesienie MAX_ZOOM nie
-// rozwiązuje więc w pełni dotarcia do odległego regionu z dala od miejsca zoomowania.
-// Kluczowy fix jest w gestach wyżej (przypięcie do granicy bez dryfu przy kontynuacji
-// zoomu) — dzięki niemu dalsze dociskanie zoomu W TYM SAMYM miejscu realnie zwiększa
-// zasięg zamiast go cofać. 16x daje po prostu wygodniejszy margines niż 8x.
 private const val MAX_ZOOM = 16f
 
 @Composable
@@ -198,42 +192,21 @@ private fun WorldMapCanvas(
                     detectTransformGestures { centroid, pan, zoom, _ ->
                         val newScale = (userScale * zoom).coerceIn(1f, MAX_ZOOM)
                         val k = newScale / userScale
+                        var next = (userOffset - centroid) * k + centroid + pan
+                        // Rysowanie (niżej) skaluje z pivotem w (0,0) ekranu, więc przy
+                        // offset=0 mapa jest zakotwiczona lewym górnym rogiem, a nadmiar
+                        // treści wystaje POZA prawą/dolną krawędź ekranu — offset=0 to
+                        // górna granica zakresu (bez luki po lewej/górze), a dolna granica
+                        // to -(contentWidth - width), czyli -2*maxX, nie -maxX. Symetryczny
+                        // zakres [-maxX, maxX] (poprzednia wersja) obcinał więc realny
+                        // zasięg w prawo/dół dokładnie o połowę, niezależnie od poziomu
+                        // zoomu — stąd wrażenie, że granica "ustawia się" tam, gdzie
+                        // dotknięto, i nie da się jej przesunąć dalszym zoomem.
                         val maxX = ((size.width * newScale - size.width) / 2f).coerceAtLeast(0f)
                         val maxY = ((size.height * newScale - size.height) / 2f).coerceAtLeast(0f)
-
-                        // "Zoom wokół centroidu dotyku" naturalnie odciąga offset od granicy
-                        // z powrotem w stronę centroidu przy każdej kolejnej klatce pinch-zoomu,
-                        // jeśli centroid nie leży dokładnie na tej granicy (a przy pinch-zoomie
-                        // prawie nigdy nie leży) — im mocniej dociskać zoom, tym mocniej odciąga.
-                        // Jeśli poprzednia klatka była przyklejona do granicy i user nie
-                        // przeciąga świadomie w stronę środka, zostań przy (przeskalowanej)
-                        // granicy zamiast liczyć nową pozycję ze wzoru centroidu.
-                        val prevMaxX = ((size.width * userScale - size.width) / 2f).coerceAtLeast(0f)
-                        val prevMaxY = ((size.height * userScale - size.height) / 2f).coerceAtLeast(0f)
-                        val eps = 0.5f
-                        val pinnedMinX = userOffset.x <= -prevMaxX + eps
-                        val pinnedMaxXFlag = userOffset.x >= prevMaxX - eps
-                        val pinnedMinY = userOffset.y <= -prevMaxY + eps
-                        val pinnedMaxYFlag = userOffset.y >= prevMaxY - eps
-                        // Prawdziwy pinch rzadko jest idealnie symetryczny — nawet czysty zoom
-                        // "w miejscu" generuje kilka pikseli szumu w pan. Zbyt ostry próg (0f)
-                        // sprawiał, że ten szum losowo wyłączał przypięcie do granicy. Tolerancja
-                        // pochłania szum, a wciąż reaguje na świadome przeciągnięcie w stronę środka.
-                        val panEps = 8f
-
-                        val next = (userOffset - centroid) * k + centroid + pan
-                        val nx = when {
-                            pinnedMinX && pan.x <= panEps -> -maxX
-                            pinnedMaxXFlag && pan.x >= -panEps -> maxX
-                            else -> next.x.coerceIn(-maxX, maxX)
-                        }
-                        val ny = when {
-                            pinnedMinY && pan.y <= panEps -> -maxY
-                            pinnedMaxYFlag && pan.y >= -panEps -> maxY
-                            else -> next.y.coerceIn(-maxY, maxY)
-                        }
+                        next = Offset(next.x.coerceIn(-2f * maxX, 0f), next.y.coerceIn(-2f * maxY, 0f))
                         userScale = newScale
-                        userOffset = Offset(nx, ny)
+                        userOffset = next
                     }
                 }
                 .pointerInput(state.map) {
