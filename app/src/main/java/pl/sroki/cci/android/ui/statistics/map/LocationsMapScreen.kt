@@ -192,13 +192,37 @@ private fun WorldMapCanvas(
                     detectTransformGestures { centroid, pan, zoom, _ ->
                         val newScale = (userScale * zoom).coerceIn(1f, MAX_ZOOM)
                         val k = newScale / userScale
-                        var next = (userOffset - centroid) * k + centroid + pan
-                        // Nie pozwól odsunąć mapy całkiem poza widok.
                         val maxX = ((size.width * newScale - size.width) / 2f).coerceAtLeast(0f)
                         val maxY = ((size.height * newScale - size.height) / 2f).coerceAtLeast(0f)
-                        next = Offset(next.x.coerceIn(-maxX, maxX), next.y.coerceIn(-maxY, maxY))
+
+                        // "Zoom wokół centroidu dotyku" naturalnie odciąga offset od granicy
+                        // z powrotem w stronę centroidu przy każdej kolejnej klatce pinch-zoomu,
+                        // jeśli centroid nie leży dokładnie na tej granicy (a przy pinch-zoomie
+                        // prawie nigdy nie leży) — im mocniej dociskać zoom, tym mocniej odciąga.
+                        // Jeśli poprzednia klatka była przyklejona do granicy i user nie
+                        // przeciąga świadomie w stronę środka, zostań przy (przeskalowanej)
+                        // granicy zamiast liczyć nową pozycję ze wzoru centroidu.
+                        val prevMaxX = ((size.width * userScale - size.width) / 2f).coerceAtLeast(0f)
+                        val prevMaxY = ((size.height * userScale - size.height) / 2f).coerceAtLeast(0f)
+                        val eps = 0.5f
+                        val pinnedMinX = userOffset.x <= -prevMaxX + eps
+                        val pinnedMaxXFlag = userOffset.x >= prevMaxX - eps
+                        val pinnedMinY = userOffset.y <= -prevMaxY + eps
+                        val pinnedMaxYFlag = userOffset.y >= prevMaxY - eps
+
+                        val next = (userOffset - centroid) * k + centroid + pan
+                        val nx = when {
+                            pinnedMinX && pan.x <= 0f -> -maxX
+                            pinnedMaxXFlag && pan.x >= 0f -> maxX
+                            else -> next.x.coerceIn(-maxX, maxX)
+                        }
+                        val ny = when {
+                            pinnedMinY && pan.y <= 0f -> -maxY
+                            pinnedMaxYFlag && pan.y >= 0f -> maxY
+                            else -> next.y.coerceIn(-maxY, maxY)
+                        }
                         userScale = newScale
-                        userOffset = next
+                        userOffset = Offset(nx, ny)
                     }
                 }
                 .pointerInput(state.map) {
