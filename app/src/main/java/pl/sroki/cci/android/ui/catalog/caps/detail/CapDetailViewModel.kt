@@ -22,6 +22,7 @@ import pl.sroki.cci.android.data.PurchasedCapsLocalStore
 import pl.sroki.cci.android.data.SessionRepository
 import pl.sroki.cci.android.data.datasource.local.entity.Binder
 import pl.sroki.cci.android.data.datasource.local.entity.BinderPage
+import pl.sroki.cci.android.data.datasource.local.entity.CapCache
 import pl.sroki.cci.android.data.model.CapBinderInfo
 import pl.sroki.cci.android.model.BinderSuggestion
 import pl.sroki.cci.android.model.CapExtended
@@ -79,6 +80,10 @@ class CapDetailViewModel @Inject constructor(
     var catalogStatus: String? by mutableStateOf(null)
         private set
 
+    // Co dokładnie się zmieniło (label -> "przed → po"), do wyświetlenia w banerze rozjazdu.
+    var catalogChanges: List<Pair<String, String>> by mutableStateOf(emptyList())
+        private set
+
     private var pagesJob: Job? = null
     private var suggestionJob: Job? = null
 
@@ -117,6 +122,7 @@ class CapDetailViewModel @Inject constructor(
         viewModelScope.launch {
             capCacheRepository.markVerified(capId, "ok", System.currentTimeMillis())
             catalogStatus = "ok"
+            catalogChanges = emptyList()
         }
     }
 
@@ -132,6 +138,7 @@ class CapDetailViewModel @Inject constructor(
             capCacheRepository.markVerified(capId, "ok", System.currentTimeMillis())
             runCatching { capPositionRepository.updateSnapshot(capId, s) }
             catalogStatus = "ok"
+            catalogChanges = emptyList()
         }
     }
 
@@ -143,6 +150,7 @@ class CapDetailViewModel @Inject constructor(
             capCacheRepository.selectProducer(capId, producer.id, producer.name, producer.country.name)
             capCacheRepository.markVerified(capId, "ok", System.currentTimeMillis())
             catalogStatus = "ok"
+            catalogChanges = emptyList()
             capDetailUiState = current.copy(cap = current.cap.copy(country = producer.country))
         }
     }
@@ -154,8 +162,39 @@ class CapDetailViewModel @Inject constructor(
         viewModelScope.launch {
             runCatching { capPositionRepository.unassign(capId) }
             catalogStatus = null
+            catalogChanges = emptyList()
             capDetailUiState = current.copy(status = CapStatus.PURCHASED, binderInfo = null)
         }
+    }
+
+    /**
+     * Różnica pole-po-polu między zapisanym snapshotem a świeżym stanem z API — ta sama logika
+     * porównania co w CollectionVerifier.verify(), ale zwrócona jako lista do wyświetlenia
+     * użytkownikowi zamiast tylko statusu.
+     */
+    private fun computeChanges(stored: CapCache, cap: CapExtended): List<Pair<String, String>> {
+        val freshName = cap.description ?: ""
+        val freshUpdatedAt = cap.updatedAt?.toString()
+        val matchedProducer = stored.selectedProducerId?.let { id -> cap.producers.firstOrNull { it.id == id } }
+        val freshCountry = matchedProducer?.country?.name ?: cap.country.name
+
+        val changes = mutableListOf<Pair<String, String>>()
+        if (stored.name.isNotBlank() && stored.name != freshName) {
+            changes += "Tekst" to "${stored.name} → $freshName"
+        }
+        if (stored.country.isNotBlank() && stored.country != freshCountry) {
+            changes += "Kraj" to "${stored.country} → $freshCountry"
+        }
+        if (matchedProducer != null && stored.producer.isNotBlank() && stored.producer != matchedProducer.name) {
+            changes += "Producent" to "${stored.producer} → ${matchedProducer.name}"
+        }
+        if (stored.imageUrl.isNotBlank() && stored.imageUrl != cap.imageUrl) {
+            changes += "Zdjęcie" to "zmienione"
+        }
+        if (stored.updatedAt != null && stored.updatedAt != freshUpdatedAt) {
+            changes += "Data edycji w katalogu" to "zaktualizowana"
+        }
+        return changes
     }
 
     private fun saveAssignment() {
@@ -270,6 +309,7 @@ class CapDetailViewModel @Inject constructor(
                 }
                 if (status == CapStatus.PURCHASED) launchSuggestion(cap.country.name, id.toLong())
                 catalogStatus = stored?.catalogStatus
+                catalogChanges = stored?.let { computeChanges(it, cap) } ?: emptyList()
                 CapDetailUiState.Success(cap = cap, status = status, binderInfo = binderInfo)
             } catch (e: IOException) {
                 CapDetailUiState.Error

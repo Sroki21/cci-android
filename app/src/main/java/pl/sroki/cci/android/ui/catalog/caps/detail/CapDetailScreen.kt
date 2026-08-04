@@ -26,6 +26,7 @@ import pl.sroki.cci.android.ui.components.FullSizeLoader
 @Composable
 private fun DriftBanner(
     status: String?,
+    changes: List<Pair<String, String>>,
     onKeep: () -> Unit,
     onAccept: () -> Unit,
     onUnlink: () -> Unit,
@@ -47,6 +48,19 @@ private fun DriftBanner(
                 color = MaterialTheme.colorScheme.onErrorContainer,
                 style = MaterialTheme.typography.bodyMedium
             )
+            if (status == "updated" && changes.isNotEmpty()) {
+                androidx.compose.foundation.layout.Column(
+                    Modifier.padding(top = 4.dp),
+                ) {
+                    changes.forEach { (label, diff) ->
+                        Text(
+                            text = "$label: $diff",
+                            color = MaterialTheme.colorScheme.onErrorContainer,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
+            }
             Row {
                 TextButton(onClick = onKeep) { Text("Zachowaj") }
                 if (status != "missing") {
@@ -149,6 +163,7 @@ fun CapDetailScreen(
                 is CapDetailUiState.Success -> androidx.compose.foundation.layout.Column {
                     DriftBanner(
                         status = viewModel.catalogStatus,
+                        changes = viewModel.catalogChanges,
                         onKeep = viewModel::keepSnapshot,
                         onAccept = viewModel::acceptNew,
                         onUnlink = viewModel::unlinkFlagged,
