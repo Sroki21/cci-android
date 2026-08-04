@@ -26,9 +26,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withLink
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
@@ -59,6 +64,7 @@ fun CapDetailView(
     onPositionSelected: (Int) -> Unit = {},
     onProducerClick: (String) -> Unit = {},
     onProducerSelected: (Producer) -> Unit = {},
+    onCapNumberClick: (Long) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -89,6 +95,7 @@ fun CapDetailView(
             if (cap.producers.isNotEmpty()) {
                 CapDetailProducersView(producers = cap.producers, onProducerClick = onProducerClick)
             }
+            CapDetailInfoView(info = cap.info, onCapNumberClick = onCapNumberClick)
             if (status == CapStatus.PURCHASED || status == CapStatus.IN_COLLECTION) {
                 Row(
                     modifier = Modifier
@@ -253,6 +260,57 @@ private fun CapDetailProducersView(
                 }
             }
         }
+    }
+}
+
+// Numery kapsli w polu Info (np. "różni się od #131244") — link do CapDetail tego kapsla.
+private val CAP_REFERENCE_REGEX = Regex("#(\\d+)")
+
+@Composable
+private fun CapDetailInfoView(
+    info: String?,
+    onCapNumberClick: (Long) -> Unit,
+) {
+    if (info.isNullOrBlank()) return
+    val linkColor = MaterialTheme.colorScheme.primary
+    val annotated = remember(info, linkColor) {
+        buildAnnotatedString {
+            var lastIndex = 0
+            CAP_REFERENCE_REGEX.findAll(info).forEach { match ->
+                append(info.substring(lastIndex, match.range.first))
+                val capId = match.groupValues[1].toLongOrNull()
+                if (capId != null) {
+                    withLink(
+                        LinkAnnotation.Clickable(tag = "cap_$capId") { onCapNumberClick(capId) }
+                    ) {
+                        withStyle(SpanStyle(color = linkColor, textDecoration = TextDecoration.Underline)) {
+                            append(match.value)
+                        }
+                    }
+                } else {
+                    append(match.value)
+                }
+                lastIndex = match.range.last + 1
+            }
+            append(info.substring(lastIndex))
+        }
+    }
+    Row(
+        horizontalArrangement = Arrangement.SpaceBetween,
+        modifier = Modifier
+            .padding(horizontal = 16.dp)
+            .fillMaxWidth()
+    ) {
+        Text(
+            text = "Info",
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(end = 8.dp)
+        )
+        Text(
+            text = annotated,
+            textAlign = TextAlign.End,
+            modifier = Modifier.padding(start = 8.dp)
+        )
     }
 }
 

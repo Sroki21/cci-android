@@ -78,6 +78,7 @@ fun CapDetailScreen(
     id: Int,
     onBack: () -> Unit,
     onProducerClick: (String) -> Unit = {},
+    onCapNumberClick: (Long) -> Unit = {},
 ) {
     val viewModel = hiltViewModel<CapDetailViewModel>()
     val uiState = viewModel.capDetailUiState
@@ -184,6 +185,7 @@ fun CapDetailScreen(
                         onPositionSelected = viewModel::onPositionSelected,
                         onProducerClick = onProducerClick,
                         onProducerSelected = viewModel::selectProducer,
+                        onCapNumberClick = onCapNumberClick,
                     )
                 }
             }

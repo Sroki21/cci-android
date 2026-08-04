@@ -178,6 +178,9 @@ fun Navigation(
                 onBack = { navController.popBackStack() },
                 onProducerClick = { producerName ->
                     navController.navigate(Screen.AdvancedSearchByProducer.createUrl(producerName))
+                },
+                onCapNumberClick = { capId ->
+                    navController.navigate(Screen.CapDetail.createUrl(capId))
                 }
             )
         }
