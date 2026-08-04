@@ -28,6 +28,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
@@ -173,6 +174,8 @@ private fun CapDetailCountryView(
             color = if (clickable) MaterialTheme.colorScheme.primary else Color.Unspecified,
             textDecoration = if (clickable) TextDecoration.Underline else null,
             textAlign = TextAlign.End,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
             modifier = Modifier.padding(start = 8.dp)
         )
     }
@@ -194,10 +197,17 @@ private fun CapDetailCountryView(
                                 }
                                 .padding(vertical = 8.dp)
                         ) {
-                            Text(text = producer.name, modifier = Modifier.padding(end = 8.dp))
+                            Text(
+                                text = producer.name,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f).padding(end = 8.dp)
+                            )
                             Text(
                                 text = producer.country.name,
                                 textAlign = TextAlign.End,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
                                 modifier = Modifier.padding(start = 8.dp)
                             )
                         }
@@ -227,13 +237,15 @@ private fun CapDetailProducersView(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(end = 8.dp)
         )
-        Row(modifier = Modifier.padding(start = 8.dp)) {
+        Row(modifier = Modifier.weight(1f, fill = false).padding(start = 8.dp)) {
             producers.forEachIndexed { index, producer ->
                 Text(
                     text = producer.name,
                     color = MaterialTheme.colorScheme.primary,
                     textDecoration = TextDecoration.Underline,
                     textAlign = TextAlign.End,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.clickable { onProducerClick(producer.name) }
                 )
                 if (index != producers.lastIndex) {
