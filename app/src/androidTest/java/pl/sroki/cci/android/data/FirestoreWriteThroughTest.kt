@@ -56,6 +56,7 @@ class FirestoreWriteThroughTest {
         capPositionRepository = CapPositionRepository(
             dao = db.capPositionDao(),
             binderPageDao = db.binderPageDao(),
+            capCacheDao = db.capCacheDao(),
             capPositionFirestoreService = capPositionFs,
             authManager = authManager
         )

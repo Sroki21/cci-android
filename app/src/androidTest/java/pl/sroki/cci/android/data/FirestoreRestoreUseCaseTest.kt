@@ -8,6 +8,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.joinAll
@@ -51,6 +52,7 @@ class FirestoreRestoreUseCaseTest {
             .build()
         every { authManager.uid } returns MutableStateFlow(TEST_UID)
         useCase = FirestoreRestoreUseCase(
+            context = ApplicationProvider.getApplicationContext<Context>(),
             authManager = authManager,
             database = db,
             binderDao = db.binderDao(),
@@ -88,6 +90,7 @@ class FirestoreRestoreUseCaseTest {
         val failingCapDao = mockk<CapPositionDao>(relaxed = true)
         coEvery { failingCapDao.insertOrIgnore(any()) } throws SQLiteException("forced failure in test")
         val failingUseCase = FirestoreRestoreUseCase(
+            ApplicationProvider.getApplicationContext<Context>(),
             authManager, db, db.binderDao(), db.binderPageDao(),
             failingCapDao, db.capCacheDao(),
             binderService, binderPageService, capPositionService
@@ -105,6 +108,96 @@ class FirestoreRestoreUseCaseTest {
             "database.withTransaction rollback: pre-existing binder powinien wrócić",
             1, db.binderDao().countAll()
         )
+    }
+
+    @Test
+    fun restoreFromFirestore_kolizjaSlotu_raportujePominietaPozycje() = runBlocking {
+        // Dwa dokumenty Firestore celują w ten sam slot (strona 1, pozycja 5). Wcześniej drugi
+        // ginął bezgłośnie przez insertOrIgnore — tak wypadły z kolekcji cztery realne kapsle.
+        coEvery { binderService.fetchAll(TEST_UID) } returns listOf(
+            BinderDocument("fsB1", "Europa 6")
+        )
+        coEvery { binderPageService.fetchAll(TEST_UID) } returns listOf(
+            BinderPageDocument("fsP1", "fsB1", 1)
+        )
+        coEvery { capPositionService.fetchAll(TEST_UID) } returns listOf(
+            CapPositionDocument("fsCap1", "fsP1", 5, 21668L),
+            CapPositionDocument("fsCap2", "fsP1", 5, 86226L)
+        )
+
+        val result = useCase.restoreFromFirestore()
+
+        assertTrue("oczekiwano Success", result is RestoreResult.Success)
+        val success = result as RestoreResult.Success
+        assertEquals("dokładnie jedna pozycja powinna zostać pominięta", 1, success.skipped.size)
+        val skipped = success.skipped.first()
+        assertEquals("pominięty kapsel", 86226L, skipped.capId)
+        assertEquals("pozycja spornego slotu", 5, skipped.position)
+        assertEquals("kapsel, który zajął slot", 21668L, skipped.occupiedByCapId)
+    }
+
+    @Test
+    fun restoreFromFirestore_duplikatDokumentu_kasujeGoZFirestore() = runBlocking {
+        // Ten sam kapsel ma dwa dokumenty. Jeden zajmuje slot, drugi jest zbędny —
+        // ma zostać usunięty z Firestore, żeby nie walczył o slot przy kolejnym odtwarzaniu.
+        coEvery { binderService.fetchAll(TEST_UID) } returns listOf(
+            BinderDocument("fsB1", "Europa 6")
+        )
+        coEvery { binderPageService.fetchAll(TEST_UID) } returns listOf(
+            BinderPageDocument("fsP1", "fsB1", 1)
+        )
+        coEvery { capPositionService.fetchAll(TEST_UID) } returns listOf(
+            CapPositionDocument("fsCapA", "fsP1", 5, 361490L),
+            CapPositionDocument("fsCapB", "fsP1", 5, 361490L)
+        )
+
+        val result = useCase.restoreFromFirestore() as RestoreResult.Success
+
+        assertTrue("duplikat to nie strata — nic do zgłoszenia", result.skipped.isEmpty())
+        verify(exactly = 1) { capPositionService.scheduleDelete(TEST_UID, "fsCapB") }
+        verify(exactly = 0) { capPositionService.scheduleDelete(TEST_UID, "fsCapA") }
+        assertEquals("kapsel zostaje na jednej pozycji", 1, db.capPositionDao().countAll())
+    }
+
+    @Test
+    fun restoreFromFirestore_wypartyKapsel_nieJestKasowany() = runBlocking {
+        // Kapsel 86226 nie ma żadnej pozycji — jego slot zajął duplikat innego kapsla.
+        // To realna strata: zgłaszamy ją i pod ŻADNYM pozorem nie kasujemy jego dokumentu.
+        coEvery { binderService.fetchAll(TEST_UID) } returns listOf(
+            BinderDocument("fsB1", "Europa 6")
+        )
+        coEvery { binderPageService.fetchAll(TEST_UID) } returns listOf(
+            BinderPageDocument("fsP1", "fsB1", 1)
+        )
+        coEvery { capPositionService.fetchAll(TEST_UID) } returns listOf(
+            CapPositionDocument("fsCapA", "fsP1", 13, 21668L),
+            CapPositionDocument("fsCapB", "fsP1", 13, 86226L)
+        )
+
+        val result = useCase.restoreFromFirestore() as RestoreResult.Success
+
+        assertEquals("wyparty kapsel musi zostać zgłoszony", 1, result.skipped.size)
+        assertEquals(86226L, result.skipped.first().capId)
+        verify(exactly = 0) { capPositionService.scheduleDelete(TEST_UID, "fsCapB") }
+    }
+
+    @Test
+    fun restoreFromFirestore_bezKolizji_niczegoNieRaportuje() = runBlocking {
+        coEvery { binderService.fetchAll(TEST_UID) } returns listOf(
+            BinderDocument("fsB1", "Europa 6")
+        )
+        coEvery { binderPageService.fetchAll(TEST_UID) } returns listOf(
+            BinderPageDocument("fsP1", "fsB1", 1)
+        )
+        coEvery { capPositionService.fetchAll(TEST_UID) } returns listOf(
+            CapPositionDocument("fsCap1", "fsP1", 5, 21668L),
+            CapPositionDocument("fsCap2", "fsP1", 6, 86226L)
+        )
+
+        val result = useCase.restoreFromFirestore() as RestoreResult.Success
+
+        assertTrue("brak kolizji — lista pominiętych pusta", result.skipped.isEmpty())
+        assertEquals("obie pozycje wstawione", 2, db.capPositionDao().countAll())
     }
 
     @Test

@@ -17,7 +17,8 @@ class CapPositionFirestoreService @Inject constructor(private val firestore: Fir
         binderPageFirestoreId: String,
         position: Int,
         capId: Long,
-        snapshot: CapSnapshot? = null
+        snapshot: CapSnapshot? = null,
+        producerSelection: ProducerSelection? = null
     ): String {
         val ref = col(uid).document()
         // Pola snapshotu prefiksowane "cap" — "updatedAt" jest już zajęte przez znacznik sync.
@@ -33,6 +34,14 @@ class CapPositionFirestoreService @Inject constructor(private val firestore: Fir
                 put("capCreatedAt", snapshot.createdAt)
                 put("capCreatedById", snapshot.createdById)
                 put("capUpdatedAt", snapshot.updatedAt)
+            }
+            // Ręczny wybór producenta jest decyzją użytkownika, nie danymi z katalogu — dlatego
+            // osobne pola, a nie część snapshotu. Gdyby siedział w CapSnapshot, każde
+            // toSnapshot() (które o wyborze nie wie) kasowałoby go pustką.
+            if (producerSelection != null) {
+                put("capSelectedProducerId", producerSelection.producerId)
+                put("capProducer", producerSelection.producer)
+                put("capCountry", producerSelection.country)
             }
         }
         ref.set(data)
@@ -57,6 +66,21 @@ class CapPositionFirestoreService @Inject constructor(private val firestore: Fir
         )
     }
 
+    /**
+     * Utrwala ręczny wybór producenta dla kapsla "-Multiple countries".
+     * Bez tego wybór żyje wyłącznie w Roomie i ginie przy reinstalacji aplikacji.
+     * Nadpisuje też capCountry, żeby po odtworzeniu kraj i wybrany producent się zgadzały.
+     */
+    fun scheduleUpdateProducer(uid: String, firestoreId: String, selection: ProducerSelection) {
+        col(uid).document(firestoreId).update(
+            mapOf(
+                "capSelectedProducerId" to selection.producerId,
+                "capProducer" to selection.producer,
+                "capCountry" to selection.country
+            )
+        )
+    }
+
     fun scheduleDeleteByPage(uid: String, pageFirestoreId: String) {
         col(uid).whereEqualTo("binderPageFirestoreId", pageFirestoreId).get()
             .addOnSuccessListener { snap -> snap.documents.forEach { it.reference.delete() } }
@@ -71,5 +95,13 @@ data class CapPositionDocument(
     val binderPageFirestoreId: String,
     val position: Int,
     val capId: Long,
-    val snapshot: CapSnapshot? = null
+    val snapshot: CapSnapshot? = null,
+    val producerSelection: ProducerSelection? = null
+)
+
+/** Ręcznie wybrany producent kapsla "-Multiple countries" wraz z jego krajem. */
+data class ProducerSelection(
+    val producerId: Int,
+    val producer: String,
+    val country: String
 )

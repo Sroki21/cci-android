@@ -1,6 +1,10 @@
 package pl.sroki.cci.android.data
 
+import android.content.Context
+import android.util.Log
 import androidx.room.withTransaction
+import dagger.hilt.android.qualifiers.ApplicationContext
+import io.sentry.Sentry
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import pl.sroki.cci.android.data.datasource.local.CciDatabase
@@ -17,17 +21,46 @@ import pl.sroki.cci.android.data.datasource.remote.firestore.BinderPageDocument
 import pl.sroki.cci.android.data.datasource.remote.firestore.BinderPageFirestoreService
 import pl.sroki.cci.android.data.datasource.remote.firestore.CapPositionDocument
 import pl.sroki.cci.android.data.datasource.remote.firestore.CapPositionFirestoreService
+import pl.sroki.cci.android.data.datasource.remote.firestore.ProducerSelection
 import javax.inject.Inject
 import javax.inject.Singleton
 
 sealed interface RestoreResult {
-    data class Success(val binders: Int, val pages: Int, val caps: Int) : RestoreResult
+    /**
+     * @param skipped pozycje, których nie dało się wstawić, bo slot (strona, pozycja) był już
+     *   zajęty. Niezerowa wartość znaczy, że kapsle wypadły z kolekcji — patrz SkippedPosition.
+     */
+    data class Success(
+        val binders: Int,
+        val pages: Int,
+        val caps: Int,
+        val skipped: List<SkippedPosition> = emptyList()
+    ) : RestoreResult
     data object NotLoggedIn : RestoreResult
     data object Empty : RestoreResult
 }
 
+/** Pozycja pominięta przy odtwarzaniu wraz z kapslem, który zajął jej slot. */
+data class SkippedPosition(
+    val capId: Long,
+    val position: Int,
+    val occupiedByCapId: Long?
+)
+
+/**
+ * Wynik wstawiania: pozycje realnie utracone oraz nadmiarowe dokumenty Firestore do usunięcia.
+ * Kolizja slotu ma dwa różne znaczenia i mylenie ich kosztowałoby dane:
+ *  - kapsel ma już pozycję z innego dokumentu -> ten dokument jest duplikatem (do usunięcia),
+ *  - kapsel nie ma żadnej pozycji -> wypadł z kolekcji (do zgłoszenia, NIE do usunięcia).
+ */
+private data class InsertOutcome(
+    val skipped: List<SkippedPosition>,
+    val redundantDocIds: List<String>
+)
+
 @Singleton
 class FirestoreRestoreUseCase @Inject constructor(
+    @ApplicationContext context: Context,
     private val authManager: FirebaseAuthManager,
     private val database: CciDatabase,
     private val binderDao: BinderDao,
@@ -38,10 +71,43 @@ class FirestoreRestoreUseCase @Inject constructor(
     private val binderPageService: BinderPageFirestoreService,
     private val capPositionService: CapPositionFirestoreService
 ) {
+    private companion object {
+        const val PREFS_NAME = "sync_state"
+        const val KEY_PRODUCER_BACKFILL = "producer_backfill_version"
+        // Podbij, gdy backfill ma się wykonać ponownie u wszystkich użytkowników.
+        const val PRODUCER_BACKFILL_VERSION = 1
+    }
+
+    private val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     private val restoreIfEmptyMutex = Mutex()
 
     suspend fun deduplicateRoomData() {
         binderDao.deduplicateByName()
+    }
+
+    /**
+     * Jednorazowo wypycha do Firestore ręczne wybory producenta zapisane jeszcze przez wersję,
+     * która ich nie synchronizowała. Bez tego wybory sprzed aktualizacji nadal ginęłyby przy
+     * reinstalacji — poprawka sama z siebie działa dopiero dla wyborów robionych od teraz.
+     *
+     * Zapisy Firestore są kolejkowane offline przez SDK, więc pojedyncze odpalenie wystarcza;
+     * flaga w SharedPreferences chroni przed powtarzaniem tych zapisów przy każdym starcie.
+     */
+    suspend fun backfillProducerSelections(): Int {
+        if (prefs.getInt(KEY_PRODUCER_BACKFILL, 0) >= PRODUCER_BACKFILL_VERSION) return 0
+        val uid = authManager.uid.value ?: return 0
+        var pushed = 0
+        capCacheDao.getWithProducerSelection().forEach { cached ->
+            val producerId = cached.selectedProducerId ?: return@forEach
+            val fsId = capPositionDao.getByCapId(cached.capId)?.firestoreId ?: return@forEach
+            capPositionService.scheduleUpdateProducer(
+                uid, fsId, ProducerSelection(producerId, cached.producer, cached.country)
+            )
+            pushed++
+        }
+        prefs.edit().putInt(KEY_PRODUCER_BACKFILL, PRODUCER_BACKFILL_VERSION).apply()
+        Log.i("CCI_SYNC", "backfill wyborów producenta: wypchnięto $pushed")
+        return pushed
     }
 
     suspend fun restoreIfEmpty() {
@@ -51,8 +117,21 @@ class FirestoreRestoreUseCase @Inject constructor(
             val allBinders = binderService.fetchAll(uid)
             val allPages = binderPageService.fetchAll(uid)
             val allCaps = capPositionService.fetchAll(uid)
-            insertRestored(chooseBinders(allBinders, allPages, allCaps), allPages, allCaps)
+            val outcome = insertRestored(chooseBinders(allBinders, allPages, allCaps), allPages, allCaps)
+            reportSkipped(outcome.skipped)
+            removeRedundantDocs(uid, outcome.redundantDocIds)
         }
+    }
+
+    /**
+     * Pominięta pozycja to kapsel, który wypadł z kolekcji. Wcześniej działo się to bezgłośnie —
+     * odtwarzanie meldowało sukces, a użytkownik odkrywał brak dopiero licząc kapsle.
+     */
+    private fun reportSkipped(skipped: List<SkippedPosition>) {
+        if (skipped.isEmpty()) return
+        val detail = skipped.joinToString { "cap ${it.capId} (poz. ${it.position}, zajęte przez ${it.occupiedByCapId})" }
+        Log.w("CCI_SYNC", "restore pominął ${skipped.size} pozycji: $detail")
+        Sentry.captureMessage("Restore pominął ${skipped.size} pozycji: $detail")
     }
 
     /**
@@ -70,11 +149,14 @@ class FirestoreRestoreUseCase @Inject constructor(
             if (allBinders.isEmpty()) return RestoreResult.Empty
 
             val chosen = chooseBinders(allBinders, allPages, allCaps)
-            database.withTransaction {
+            val outcome = database.withTransaction {
                 binderDao.deleteAll() // kaskada usuwa binder_page i cap_position
                 insertRestored(chosen, allPages, allCaps)
             }
-            RestoreResult.Success(chosen.size, allPages.size, allCaps.size)
+            reportSkipped(outcome.skipped)
+            // Poza transakcją — kasowanie w Firestore nie ma się co wiązać z rollbackiem Roomu.
+            removeRedundantDocs(uid, outcome.redundantDocIds)
+            RestoreResult.Success(chosen.size, allPages.size, allCaps.size, outcome.skipped)
         }
     }
 
@@ -100,7 +182,9 @@ class FirestoreRestoreUseCase @Inject constructor(
         chosenBinders: List<BinderDocument>,
         allPages: List<BinderPageDocument>,
         allCaps: List<CapPositionDocument>
-    ) {
+    ): InsertOutcome {
+        val collisions = mutableListOf<SkippedPosition>()
+        val collidingDocIds = mutableMapOf<Long, MutableList<String>>()
         val fsIdToRoomId = mutableMapOf<String, Long>()
         chosenBinders.forEach { doc ->
             val id = binderDao.insert(Binder(name = doc.name, firestoreId = doc.firestoreId))
@@ -116,7 +200,7 @@ class FirestoreRestoreUseCase @Inject constructor(
         }
         allCaps.forEach { doc ->
             val parentRoomId = pageIdToRoomId[doc.binderPageFirestoreId] ?: return@forEach
-            capPositionDao.insertOrIgnore(
+            val rowId = capPositionDao.insertOrIgnore(
                 CapPosition(
                     binderPageId = parentRoomId,
                     position = doc.position,
@@ -124,12 +208,53 @@ class FirestoreRestoreUseCase @Inject constructor(
                     firestoreId = doc.firestoreId
                 )
             )
+            // -1 = kolizja UNIQUE(strona, pozycja). Wcześniej ginęło to bez śladu i tak wypadły
+            // z kolekcji cztery kapsle, wyparte przez zduplikowane dokumenty pozycji z Firestore.
+            if (rowId == -1L) {
+                collisions += SkippedPosition(
+                    capId = doc.capId,
+                    position = doc.position,
+                    occupiedByCapId = capPositionDao.getCapIdAt(parentRoomId, doc.position)
+                )
+                collidingDocIds.getOrPut(doc.capId) { mutableListOf() } += doc.firestoreId
+            }
             // Odtwórz snapshot do cap_cache, by kolekcja renderowała się offline po reinstalacji.
             doc.snapshot?.let { s ->
                 capCacheDao.upsertSnapshot(
                     doc.capId, s.name, s.country, s.imageUrl, s.createdAt, s.createdById, s.updatedAt
                 )
             }
+            // Ręczny wybór producenta — musi iść PO snapshocie, bo nadpisuje country wybranym
+            // krajem. Bez tego kapsel "-Multiple countries" wracał po reinstalacji do surowego
+            // kraju z katalogu, a weryfikacja zgłaszała go jako rozjazd.
+            doc.producerSelection?.let { sel ->
+                capCacheDao.selectProducer(doc.capId, sel.producerId, sel.producer, sel.country)
+            }
         }
+
+        // Klasyfikacja dopiero po całej pętli: dopiero teraz wiadomo, czy kapsel dostał pozycję
+        // z któregokolwiek ze swoich dokumentów. Wcześniej nie da się tego stwierdzić, bo
+        // zwycięski dokument może wystąpić po kolidującym.
+        val lost = mutableListOf<SkippedPosition>()
+        val redundant = mutableListOf<String>()
+        collisions.forEach { collision ->
+            if (capPositionDao.getByCapId(collision.capId) != null) {
+                redundant += collidingDocIds[collision.capId].orEmpty()
+            } else {
+                lost += collision
+            }
+        }
+        return InsertOutcome(lost, redundant.distinct())
+    }
+
+    /**
+     * Kasuje nadmiarowe dokumenty pozycji. Bez tego duplikaty zostają w Firestore na zawsze,
+     * a przy każdym kolejnym odtwarzaniu o slot walczy kilka dokumentów — dziś wygrał właściwy,
+     * jutro mógłby wygrać ten, który wypycha inny kapsel z kolekcji.
+     */
+    private fun removeRedundantDocs(uid: String, docIds: List<String>) {
+        if (docIds.isEmpty()) return
+        docIds.forEach { capPositionService.scheduleDelete(uid, it) }
+        Log.i("CCI_SYNC", "usunięto ${docIds.size} nadmiarowych dokumentów pozycji z Firestore")
     }
 }

@@ -32,6 +32,8 @@ class CCIApplication : Application() {
                 }
                 firestoreRestoreUseCase.deduplicateRoomData()
                 firestoreRestoreUseCase.restoreIfEmpty()
+                // Po odtworzeniu — inaczej na świeżej instalacji nie byłoby jeszcze czego wypchnąć.
+                firestoreRestoreUseCase.backfillProducerSelections()
             } catch (e: Exception) {
                 Sentry.captureException(e)
                 // Restore failure is non-fatal — app works offline without it

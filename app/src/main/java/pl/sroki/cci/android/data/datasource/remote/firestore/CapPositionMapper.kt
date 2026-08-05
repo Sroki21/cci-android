@@ -14,11 +14,21 @@ internal fun DocumentSnapshot.toCapPositionDocument(): CapPositionDocument? {
             updatedAt = getString("capUpdatedAt")
         )
     }
+    // Dokumenty sprzed wprowadzenia synchronizacji wyboru producenta tych pól nie mają —
+    // brak capSelectedProducerId czyta się jako null, więc migracja danych nie jest potrzebna.
+    val producerSelection = getLong("capSelectedProducerId")?.let {
+        ProducerSelection(
+            producerId = it.toInt(),
+            producer = getString("capProducer") ?: "",
+            country = getString("capCountry") ?: ""
+        )
+    }
     return CapPositionDocument(
         firestoreId = id,
         binderPageFirestoreId = getString("binderPageFirestoreId") ?: return null,
         position = (getLong("position") ?: return null).toInt(),
         capId = getLong("capId") ?: return null,
-        snapshot = snapshot
+        snapshot = snapshot,
+        producerSelection = producerSelection
     )
 }

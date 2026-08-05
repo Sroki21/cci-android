@@ -23,6 +23,7 @@ import pl.sroki.cci.android.data.SessionRepository
 import pl.sroki.cci.android.data.datasource.local.entity.Binder
 import pl.sroki.cci.android.data.datasource.local.entity.BinderPage
 import pl.sroki.cci.android.data.datasource.local.entity.CapCache
+import pl.sroki.cci.android.data.datasource.remote.firestore.ProducerSelection
 import pl.sroki.cci.android.data.model.CapBinderInfo
 import pl.sroki.cci.android.model.BinderSuggestion
 import pl.sroki.cci.android.model.CapExtended
@@ -149,6 +150,13 @@ class CapDetailViewModel @Inject constructor(
         viewModelScope.launch {
             capCacheRepository.selectProducer(capId, producer.id, producer.name, producer.country.name)
             capCacheRepository.markVerified(capId, "ok", System.currentTimeMillis())
+            // Utrwal wybór w Firestore — bez tego żyje tylko w Roomie i ginie przy reinstalacji.
+            runCatching {
+                capPositionRepository.updateProducerSelection(
+                    capId,
+                    ProducerSelection(producer.id, producer.name, producer.country.name)
+                )
+            }
             catalogStatus = "ok"
             catalogChanges = emptyList()
             capDetailUiState = current.copy(cap = current.cap.copy(country = producer.country))

@@ -37,6 +37,7 @@ class CapPositionRepositoryTest {
         repo = CapPositionRepository(
             dao = db.capPositionDao(),
             binderPageDao = db.binderPageDao(),
+            capCacheDao = db.capCacheDao(),
             capPositionFirestoreService = CapPositionFirestoreService(FirebaseFirestore.getInstance()),
             authManager = FirebaseAuthManager(FirebaseAuth.getInstance())
         )

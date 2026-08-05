@@ -63,6 +63,10 @@ interface CapCacheDao {
     """)
     suspend fun selectProducer(capId: Long, producerId: Int, producer: String, country: String)
 
+    // Ręczne wybory producenta zapisane lokalnie — źródło dla jednorazowego backfillu do Firestore.
+    @Query("SELECT * FROM cap_cache WHERE selected_producer_id IS NOT NULL")
+    suspend fun getWithProducerSelection(): List<CapCache>
+
     // Kolejka do weryfikacji: wstawione kapsle, najdawniej (lub nigdy) weryfikowane najpierw.
     @Query("""
         SELECT cp.cap_id FROM cap_position cp

@@ -42,6 +42,7 @@ class FirestoreRestoreTest {
         binderPageFs = BinderPageFirestoreService(firestore)
         capPositionFs = CapPositionFirestoreService(firestore)
         restoreUseCase = FirestoreRestoreUseCase(
+            context = InstrumentationRegistry.getInstrumentation().targetContext,
             authManager = authManager,
             database = db,
             binderDao = db.binderDao(),

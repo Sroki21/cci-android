@@ -34,6 +34,10 @@ interface CapPositionDao {
     @Query("SELECT * FROM cap_position WHERE cap_id = :capId LIMIT 1")
     suspend fun getByCapId(capId: Long): CapPosition?
 
+    // Kto zajmuje dany slot — do zaraportowania pozycji pominiętej przy odtwarzaniu.
+    @Query("SELECT cap_id FROM cap_position WHERE binder_page_id = :binderPageId AND position = :position LIMIT 1")
+    suspend fun getCapIdAt(binderPageId: Long, position: Int): Long?
+
     @Query("DELETE FROM cap_position WHERE cap_id = :capId")
     suspend fun deleteByCapId(capId: Long)
 

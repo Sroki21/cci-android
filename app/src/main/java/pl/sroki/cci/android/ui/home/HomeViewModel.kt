@@ -85,8 +85,17 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 val message = when (val result = firestoreRestoreUseCase.restoreFromFirestore()) {
-                    is RestoreResult.Success ->
-                        "Zsynchronizowano: ${result.binders} klaserów, ${result.pages} stron, ${result.caps} kapsli"
+                    is RestoreResult.Success -> buildString {
+                        append("Zsynchronizowano: ${result.binders} klaserów, ")
+                        append("${result.pages} stron, ${result.caps} kapsli")
+                        // Pominięta pozycja = kapsel, który wypadł z kolekcji. Milczenie w tym
+                        // miejscu sprawiło, że wcześniejsza utrata wyszła na jaw dopiero
+                        // przy ręcznym liczeniu kapsli.
+                        if (result.skipped.isNotEmpty()) {
+                            append(". UWAGA: ${result.skipped.size} pozycji pominięto ")
+                            append("(zajęty slot): ${result.skipped.joinToString { it.capId.toString() }}")
+                        }
+                    }
                     RestoreResult.Empty ->
                         "Firestore nie zawiera danych — nic nie zmieniono"
                     RestoreResult.NotLoggedIn ->
