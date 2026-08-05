@@ -13,6 +13,7 @@ import pl.sroki.cci.android.data.datasource.remote.firestore.CapPositionFirestor
 import pl.sroki.cci.android.data.datasource.remote.firestore.ProducerSelection
 import javax.inject.Inject
 import javax.inject.Singleton
+import pl.sroki.cci.android.model.binder.CapSlot
 
 @Singleton
 class CapPositionRepository @Inject constructor(
@@ -31,7 +32,8 @@ class CapPositionRepository @Inject constructor(
             }
         }
 
-    fun getByPage(binderPageId: Long): Flow<List<CapPosition>> = dao.getByPage(binderPageId)
+    fun getByPage(binderPageId: Long): Flow<List<CapSlot>> =
+        dao.getByPage(binderPageId).map { list -> list.map { it.toSlot() } }
 
     suspend fun getByCapId(capId: Long): CapPosition? = dao.getByCapId(capId)
 

@@ -27,21 +27,21 @@ import pl.sroki.cci.android.data.CapPositionRepository
 import pl.sroki.cci.android.data.CapsRepository
 import pl.sroki.cci.android.data.CollectionVerifier
 import pl.sroki.cci.android.data.CountriesRepository
-import pl.sroki.cci.android.data.datasource.local.entity.CapCache
-import pl.sroki.cci.android.data.datasource.local.entity.Binder
-import pl.sroki.cci.android.data.datasource.local.entity.BinderPage
-import pl.sroki.cci.android.data.datasource.local.entity.CapPosition
+import pl.sroki.cci.android.model.binder.CachedCap
+import pl.sroki.cci.android.model.binder.BinderView
+import pl.sroki.cci.android.model.binder.BinderPageView
+import pl.sroki.cci.android.model.binder.CapSlot
 import pl.sroki.cci.android.data.model.Country
 import pl.sroki.cci.android.model.Cap
 import pl.sroki.cci.android.model.CapsSearchRequest
 import javax.inject.Inject
 
 data class BindersUiState(
-    val binders: List<Binder> = emptyList(),
+    val binders: List<BinderView> = emptyList(),
     val expandedBinderIds: Set<Long> = emptySet(),
     val expandedPageIds: Set<Long> = emptySet(),
-    val binderPages: Map<Long, List<BinderPage>> = emptyMap(),
-    val capPositions: Map<Long, List<CapPosition>> = emptyMap(),
+    val binderPages: Map<Long, List<BinderPageView>> = emptyMap(),
+    val capPositions: Map<Long, List<CapSlot>> = emptyMap(),
     val capInfo: Map<Long, Cap> = emptyMap(),
     // capId -> catalog_status (do oznaczania rozjazdów czerwoną pogrubioną czcionką).
     val capStatus: Map<Long, String> = emptyMap(),
@@ -201,7 +201,7 @@ class BindersViewModel @Inject constructor(
         _uiState.update { it.copy(capStatus = it.capStatus + statuses) }
     }
 
-    private fun CapCache.toCap(): Cap = Cap(
+    private fun CachedCap.toCap(): Cap = Cap(
         id = capId,
         description = name,
         country = country,

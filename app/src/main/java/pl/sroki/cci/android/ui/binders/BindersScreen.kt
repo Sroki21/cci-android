@@ -55,9 +55,9 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.compose.foundation.shape.CircleShape
 import coil.compose.AsyncImage
-import pl.sroki.cci.android.data.datasource.local.entity.Binder
-import pl.sroki.cci.android.data.datasource.local.entity.BinderPage
-import pl.sroki.cci.android.data.datasource.local.entity.CapPosition
+import pl.sroki.cci.android.model.binder.BinderView
+import pl.sroki.cci.android.model.binder.BinderPageView
+import pl.sroki.cci.android.model.binder.CapSlot
 import pl.sroki.cci.android.data.model.Country
 import pl.sroki.cci.android.model.Cap
 
@@ -301,11 +301,11 @@ private fun CountryFilterRow(
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun ExpandableBinderRow(
-    binder: Binder,
+    binder: BinderView,
     expanded: Boolean,
-    pages: List<BinderPage>,
+    pages: List<BinderPageView>,
     expandedPageIds: Set<Long>,
-    capPositions: Map<Long, List<CapPosition>>,
+    capPositions: Map<Long, List<CapSlot>>,
     capInfo: Map<Long, Cap>,
     capStatus: Map<Long, String>,
     totalCaps: Int,
@@ -510,7 +510,7 @@ private fun CreateBinderDialog(
 
 @Composable
 private fun MovePageDialog(
-    binders: List<Binder>,
+    binders: List<BinderView>,
     currentBinderId: Long?,
     onDismiss: () -> Unit,
     onConfirm: (Long) -> Unit,

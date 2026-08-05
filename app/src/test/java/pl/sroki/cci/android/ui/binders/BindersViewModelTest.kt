@@ -24,7 +24,7 @@ import pl.sroki.cci.android.data.CapPositionRepository
 import pl.sroki.cci.android.data.CapsRepository
 import pl.sroki.cci.android.data.CollectionVerifier
 import pl.sroki.cci.android.data.CountriesRepository
-import pl.sroki.cci.android.data.datasource.local.entity.Binder
+import pl.sroki.cci.android.model.binder.BinderView
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class BindersViewModelTest {
@@ -62,7 +62,7 @@ class BindersViewModelTest {
 
     @Test
     fun `createBinder_updatesState`() = runTest {
-        val binder = Binder(id = 1L, name = "Europa 1")
+        val binder = BinderView(id = 1L, name = "Europa 1")
         every { binderRepository.getAll() } returns flowOf(listOf(binder))
         coEvery { binderRepository.create("Europa 1") } returns 1L
         viewModel = BindersViewModel(binderRepository, binderPageRepository, capPositionRepository, capsRepository, countriesRepository, capCacheRepository, collectionVerifier)

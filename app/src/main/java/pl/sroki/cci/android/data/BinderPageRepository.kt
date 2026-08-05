@@ -13,6 +13,8 @@ import pl.sroki.cci.android.data.datasource.remote.firestore.BinderPageFirestore
 import pl.sroki.cci.android.data.datasource.remote.firestore.CapPositionFirestoreService
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.flow.map
+import pl.sroki.cci.android.model.binder.BinderPageView
 
 @Singleton
 class BinderPageRepository @Inject constructor(
@@ -24,7 +26,8 @@ class BinderPageRepository @Inject constructor(
     private val capPositionFirestoreService: CapPositionFirestoreService,
     private val authManager: FirebaseAuthManager
 ) {
-    fun getByBinder(binderId: Long): Flow<List<BinderPage>> = dao.getByBinderId(binderId)
+    fun getByBinder(binderId: Long): Flow<List<BinderPageView>> =
+        dao.getByBinderId(binderId).map { list -> list.map { it.toView() } }
 
     suspend fun addPage(binderId: Long): Long {
         val uid = authManager.uid.value

@@ -35,7 +35,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import coil.compose.AsyncImage
-import pl.sroki.cci.android.data.datasource.local.entity.CapCache
+import pl.sroki.cci.android.model.binder.CachedCap
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -100,7 +100,7 @@ fun CollectionVerificationScreen(
 
 @Composable
 private fun FlaggedRow(
-    cap: CapCache,
+    cap: CachedCap,
     onClick: () -> Unit,
     onKeep: () -> Unit,
     onUnlink: () -> Unit,

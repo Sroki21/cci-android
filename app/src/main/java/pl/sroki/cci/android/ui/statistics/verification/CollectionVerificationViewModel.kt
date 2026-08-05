@@ -12,7 +12,7 @@ import kotlinx.coroutines.launch
 import pl.sroki.cci.android.data.CapCacheRepository
 import pl.sroki.cci.android.data.CapPositionRepository
 import pl.sroki.cci.android.data.CollectionVerifier
-import pl.sroki.cci.android.data.datasource.local.entity.CapCache
+import pl.sroki.cci.android.model.binder.CachedCap
 import javax.inject.Inject
 
 data class ScanState(val running: Boolean = false, val done: Int = 0, val total: Int = 0)
@@ -24,7 +24,7 @@ class CollectionVerificationViewModel @Inject constructor(
     private val collectionVerifier: CollectionVerifier,
 ) : ViewModel() {
 
-    val flaggedCaps: StateFlow<List<CapCache>> = capCacheRepository.flaggedCapsFlow()
+    val flaggedCaps: StateFlow<List<CachedCap>> = capCacheRepository.flaggedCapsFlow()
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     private val _scan = MutableStateFlow(ScanState())

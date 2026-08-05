@@ -39,8 +39,8 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import kotlin.time.Clock
-import pl.sroki.cci.android.data.datasource.local.entity.Binder
-import pl.sroki.cci.android.data.datasource.local.entity.BinderPage
+import pl.sroki.cci.android.model.binder.BinderView
+import pl.sroki.cci.android.model.binder.BinderPageView
 import pl.sroki.cci.android.data.model.CapBinderInfo
 import pl.sroki.cci.android.data.model.Country
 import pl.sroki.cci.android.model.*
@@ -52,8 +52,8 @@ fun CapDetailView(
     cap: CapExtended,
     status: CapStatus = CapStatus.MISSING,
     binderInfo: CapBinderInfo? = null,
-    binders: List<Binder> = emptyList(),
-    binderPages: List<BinderPage> = emptyList(),
+    binders: List<BinderView> = emptyList(),
+    binderPages: List<BinderPageView> = emptyList(),
     selectedBinderId: Long? = null,
     selectedPageId: Long? = null,
     selectedPosition: Int? = null,

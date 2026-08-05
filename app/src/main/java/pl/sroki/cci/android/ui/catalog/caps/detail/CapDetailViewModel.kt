@@ -22,9 +22,9 @@ import pl.sroki.cci.android.data.CapsRepository
 import pl.sroki.cci.android.data.CapPositionRepository
 import pl.sroki.cci.android.data.PurchasedCapsLocalStore
 import pl.sroki.cci.android.data.SessionRepository
-import pl.sroki.cci.android.data.datasource.local.entity.Binder
-import pl.sroki.cci.android.data.datasource.local.entity.BinderPage
-import pl.sroki.cci.android.data.datasource.local.entity.CapCache
+import pl.sroki.cci.android.model.binder.BinderView
+import pl.sroki.cci.android.model.binder.BinderPageView
+import pl.sroki.cci.android.model.binder.CachedCap
 import pl.sroki.cci.android.data.datasource.remote.firestore.ProducerSelection
 import pl.sroki.cci.android.data.model.CapBinderInfo
 import pl.sroki.cci.android.model.BinderSuggestion
@@ -62,9 +62,9 @@ class CapDetailViewModel @Inject constructor(
 
     val isLoggedIn: StateFlow<Boolean> = sessionRepository.isLoggedIn
 
-    var binders: List<Binder> by mutableStateOf(emptyList())
+    var binders: List<BinderView> by mutableStateOf(emptyList())
         private set
-    var binderPages: List<BinderPage> by mutableStateOf(emptyList())
+    var binderPages: List<BinderPageView> by mutableStateOf(emptyList())
         private set
     var selectedBinderId: Long? by mutableStateOf(null)
         private set
@@ -187,7 +187,7 @@ class CapDetailViewModel @Inject constructor(
      * porównania co w CollectionVerifier.verify(), ale zwrócona jako lista do wyświetlenia
      * użytkownikowi zamiast tylko statusu.
      */
-    private fun computeChanges(stored: CapCache, cap: CapExtended): List<Pair<String, String>> {
+    private fun computeChanges(stored: CachedCap, cap: CapExtended): List<Pair<String, String>> {
         val freshName = cap.description ?: ""
         val freshUpdatedAt = cap.updatedAt?.toString()
         val matchedProducer = stored.selectedProducerId?.let { id -> cap.producers.firstOrNull { it.id == id } }
@@ -367,7 +367,7 @@ class CapDetailViewModel @Inject constructor(
         return base
     }
 
-    private suspend fun findBaseSuggestion(country: String, allBinders: List<Binder>): BinderSuggestion? {
+    private suspend fun findBaseSuggestion(country: String, allBinders: List<BinderView>): BinderSuggestion? {
         // Fast path: binders whose name starts with the country (e.g. "Polska 1", "Polska 2").
         // No API calls — caps in these binders are assumed to belong to that country.
         val nameMatched = allBinders.filter { it.name.startsWith(country, ignoreCase = true) }

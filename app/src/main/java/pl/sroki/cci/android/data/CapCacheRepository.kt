@@ -6,6 +6,8 @@ import pl.sroki.cci.android.data.datasource.local.entity.CapCache
 import pl.sroki.cci.android.data.model.CountryStatRow
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.flow.map
+import pl.sroki.cci.android.model.binder.CachedCap
 
 @Singleton
 class CapCacheRepository @Inject constructor(private val dao: CapCacheDao) {
@@ -13,9 +15,10 @@ class CapCacheRepository @Inject constructor(private val dao: CapCacheDao) {
     suspend fun getCountry(capId: Long): String? =
         dao.getCountry(capId)?.takeIf { it.isNotBlank() }
 
-    suspend fun getByIds(ids: List<Long>): List<CapCache> = dao.getByIds(ids)
+    suspend fun getByIds(ids: List<Long>): List<CachedCap> = dao.getByIds(ids).map { it.toCachedCap() }
 
-    suspend fun getOne(capId: Long): CapCache? = dao.getByIds(listOf(capId)).firstOrNull()
+    suspend fun getOne(capId: Long): CachedCap? =
+        dao.getByIds(listOf(capId)).firstOrNull()?.toCachedCap()
 
     suspend fun upsert(capId: Long, country: String) =
         dao.upsertCountry(capId, country)
@@ -43,7 +46,8 @@ class CapCacheRepository @Inject constructor(private val dao: CapCacheDao) {
 
     fun flaggedCountFlow(): Flow<Int> = dao.flaggedCountFlow()
 
-    fun flaggedCapsFlow(): Flow<List<CapCache>> = dao.flaggedCapsFlow()
+    fun flaggedCapsFlow(): Flow<List<CachedCap>> =
+        dao.flaggedCapsFlow().map { list -> list.map { it.toCachedCap() } }
 
     suspend fun getMissingForPositioned(): List<Long> = dao.getMissingForPositioned()
 

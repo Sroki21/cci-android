@@ -10,6 +10,8 @@ import pl.sroki.cci.android.data.datasource.remote.firestore.BinderFirestoreServ
 import pl.sroki.cci.android.data.datasource.remote.firestore.BinderPageFirestoreService
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.flow.map
+import pl.sroki.cci.android.model.binder.BinderView
 
 @Singleton
 class BinderRepository @Inject constructor(
@@ -20,7 +22,7 @@ class BinderRepository @Inject constructor(
     private val binderPageFirestoreService: BinderPageFirestoreService,
     private val authManager: FirebaseAuthManager
 ) {
-    fun getAll(): Flow<List<Binder>> = binderDao.getAll()
+    fun getAll(): Flow<List<BinderView>> = binderDao.getAll().map { list -> list.map { it.toView() } }
 
     suspend fun create(name: String): Long {
         require(name.isNotBlank()) { "Nazwa klasera nie może być pusta" }

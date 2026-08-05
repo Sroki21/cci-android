@@ -17,7 +17,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
-import pl.sroki.cci.android.data.datasource.local.entity.CapCache
+import pl.sroki.cci.android.model.binder.CachedCap
 import pl.sroki.cci.android.data.datasource.remote.firestore.CapPositionFirestoreService
 import pl.sroki.cci.android.data.model.Country
 import pl.sroki.cci.android.model.CapExtended
@@ -102,8 +102,9 @@ class CollectionVerifierTest {
         imageUrl: String = "https://example.com/cap.jpg",
         selectedProducerId: Int? = null,
         producer: String = ""
-    ) = CapCache(
+    ) = CachedCap(
         capId = capId,
+        catalogStatus = "unknown",
         createdAt = createdAt,
         createdById = createdById,
         updatedAt = updatedAt,
