@@ -78,10 +78,13 @@ interface CapCacheDao {
     suspend fun getCapIdsToVerify(limit: Int): List<Long>
 
     // Liczba wstawionych kapsli z rozjazdem (odznaka) — reaktywnie.
+    // Zbiór oflagowanych definiowany NEGATYWNIE: wszystko poza ok/unknown. Lista pozytywna
+    // wymagałaby aktualizacji tutaj przy każdym nowym statusie — dokładnie tak rozjechało się
+    // BindersScreen.isFlagged, które nie znało producer_removed. Patrz CatalogStatus.isFlagged.
     @Query("""
         SELECT COUNT(DISTINCT cp.cap_id) FROM cap_position cp
         JOIN cap_cache cc ON cp.cap_id = cc.cap_id
-        WHERE cc.catalog_status IN ('missing', 'swapped', 'updated', 'producer_removed')
+        WHERE cc.catalog_status NOT IN ('ok', 'unknown')
     """)
     fun flaggedCountFlow(): Flow<Int>
 
@@ -89,7 +92,7 @@ interface CapCacheDao {
     @Query("""
         SELECT cc.* FROM cap_cache cc
         WHERE cc.cap_id IN (SELECT DISTINCT cap_id FROM cap_position)
-          AND cc.catalog_status IN ('missing', 'swapped', 'updated', 'producer_removed')
+          AND cc.catalog_status NOT IN ('ok', 'unknown')
         ORDER BY cc.catalog_status, cc.name
     """)
     fun flaggedCapsFlow(): Flow<List<CapCache>>

@@ -13,16 +13,7 @@ import java.io.IOException
 import java.util.concurrent.atomic.AtomicInteger
 import javax.inject.Inject
 import javax.inject.Singleton
-
-/** Statusy zgodne z kolumną cap_cache.catalog_status. */
-object CatalogStatus {
-    const val UNKNOWN = "unknown"
-    const val OK = "ok"
-    const val UPDATED = "updated"
-    const val SWAPPED = "swapped"
-    const val MISSING = "missing"
-    const val PRODUCER_REMOVED = "producer_removed"
-}
+import pl.sroki.cci.android.model.binder.CatalogStatus
 
 /**
  * Rdzeń weryfikacji kolekcji: porównuje zapisany snapshot z aktualnym stanem katalogu crowncaps
@@ -42,7 +33,7 @@ class CollectionVerifier @Inject constructor(
 ) {
     private val semaphore = Semaphore(4)
 
-    suspend fun verify(capId: Long): String {
+    suspend fun verify(capId: Long): CatalogStatus {
         val stored = capCacheRepository.getOne(capId)
         val cap = try {
             capsRepository.getById(capId.toInt())

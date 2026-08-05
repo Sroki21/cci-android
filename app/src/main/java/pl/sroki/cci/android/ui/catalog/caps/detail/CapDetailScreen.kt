@@ -22,21 +22,24 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import pl.sroki.cci.android.ui.components.FullSizeLoader
+import pl.sroki.cci.android.model.binder.CatalogStatus
 
 @Composable
 private fun DriftBanner(
-    status: String?,
+    status: CatalogStatus?,
     changes: List<Pair<String, String>>,
     onKeep: () -> Unit,
     onAccept: () -> Unit,
     onUnlink: () -> Unit,
 ) {
+    // Wyczerpujacy when — nowy status w CatalogStatus wymusi decyzje, czy pokazac tu baner.
     val message = when (status) {
-        "swapped" -> "Uwaga: pod tym ID jest teraz inny kapsel niż zapisany."
-        "updated" -> "Ten kapsel zmienił się w katalogu."
-        "missing" -> "Ten kapsel zniknął z katalogu."
-        "producer_removed" -> "Wybrany producent/kraj już nie istnieje w katalogu — wybierz ponownie w polu \"Kraj\"."
-        else -> return
+        CatalogStatus.SWAPPED -> "Uwaga: pod tym ID jest teraz inny kapsel niż zapisany."
+        CatalogStatus.UPDATED -> "Ten kapsel zmienił się w katalogu."
+        CatalogStatus.MISSING -> "Ten kapsel zniknął z katalogu."
+        CatalogStatus.PRODUCER_REMOVED ->
+            "Wybrany producent/kraj już nie istnieje w katalogu — wybierz ponownie w polu \"Kraj\"."
+        CatalogStatus.OK, CatalogStatus.UNKNOWN, null -> return
     }
     Surface(
         color = MaterialTheme.colorScheme.errorContainer,
@@ -48,7 +51,7 @@ private fun DriftBanner(
                 color = MaterialTheme.colorScheme.onErrorContainer,
                 style = MaterialTheme.typography.bodyMedium
             )
-            if (status == "updated" && changes.isNotEmpty()) {
+            if (status == CatalogStatus.UPDATED && changes.isNotEmpty()) {
                 androidx.compose.foundation.layout.Column(
                     Modifier.padding(top = 4.dp),
                 ) {
@@ -63,7 +66,8 @@ private fun DriftBanner(
             }
             Row {
                 TextButton(onClick = onKeep) { Text("Zachowaj") }
-                if (status != "missing") {
+                // Kapsla usuniętego z katalogu nie da się "zaakceptować" — nie ma czego pobrać.
+                if (status != CatalogStatus.MISSING) {
                     TextButton(onClick = onAccept) { Text("Zaakceptuj nowy") }
                 }
                 TextButton(onClick = onUnlink) { Text("Odepnij") }

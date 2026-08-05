@@ -14,6 +14,7 @@ import pl.sroki.cci.android.data.CapPositionRepository
 import pl.sroki.cci.android.data.CollectionVerifier
 import pl.sroki.cci.android.model.binder.CachedCap
 import javax.inject.Inject
+import pl.sroki.cci.android.model.binder.CatalogStatus
 
 data class ScanState(val running: Boolean = false, val done: Int = 0, val total: Int = 0)
 
@@ -53,7 +54,7 @@ class CollectionVerificationViewModel @Inject constructor(
     /** Zachowaj mój snapshot — oznacz rozjazd jako rozstrzygnięty. */
     fun keep(capId: Long) {
         viewModelScope.launch {
-            capCacheRepository.markVerified(capId, "ok", System.currentTimeMillis())
+            capCacheRepository.markVerified(capId, CatalogStatus.OK, System.currentTimeMillis())
         }
     }
 

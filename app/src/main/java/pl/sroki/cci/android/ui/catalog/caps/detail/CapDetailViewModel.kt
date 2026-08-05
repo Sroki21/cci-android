@@ -33,6 +33,7 @@ import pl.sroki.cci.android.model.Producer
 import pl.sroki.cci.android.model.toSnapshot
 import java.io.IOException
 import javax.inject.Inject
+import pl.sroki.cci.android.model.binder.CatalogStatus
 
 enum class CapStatus { IN_COLLECTION, PURCHASED, MISSING }
 
@@ -80,7 +81,7 @@ class CapDetailViewModel @Inject constructor(
         private set
 
     // Status rozjazdu kapsla (null/"ok"/"unknown" = bez banera; missing/swapped/updated = baner z akcjami).
-    var catalogStatus: String? by mutableStateOf(null)
+    var catalogStatus: CatalogStatus? by mutableStateOf(null)
         private set
 
     // Co dokładnie się zmieniło (label -> "przed → po"), do wyświetlenia w banerze rozjazdu.
@@ -123,8 +124,8 @@ class CapDetailViewModel @Inject constructor(
     fun keepSnapshot() {
         val capId = (capDetailUiState as? CapDetailUiState.Success)?.cap?.id?.toLong() ?: return
         viewModelScope.launch {
-            capCacheRepository.markVerified(capId, "ok", System.currentTimeMillis())
-            catalogStatus = "ok"
+            capCacheRepository.markVerified(capId, CatalogStatus.OK, System.currentTimeMillis())
+            catalogStatus = CatalogStatus.OK
             catalogChanges = emptyList()
         }
     }
@@ -138,9 +139,9 @@ class CapDetailViewModel @Inject constructor(
             capCacheRepository.upsertSnapshot(
                 capId, s.name, s.country, s.imageUrl, s.createdAt, s.createdById, s.updatedAt
             )
-            capCacheRepository.markVerified(capId, "ok", System.currentTimeMillis())
+            capCacheRepository.markVerified(capId, CatalogStatus.OK, System.currentTimeMillis())
             runCatching { capPositionRepository.updateSnapshot(capId, s) }
-            catalogStatus = "ok"
+            catalogStatus = CatalogStatus.OK
             catalogChanges = emptyList()
         }
     }
@@ -151,7 +152,7 @@ class CapDetailViewModel @Inject constructor(
         val capId = current.cap.id.toLong()
         viewModelScope.launch {
             capCacheRepository.selectProducer(capId, producer.id, producer.name, producer.country.name)
-            capCacheRepository.markVerified(capId, "ok", System.currentTimeMillis())
+            capCacheRepository.markVerified(capId, CatalogStatus.OK, System.currentTimeMillis())
             // Utrwal wybór w Firestore — bez tego żyje tylko w Roomie i ginie przy reinstalacji.
             // Nieudane wypchnięcie musi zostawić ślad: cicha porażka cofa nas dokładnie do stanu
             // sprzed tej poprawki, tyle że bez żadnej informacji, że tak się stało.
@@ -164,7 +165,7 @@ class CapDetailViewModel @Inject constructor(
                 Log.w("CCI_SYNC", "wybór producenta dla kapsla $capId nie trafił do Firestore", it)
                 Sentry.captureException(it)
             }
-            catalogStatus = "ok"
+            catalogStatus = CatalogStatus.OK
             catalogChanges = emptyList()
             capDetailUiState = current.copy(cap = current.cap.copy(country = producer.country))
         }

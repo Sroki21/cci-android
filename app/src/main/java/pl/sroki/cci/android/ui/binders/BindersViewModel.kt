@@ -35,6 +35,7 @@ import pl.sroki.cci.android.data.model.Country
 import pl.sroki.cci.android.model.Cap
 import pl.sroki.cci.android.model.CapsSearchRequest
 import javax.inject.Inject
+import pl.sroki.cci.android.model.binder.CatalogStatus
 
 data class BindersUiState(
     val binders: List<BinderView> = emptyList(),
@@ -44,7 +45,7 @@ data class BindersUiState(
     val capPositions: Map<Long, List<CapSlot>> = emptyMap(),
     val capInfo: Map<Long, Cap> = emptyMap(),
     // capId -> catalog_status (do oznaczania rozjazdów czerwoną pogrubioną czcionką).
-    val capStatus: Map<Long, String> = emptyMap(),
+    val capStatus: Map<Long, CatalogStatus> = emptyMap(),
     val isCreateDialogOpen: Boolean = false,
     val isLoading: Boolean = false,
     val deleteBinderConfirmId: Long? = null,

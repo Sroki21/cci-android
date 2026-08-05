@@ -8,6 +8,7 @@ import pl.sroki.cci.android.model.binder.BinderPageView
 import pl.sroki.cci.android.model.binder.BinderView
 import pl.sroki.cci.android.model.binder.CachedCap
 import pl.sroki.cci.android.model.binder.CapSlot
+import pl.sroki.cci.android.model.binder.CatalogStatus
 
 /**
  * Jedyne miejsce, które zna oba kształty: encje Room i modele domenowe. Repozytoria mapują
@@ -37,7 +38,7 @@ internal fun CapCache.toCachedCap() = CachedCap(
     createdAt = createdAt,
     createdById = createdById,
     updatedAt = updatedAt,
-    catalogStatus = catalogStatus,
+    catalogStatus = CatalogStatus.from(catalogStatus),
     selectedProducerId = selectedProducerId,
     producer = producer
 )

@@ -66,6 +66,7 @@ import pl.sroki.cci.android.model.AdvancedSearchFilter
 import pl.sroki.cci.android.model.Cap
 import pl.sroki.cci.android.model.SearchOperator
 import pl.sroki.cci.android.ui.catalog.caps.CapsView
+import pl.sroki.cci.android.ui.components.CountryPickerDialog
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -397,7 +398,6 @@ private fun CountryFilterRow(
     onCountrySelected: (Country?) -> Unit
 ) {
     var showDialog by remember { mutableStateOf(false) }
-    var dialogSearch by remember { mutableStateOf("") }
     val interactionSource = remember { MutableInteractionSource() }
 
     LaunchedEffect(interactionSource) {
@@ -430,38 +430,10 @@ private fun CountryFilterRow(
     )
 
     if (showDialog) {
-        val filtered = remember(dialogSearch, countries) {
-            if (dialogSearch.isBlank()) countries
-            else countries.filter { it.name.contains(dialogSearch, ignoreCase = true) }
-        }
-        AlertDialog(
-            onDismissRequest = { showDialog = false; dialogSearch = "" },
-            title = { Text("Wybierz kraj") },
-            text = {
-                Column {
-                    OutlinedTextField(
-                        value = dialogSearch,
-                        onValueChange = { dialogSearch = it },
-                        label = { Text("Szukaj") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    LazyColumn {
-                        items(filtered, key = { it.id }) { country ->
-                            ListItem(
-                                headlineContent = { Text(country.name) },
-                                modifier = Modifier.clickable {
-                                    onCountrySelected(country)
-                                    showDialog = false
-                                    dialogSearch = ""
-                                }
-                            )
-                        }
-                    }
-                }
-            },
-            confirmButton = {}
+        CountryPickerDialog(
+            countries = countries,
+            onCountrySelected = { country -> onCountrySelected(country); showDialog = false },
+            onDismiss = { showDialog = false }
         )
     }
 }

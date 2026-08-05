@@ -13,7 +13,7 @@ data class CachedCap(
     val createdAt: String?,
     val createdById: Int?,
     val updatedAt: String?,
-    val catalogStatus: String,
+    val catalogStatus: CatalogStatus,
     val selectedProducerId: Int?,
     val producer: String
 )

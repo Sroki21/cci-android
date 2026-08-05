@@ -60,6 +60,8 @@ import pl.sroki.cci.android.model.binder.BinderPageView
 import pl.sroki.cci.android.model.binder.CapSlot
 import pl.sroki.cci.android.data.model.Country
 import pl.sroki.cci.android.model.Cap
+import pl.sroki.cci.android.model.binder.CatalogStatus
+import pl.sroki.cci.android.ui.components.CountryPickerDialog
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -80,12 +82,16 @@ fun BindersScreen(
     }
 
     val selectedCountry = vm.selectedCountryName
-    val filteredBinders = if (selectedCountry.isEmpty()) uiState.binders
-    else uiState.binders.filter { binder ->
-        val pages = uiState.binderPages[binder.id] ?: emptyList()
-        pages.any { page ->
-            (uiState.capPositions[page.id] ?: emptyList()).any { pos ->
-                uiState.capInfo[pos.capId]?.country == selectedCountry
+    // remember: bez niego pełny skan (klasery × strony × pozycje) leciał przy KAŻDEJ
+    // rekompozycji, gdy filtr kraju jest aktywny — a kolekcja to ponad cztery tysiące pozycji.
+    val filteredBinders = remember(uiState, selectedCountry) {
+        if (selectedCountry.isEmpty()) uiState.binders
+        else uiState.binders.filter { binder ->
+            val pages = uiState.binderPages[binder.id] ?: emptyList()
+            pages.any { page ->
+                (uiState.capPositions[page.id] ?: emptyList()).any { pos ->
+                    uiState.capInfo[pos.capId]?.country == selectedCountry
+                }
             }
         }
     }
@@ -233,7 +239,6 @@ private fun CountryFilterRow(
     onCountrySelected: (Country?) -> Unit
 ) {
     var showDialog by remember { mutableStateOf(false) }
-    var dialogSearch by remember { mutableStateOf("") }
     val interactionSource = remember { MutableInteractionSource() }
 
     LaunchedEffect(interactionSource) {
@@ -262,38 +267,10 @@ private fun CountryFilterRow(
     )
 
     if (showDialog) {
-        val filtered = remember(dialogSearch, countries) {
-            if (dialogSearch.isBlank()) countries
-            else countries.filter { it.name.contains(dialogSearch, ignoreCase = true) }
-        }
-        AlertDialog(
-            onDismissRequest = { showDialog = false; dialogSearch = "" },
-            title = { Text("Wybierz kraj") },
-            text = {
-                Column {
-                    OutlinedTextField(
-                        value = dialogSearch,
-                        onValueChange = { dialogSearch = it },
-                        label = { Text("Szukaj") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    LazyColumn {
-                        items(filtered, key = { it.id }) { country ->
-                            ListItem(
-                                headlineContent = { Text(country.name) },
-                                modifier = Modifier.clickable {
-                                    onCountrySelected(country)
-                                    showDialog = false
-                                    dialogSearch = ""
-                                }
-                            )
-                        }
-                    }
-                }
-            },
-            confirmButton = {}
+        CountryPickerDialog(
+            countries = countries,
+            onCountrySelected = { country -> onCountrySelected(country); showDialog = false },
+            onDismiss = { showDialog = false }
         )
     }
 }
@@ -307,7 +284,7 @@ private fun ExpandableBinderRow(
     expandedPageIds: Set<Long>,
     capPositions: Map<Long, List<CapSlot>>,
     capInfo: Map<Long, Cap>,
-    capStatus: Map<Long, String>,
+    capStatus: Map<Long, CatalogStatus>,
     totalCaps: Int,
     selectedCountry: String,
     isLoading: Boolean,
@@ -475,8 +452,9 @@ private fun ExpandableBinderRow(
     }
 }
 
-private fun isFlagged(status: String?): Boolean =
-    status == "missing" || status == "swapped" || status == "updated"
+// Pytamy enum zamiast wyliczac statusy — poprzednia wersja pomijala producer_removed,
+// wiec kapsel z usunietym producentem nie byl w klaserach podswietlany.
+private fun isFlagged(status: CatalogStatus?): Boolean = status?.isFlagged == true
 
 @Composable
 private fun CreateBinderDialog(

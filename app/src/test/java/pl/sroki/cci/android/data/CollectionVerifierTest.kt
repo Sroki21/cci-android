@@ -18,6 +18,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import pl.sroki.cci.android.model.binder.CachedCap
+import pl.sroki.cci.android.model.binder.CatalogStatus
 import pl.sroki.cci.android.data.datasource.remote.firestore.CapPositionFirestoreService
 import pl.sroki.cci.android.data.model.Country
 import pl.sroki.cci.android.model.CapExtended
@@ -105,7 +106,7 @@ class CollectionVerifierTest {
         producer: String = ""
     ) = CachedCap(
         capId = capId,
-        catalogStatus = "unknown",
+        catalogStatus = CatalogStatus.UNKNOWN,
         createdAt = createdAt,
         createdById = createdById,
         updatedAt = updatedAt,

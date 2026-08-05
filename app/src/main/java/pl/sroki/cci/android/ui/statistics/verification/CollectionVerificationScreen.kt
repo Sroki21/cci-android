@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import coil.compose.AsyncImage
 import pl.sroki.cci.android.model.binder.CachedCap
+import pl.sroki.cci.android.model.binder.CatalogStatus
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -132,10 +133,13 @@ private fun FlaggedRow(
     }
 }
 
-private fun statusLabel(status: String): String = when (status) {
-    "swapped" -> "Podmieniony — inny kapsel pod tym ID"
-    "updated" -> "Zmieniony w katalogu"
-    "missing" -> "Usunięty z katalogu"
-    "producer_removed" -> "Wybrany producent/kraj już nie istnieje"
-    else -> status
+// Wyczerpujacy when bez galezi else: dodanie statusu do CatalogStatus przestanie sie
+// kompilowac, dopoki nie dostanie tu etykiety.
+private fun statusLabel(status: CatalogStatus): String = when (status) {
+    CatalogStatus.SWAPPED -> "Podmieniony — inny kapsel pod tym ID"
+    CatalogStatus.UPDATED -> "Zmieniony w katalogu"
+    CatalogStatus.MISSING -> "Usunięty z katalogu"
+    CatalogStatus.PRODUCER_REMOVED -> "Wybrany producent/kraj już nie istnieje"
+    CatalogStatus.OK -> "Zgodny z katalogiem"
+    CatalogStatus.UNKNOWN -> "Niesprawdzony"
 }

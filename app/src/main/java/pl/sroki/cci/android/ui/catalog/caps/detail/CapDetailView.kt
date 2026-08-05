@@ -43,7 +43,17 @@ import pl.sroki.cci.android.model.binder.BinderView
 import pl.sroki.cci.android.model.binder.BinderPageView
 import pl.sroki.cci.android.data.model.CapBinderInfo
 import pl.sroki.cci.android.data.model.Country
-import pl.sroki.cci.android.model.*
+import pl.sroki.cci.android.model.BinderSuggestion
+import pl.sroki.cci.android.model.CapExtended
+import pl.sroki.cci.android.model.CapProperty
+import pl.sroki.cci.android.model.Category
+import pl.sroki.cci.android.model.Liner
+import pl.sroki.cci.android.model.PeriodUsed
+import pl.sroki.cci.android.model.Producer
+import pl.sroki.cci.android.model.Product
+import pl.sroki.cci.android.model.Purpose
+import pl.sroki.cci.android.model.Series
+import pl.sroki.cci.android.model.UserPublic
 import pl.sroki.cci.android.ui.theme.CCITheme
 import pl.sroki.cci.android.ui.theme.ImageBackground
 
@@ -77,7 +87,10 @@ fun CapDetailView(
                 .crossfade(true)
                 .build(),
             contentDescription = cap.description,
-            modifier = modifier
+            // Modyfikator wywołującego należy do korzenia (Column powyżej). Użyty ponownie tutaj
+            // nakładałby np. padding czy fillMaxSize podwójnie — dziś nieszkodliwe tylko dlatego,
+            // że jedyny wywołujący nic nie przekazuje.
+            modifier = Modifier
                 .aspectRatio(1f)
                 .background(ImageBackground),
             contentScale = ContentScale.Crop,

@@ -8,6 +8,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.flow.map
 import pl.sroki.cci.android.model.binder.CachedCap
+import pl.sroki.cci.android.model.binder.CatalogStatus
 
 @Singleton
 class CapCacheRepository @Inject constructor(private val dao: CapCacheDao) {
@@ -36,8 +37,8 @@ class CapCacheRepository @Inject constructor(private val dao: CapCacheDao) {
         updatedAt: String?
     ) = dao.upsertSnapshot(capId, name, country, imageUrl, createdAt, createdById, updatedAt)
 
-    suspend fun markVerified(capId: Long, status: String, verifiedAt: Long) =
-        dao.markVerified(capId, status, verifiedAt)
+    suspend fun markVerified(capId: Long, status: CatalogStatus, verifiedAt: Long) =
+        dao.markVerified(capId, status.raw, verifiedAt)
 
     suspend fun selectProducer(capId: Long, producerId: Int, producer: String, country: String) =
         dao.selectProducer(capId, producerId, producer, country)
