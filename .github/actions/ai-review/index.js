@@ -13,7 +13,7 @@ const GITHUB_REPOSITORY = process.env.GITHUB_REPOSITORY;
 const DIFF_MAX_CHARS = 80000;
 const DIFF_PATH = process.env.DIFF_PATH || '/tmp/review_diff.txt';
 const REVIEW_MARKER = '<!-- ai-code-review -->';
-const MODEL = 'claude-haiku-4-5-20251001';
+const MODEL = 'claude-opus-5';
 
 const CRITERION_LABELS = {
   implementation_correctness: 'Implementation Correctness',
@@ -57,11 +57,20 @@ const SYSTEM_PROMPT = `You are an expert Android code reviewer specializing in K
    - If PR changes Firestore document structure, verify alignment with Security Rules
 
 Score each criterion 1–10 (1 = worst, 10 = best). Verdict: "passed" if ALL scores >= 6; "failed" if ANY score <= 5.
-Provide actionable findings for each criterion (empty array if fully satisfied). Write a neutral 2–4 sentence summary.`;
+Write a neutral 2–4 sentence summary.
+
+Findings: report every issue you find, including ones you are uncertain about or consider
+low-severity. Do not filter for importance or confidence — your goal here is coverage, and a
+finding that later turns out to be minor costs far less than a bug you silently dropped. Prefix
+each finding with its severity and your confidence, e.g. "[high/pewne]" or "[low/niepewne]", so
+the reader can rank them. An empty array means you genuinely found nothing for that criterion.`;
 
 const reviewTool = {
   name: 'submit_review',
   description: 'Submit the structured code review result',
+  // Schemat ma additionalProperties:false i required, więc strict daje gwarancję, że
+  // tool_use.input waliduje się dokładnie — usuwa ścieżkę błędu "Malformed tool_use input".
+  strict: true,
   input_schema: {
     $schema: 'https://json-schema.org/draft/2020-12/schema',
     type: 'object',
@@ -301,12 +310,21 @@ async function main() {
   console.log('Calling Anthropic API...');
   const response = await client.messages.create({
     model: MODEL,
-    max_tokens: 4096,
+    // max_tokens ogranicza myślenie I odpowiedź łącznie. Na modelach z adaptive thinking
+    // (domyślnie włączonym) 4096 ucinało blok tool_use, a walidacja niżej odrzucała go
+    // jako uszkodzony — objawiało się to awarią CI, nie "za długim review".
+    max_tokens: 16000,
+    output_config: { effort: 'xhigh' },
     tools: [reviewTool],
     tool_choice: { type: 'tool', name: 'submit_review' },
     system: SYSTEM_PROMPT,
     messages: [{ role: 'user', content: userMessage }],
   });
+
+  if (response.stop_reason === 'max_tokens') {
+    console.error('Odpowiedź ucięta na max_tokens — podnieś limit.');
+    process.exit(1);
+  }
 
   const toolUseBlock = response.content.find((b) => b.type === 'tool_use');
   if (!toolUseBlock) {
