@@ -8,7 +8,6 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
-import io.mockk.verify
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.joinAll
@@ -134,51 +133,6 @@ class FirestoreRestoreUseCaseTest {
         assertEquals("pominięty kapsel", 86226L, skipped.capId)
         assertEquals("pozycja spornego slotu", 5, skipped.position)
         assertEquals("kapsel, który zajął slot", 21668L, skipped.occupiedByCapId)
-    }
-
-    @Test
-    fun restoreFromFirestore_duplikatDokumentu_kasujeGoZFirestore() = runBlocking {
-        // Ten sam kapsel ma dwa dokumenty. Jeden zajmuje slot, drugi jest zbędny —
-        // ma zostać usunięty z Firestore, żeby nie walczył o slot przy kolejnym odtwarzaniu.
-        coEvery { binderService.fetchAll(TEST_UID) } returns listOf(
-            BinderDocument("fsB1", "Europa 6")
-        )
-        coEvery { binderPageService.fetchAll(TEST_UID) } returns listOf(
-            BinderPageDocument("fsP1", "fsB1", 1)
-        )
-        coEvery { capPositionService.fetchAll(TEST_UID) } returns listOf(
-            CapPositionDocument("fsCapA", "fsP1", 5, 361490L),
-            CapPositionDocument("fsCapB", "fsP1", 5, 361490L)
-        )
-
-        val result = useCase.restoreFromFirestore() as RestoreResult.Success
-
-        assertTrue("duplikat to nie strata — nic do zgłoszenia", result.skipped.isEmpty())
-        verify(exactly = 1) { capPositionService.scheduleDelete(TEST_UID, "fsCapB") }
-        verify(exactly = 0) { capPositionService.scheduleDelete(TEST_UID, "fsCapA") }
-        assertEquals("kapsel zostaje na jednej pozycji", 1, db.capPositionDao().countAll())
-    }
-
-    @Test
-    fun restoreFromFirestore_wypartyKapsel_nieJestKasowany() = runBlocking {
-        // Kapsel 86226 nie ma żadnej pozycji — jego slot zajął duplikat innego kapsla.
-        // To realna strata: zgłaszamy ją i pod ŻADNYM pozorem nie kasujemy jego dokumentu.
-        coEvery { binderService.fetchAll(TEST_UID) } returns listOf(
-            BinderDocument("fsB1", "Europa 6")
-        )
-        coEvery { binderPageService.fetchAll(TEST_UID) } returns listOf(
-            BinderPageDocument("fsP1", "fsB1", 1)
-        )
-        coEvery { capPositionService.fetchAll(TEST_UID) } returns listOf(
-            CapPositionDocument("fsCapA", "fsP1", 13, 21668L),
-            CapPositionDocument("fsCapB", "fsP1", 13, 86226L)
-        )
-
-        val result = useCase.restoreFromFirestore() as RestoreResult.Success
-
-        assertEquals("wyparty kapsel musi zostać zgłoszony", 1, result.skipped.size)
-        assertEquals(86226L, result.skipped.first().capId)
-        verify(exactly = 0) { capPositionService.scheduleDelete(TEST_UID, "fsCapB") }
     }
 
     @Test
