@@ -5,17 +5,18 @@ import com.franmontiel.persistentcookiejar.PersistentCookieJar
 import com.franmontiel.persistentcookiejar.cache.SetCookieCache
 import com.franmontiel.persistentcookiejar.persistence.SharedPrefsCookiePersistor
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
+import dagger.Lazy
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import kotlinx.serialization.json.Json
-import okhttp3.Authenticator
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import pl.sroki.cci.android.BuildConfig
+import pl.sroki.cci.android.data.SessionRefresher
 import pl.sroki.cci.android.data.SessionRepository
 import pl.sroki.cci.android.data.datasource.remote.CapApiService
 import pl.sroki.cci.android.data.datasource.remote.CategoryApiService
@@ -25,7 +26,7 @@ import pl.sroki.cci.android.data.datasource.remote.auth.AcceptJsonInterceptor
 import pl.sroki.cci.android.data.datasource.remote.auth.AuthApiService
 import pl.sroki.cci.android.data.datasource.remote.auth.BearerTokenInterceptor
 import pl.sroki.cci.android.data.datasource.remote.auth.CsrfInterceptor
-import pl.sroki.cci.android.data.datasource.remote.auth.SessionAuthenticator
+import pl.sroki.cci.android.data.datasource.remote.auth.ReauthInterceptor
 import retrofit2.Converter
 import retrofit2.Retrofit
 import javax.inject.Named
@@ -56,22 +57,17 @@ object NetworkModule {
 
     @Singleton
     @Provides
-    fun provideSessionAuthenticator(
-        sessionRepository: SessionRepository
-    ): Authenticator {
-        return SessionAuthenticator(sessionRepository)
-    }
-
-    @Singleton
-    @Provides
     fun provideOkHttpClient(
         cookieJar: PersistentCookieJar,
-        authenticator: Authenticator,
-        sessionRepository: SessionRepository
+        sessionRepository: SessionRepository,
+        sessionRefresher: Lazy<SessionRefresher>
     ): OkHttpClient {
         val capsDetailRegex = Regex("/api/v1/caps/\\d+$")
         val builder = OkHttpClient.Builder()
             .cookieJar(cookieJar)
+            // MUSI być pierwszy: jego ponowienie przechodzi jeszcze raz przez interceptory
+            // poniżej, więc dostaje świeże cookie sesji, świeży CSRF i świeży Bearer token.
+            .addInterceptor(ReauthInterceptor(sessionRefresher, sessionRepository))
             .addInterceptor(AcceptJsonInterceptor())
             .addInterceptor(BearerTokenInterceptor(sessionRepository))
             .addInterceptor(CsrfInterceptor(cookieJar))
@@ -91,7 +87,6 @@ object NetworkModule {
                     chain.proceed(req)
                 }
             }
-            .authenticator(authenticator)
         builder.addNetworkInterceptor { chain ->
             val req = chain.request()
             val cookies = req.header("Cookie") ?: ""

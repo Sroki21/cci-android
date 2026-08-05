@@ -15,6 +15,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import pl.sroki.cci.android.data.datasource.local.CredentialsStore
 import pl.sroki.cci.android.data.datasource.remote.auth.AuthApiService
 import pl.sroki.cci.android.model.LoginRequest
 import retrofit2.Response
@@ -24,6 +25,7 @@ class AuthRepositoryTest {
     private lateinit var authApiService: AuthApiService
     private lateinit var cookieJar: PersistentCookieJar
     private lateinit var sessionRepository: SessionRepository
+    private lateinit var credentialsStore: CredentialsStore
     private lateinit var firebaseAuthManager: FirebaseAuthManager
     private lateinit var firestoreRestoreUseCase: FirestoreRestoreUseCase
 
@@ -32,6 +34,8 @@ class AuthRepositoryTest {
         authApiService = mockk()
         cookieJar = mockk(relaxed = true)
         sessionRepository = SessionRepository(mockContext(), dagger.Lazy { authApiService })
+        credentialsStore = mockk(relaxed = true)
+        every { credentialsStore.hasCredentials() } returns false
         firebaseAuthManager = mockk(relaxed = true)
         firestoreRestoreUseCase = mockk(relaxed = true)
         coEvery { authApiService.apiToken(any()) } returns mockk(relaxed = true)
@@ -66,7 +70,8 @@ class AuthRepositoryTest {
     }
 
     private fun buildRepo() = AuthRepository(
-        authApiService, sessionRepository, cookieJar, firebaseAuthManager, firestoreRestoreUseCase
+        authApiService, sessionRepository, cookieJar, credentialsStore,
+        firebaseAuthManager, firestoreRestoreUseCase
     )
 
     @Test

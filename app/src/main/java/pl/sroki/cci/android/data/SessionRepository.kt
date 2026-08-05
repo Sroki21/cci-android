@@ -53,18 +53,27 @@ class SessionRepository @Inject constructor(
 
     fun loadCachedToken(): String? = prefs.getString("api_token", null)
 
-    suspend fun fetchAndStoreApiToken(email: String, password: String) {
+    /**
+     * @param force pomija cache i nadpisuje token — używane przy odzyskiwaniu sesji, gdy backend
+     *   odrzucił dotychczasowy token i ponowne użycie tego z cache tylko powtórzyłoby 401.
+     * @return true, jeśli udało się zapisać token.
+     */
+    suspend fun fetchAndStoreApiToken(
+        email: String,
+        password: String,
+        force: Boolean = false
+    ): Boolean {
         val cached = loadCachedToken()
-        if (cached != null) {
+        if (!force && cached != null) {
             Log.d("CCI_AUTH", "api token: reusing cached")
             setToken(cached)
-            return
+            return true
         }
         val resp = authApiService.get().apiToken(TokenRequest(email, password, "android"))
         Log.d("CCI_AUTH", "api token code=${resp.code()}")
         val raw = resp.body()?.string()
             ?: resp.errorBody()?.string()
-            ?: run { Log.d("CCI_AUTH", "api token: empty body"); return }
+            ?: run { Log.d("CCI_AUTH", "api token: empty body"); return false }
         val token = when {
             raw.trimStart().startsWith('"') -> raw.trim().removeSurrounding("\"")
             raw.trimStart().startsWith('{') -> json.decodeFromString<LoginResponse>(raw).token
@@ -72,5 +81,6 @@ class SessionRepository @Inject constructor(
         }
         Log.d("CCI_AUTH", "api token fetched: ${token != null}, raw length=${raw.length}")
         setToken(token)
+        return token != null
     }
 }

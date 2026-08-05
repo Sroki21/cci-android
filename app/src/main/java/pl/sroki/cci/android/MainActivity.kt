@@ -23,6 +23,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import dagger.hilt.android.AndroidEntryPoint
 import pl.sroki.cci.android.data.SessionRepository
+import pl.sroki.cci.android.data.datasource.local.CredentialsStore
 import pl.sroki.cci.android.navigation.Screen
 import javax.inject.Inject
 import pl.sroki.cci.android.ui.HomeScreen
@@ -49,10 +50,14 @@ import pl.sroki.cci.android.ui.theme.CCITheme
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     @Inject lateinit var sessionRepository: SessionRepository
+    @Inject lateinit var credentialsStore: CredentialsStore
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val isLoggedIn = sessionRepository.loadCachedToken() != null
+        // Zapisane poświadczenia wystarczą — ReauthInterceptor odtworzy z nich sesję przy
+        // pierwszym żądaniu, więc nie ma powodu pokazywać ekranu logowania.
+        val isLoggedIn = sessionRepository.loadCachedToken() != null ||
+            credentialsStore.hasCredentials()
         setContent {
             CCITheme {
                 Surface(
