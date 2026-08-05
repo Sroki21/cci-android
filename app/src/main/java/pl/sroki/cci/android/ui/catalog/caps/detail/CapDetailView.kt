@@ -41,6 +41,7 @@ import coil.request.ImageRequest
 import kotlin.time.Clock
 import pl.sroki.cci.android.model.binder.BinderView
 import pl.sroki.cci.android.model.binder.BinderPageView
+import pl.sroki.cci.android.model.binder.POSITIONS_PER_PAGE
 import pl.sroki.cci.android.data.model.CapBinderInfo
 import pl.sroki.cci.android.data.model.Country
 import pl.sroki.cci.android.model.BinderSuggestion
@@ -148,7 +149,7 @@ fun CapDetailView(
                 CapDetailSelectView(
                     label = "Pozycja",
                     value = selectedPosition?.toString(),
-                    options = (1..35).map { it.toString() to it.toLong() },
+                    options = (1..POSITIONS_PER_PAGE).map { it.toString() to it.toLong() },
                     enabled = selectedPageId != null && !isSaving,
                     onSelected = { onPositionSelected(it.toInt()) },
                 )

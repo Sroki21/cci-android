@@ -58,8 +58,15 @@ class CollectionVerificationViewModel @Inject constructor(
         }
     }
 
-    /** Odepnij kapsel z klasera. */
+    /** Odepnij kapsel z klasera — zostaje w kolekcji, wraca na listę Zakupione. */
     fun unlink(capId: Long) {
-        viewModelScope.launch { runCatching { capPositionRepository.unassign(capId) } }
+        viewModelScope.launch {
+            runCatching {
+                capPositionRepository.unassignToPurchased(capId)
+                // Rozjazd rozstrzygnięty odpięciem — bez tego status zostaje w Roomie i wraca
+                // w szczegółach kapsla jako baner, który nie ma już czego odpiąć.
+                capCacheRepository.markVerified(capId, CatalogStatus.OK, System.currentTimeMillis())
+            }
+        }
     }
 }

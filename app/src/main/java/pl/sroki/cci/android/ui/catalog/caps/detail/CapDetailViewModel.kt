@@ -31,9 +31,10 @@ import pl.sroki.cci.android.model.BinderSuggestion
 import pl.sroki.cci.android.model.CapExtended
 import pl.sroki.cci.android.model.Producer
 import pl.sroki.cci.android.model.toSnapshot
-import java.io.IOException
 import javax.inject.Inject
+import kotlin.coroutines.cancellation.CancellationException
 import pl.sroki.cci.android.model.binder.CatalogStatus
+import pl.sroki.cci.android.model.binder.POSITIONS_PER_PAGE
 
 enum class CapStatus { IN_COLLECTION, PURCHASED, MISSING }
 
@@ -140,7 +141,12 @@ class CapDetailViewModel @Inject constructor(
                 capId, s.name, s.country, s.imageUrl, s.createdAt, s.createdById, s.updatedAt
             )
             capCacheRepository.markVerified(capId, CatalogStatus.OK, System.currentTimeMillis())
-            runCatching { capPositionRepository.updateSnapshot(capId, s) }
+            // Snapshot w Firestore musi nadążyć za tym w Roomie, a cicha porażka cofa nas
+            // dokładnie do stanu sprzed poprawki, tyle że bez śladu, że tak się stało.
+            runCatching { capPositionRepository.updateSnapshot(capId, s) }.onFailure {
+                Log.w("CCI_SYNC", "nowy snapshot kapsla $capId nie trafił do Firestore", it)
+                Sentry.captureException(it)
+            }
             catalogStatus = CatalogStatus.OK
             catalogChanges = emptyList()
         }
@@ -171,12 +177,22 @@ class CapDetailViewModel @Inject constructor(
         }
     }
 
-    /** Rozjazd: odepnij kapsel z klasera. */
+    /** Rozjazd: odepnij kapsel z klasera — zostaje w kolekcji, wraca na listę Zakupione. */
     fun unlinkFlagged() {
         val current = capDetailUiState as? CapDetailUiState.Success ?: return
         val capId = current.cap.id.toLong()
         viewModelScope.launch {
-            runCatching { capPositionRepository.unassign(capId) }
+            try {
+                capPositionRepository.unassignToPurchased(capId)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                assignmentError = "Nie udało się odpiąć kapsla"
+                return@launch
+            }
+            // Rozjazd rozstrzygnięty odpięciem. Bez tego zapisu status zostawał w Roomie
+            // i baner wracał przy każdym kolejnym wejściu w szczegóły.
+            capCacheRepository.markVerified(capId, CatalogStatus.OK, System.currentTimeMillis())
             catalogStatus = null
             catalogChanges = emptyList()
             capDetailUiState = current.copy(status = CapStatus.PURCHASED, binderInfo = null)
@@ -271,23 +287,30 @@ class CapDetailViewModel @Inject constructor(
         }
         if (status == CapStatus.PURCHASED) {
             launchSuggestion(current.cap.country.name, current.cap.id.toLong())
-            repository.markPurchasedLocally(current.cap.id)
         } else {
             suggestionJob?.cancel()
             binderSuggestion = null
-            if (status == CapStatus.MISSING) {
-                repository.unmarkPurchasedLocally(current.cap.id)
-            }
         }
         viewModelScope.launch {
             try {
-                if (leavingCollection) {
-                    capPositionRepository.unassign(current.cap.id.toLong())
-                }
                 if (status == CapStatus.MISSING) {
                     repository.removeFromCollection(current.cap.id)
                 } else if (!current.cap.isInCollection) {
                     repository.addToCollection(current.cap.id)
+                }
+                // Magazyn zakupionych dopiero po potwierdzeniu przez API — razem z zapisem
+                // idzie wpis do Firestore, a nikt go nie cofał, gdy wywołanie sieciowe padło.
+                // Zakładka Zakupione rozjeżdżała się wtedy z kolekcją po stronie serwera.
+                // Tylko dla kapsla już będącego w kolekcji: pozostałe ścieżki załatwiają
+                // magazyn same — addToCollection dopisuje, removeFromCollection usuwa.
+                if (status == CapStatus.PURCHASED && current.cap.isInCollection) {
+                    repository.markPurchasedLocally(current.cap.id)
+                }
+                // Odpięcie na końcu. Przed wywołaniem API kasowało pozycję w klaserze także
+                // wtedy, gdy zmiana statusu nie przechodziła, a UI wracało do stanu
+                // „w klaserze" — do pozycji, której już nie było.
+                if (leavingCollection) {
+                    capPositionRepository.unassign(current.cap.id.toLong())
                 }
             } catch (e: Exception) {
                 capDetailUiState = current
@@ -324,10 +347,21 @@ class CapDetailViewModel @Inject constructor(
                     }
                 }
                 if (status == CapStatus.PURCHASED) launchSuggestion(cap.country.name, id.toLong())
-                catalogStatus = stored?.catalogStatus
-                catalogChanges = stored?.let { computeChanges(it, cap) } ?: emptyList()
+                // Rozjazd dotyczy wyłącznie kapsli wstawionych w klaser — poza klaserem baner
+                // nie ma czego naprawić, a w Roomie zostają stare flagi po wcześniejszych
+                // odpięciach. Bez tego warunku baner wracał na kapslu bez klasera, z akcjami,
+                // które nic już nie robiły.
+                catalogStatus = if (binderInfo != null) stored?.catalogStatus else null
+                catalogChanges =
+                    if (binderInfo != null && stored != null) computeChanges(stored, cap) else emptyList()
                 CapDetailUiState.Success(cap = cap, status = status, binderInfo = binderInfo)
-            } catch (e: IOException) {
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // Nie tylko IOException: Retrofit rzuca HttpException, gdy kapsla nie ma już
+                // w katalogu (404). To dokładnie ten kapsel, który weryfikacja oznaczyła jako
+                // „brak w katalogu" — czyli ten, w którego szczegóły wchodzi się po decyzję.
+                // Wcześniej wyjątek wychodził poza viewModelScope i wywalał aplikację.
                 CapDetailUiState.Error
             }
         }
@@ -344,8 +378,8 @@ class CapDetailViewModel @Inject constructor(
         val allBinders = binderRepository.getAll().first()
         val base = findBaseSuggestion(country, allBinders) ?: return null
 
-        // Offset: count purchased caps from the same country with a lower ID.
-        // Lower ID → displayed earlier in Zakupione → gets a lower position suggestion.
+        // Offset: count purchased caps from the same country displayed above this one in
+        // Zakupione. That tab sorts by id descending, so "above" means a HIGHER id.
         val assignedIds = capPositionRepository.getAllCapIds().toSet()
         val priorIds = (purchasedCapsLocalStore.getIds() - assignedIds).filter { it > capId }
         if (priorIds.isNotEmpty()) {
@@ -373,14 +407,18 @@ class CapDetailViewModel @Inject constructor(
         // No API calls — caps in these binders are assumed to belong to that country.
         val nameMatched = allBinders.filter { it.name.startsWith(country, ignoreCase = true) }
         if (nameMatched.isNotEmpty()) {
-            val target = nameMatched.maxByOrNull { b ->
+            val target = nameMatched.maxBy { b ->
                 b.name.removePrefix(country).trim().toIntOrNull() ?: 0
-            } ?: return null
+            }
             val pages = binderPageRepository.getByBinder(target.id).first()
             val pagePositions = coroutineScope {
                 pages.map { page -> async { page to capPositionRepository.getByPage(page.id).first() } }.awaitAll()
             }.filter { (_, pos) -> pos.isNotEmpty() }
-            val (bestPage, positions) = pagePositions.maxByOrNull { (page, _) -> page.pageNumber } ?: return null
+            // Klaser o najwyższym numerze bywa świeżo założony i jeszcze pusty — zakłada się go
+            // właśnie wtedy, gdy poprzedni się zapełnił. Wcześniej sugestia w takiej chwili
+            // znikała zamiast wskazać pierwszą wolną pozycję nowego klasera.
+            val (bestPage, positions) = pagePositions.maxByOrNull { (page, _) -> page.pageNumber }
+                ?: return BinderSuggestion(target.name, pages.minOfOrNull { it.pageNumber } ?: 1, 1)
             return buildSuggestion(target.name, bestPage.pageNumber, positions.maxOf { it.position })
         }
 
@@ -433,8 +471,8 @@ class CapDetailViewModel @Inject constructor(
 
     private fun buildSuggestion(binderName: String, pageNumber: Int, maxPos: Int): BinderSuggestion {
         return when {
-            maxPos < 35 -> BinderSuggestion(binderName, pageNumber, maxPos + 1)
-            pageNumber < 15 -> BinderSuggestion(binderName, pageNumber + 1, 1)
+            maxPos < POSITIONS_PER_PAGE -> BinderSuggestion(binderName, pageNumber, maxPos + 1)
+            pageNumber < PAGES_PER_BINDER -> BinderSuggestion(binderName, pageNumber + 1, 1)
             else -> {
                 val prefix = binderName.substringBeforeLast(" ")
                 val num = binderName.substringAfterLast(" ").toIntOrNull() ?: 1
@@ -445,15 +483,25 @@ class CapDetailViewModel @Inject constructor(
 
     private fun applyOffset(suggestion: BinderSuggestion, offset: Int): BinderSuggestion {
         // Convert to 0-based absolute position across all pages of the binder.
-        val absPos = (suggestion.pageNumber - 1) * 35 + suggestion.nextPosition - 1 + offset
-        val newPage = absPos / 35 + 1
-        val newPos = absPos % 35 + 1
-        if (newPage <= 15) return BinderSuggestion(suggestion.binderName, newPage, newPos)
+        val absPos = (suggestion.pageNumber - 1) * POSITIONS_PER_PAGE + suggestion.nextPosition - 1 + offset
+        val newPage = absPos / POSITIONS_PER_PAGE + 1
+        val newPos = absPos % POSITIONS_PER_PAGE + 1
+        if (newPage <= PAGES_PER_BINDER) return BinderSuggestion(suggestion.binderName, newPage, newPos)
         // Overflow into the next binder.
         val prefix = suggestion.binderName.substringBeforeLast(" ")
         val num = suggestion.binderName.substringAfterLast(" ").toIntOrNull() ?: 1
-        val overflow = absPos - 15 * 35
-        return BinderSuggestion("$prefix ${num + 1}", overflow / 35 + 1, overflow % 35 + 1)
+        val overflow = absPos - PAGES_PER_BINDER * POSITIONS_PER_PAGE
+        return BinderSuggestion(
+            "$prefix ${num + 1}",
+            overflow / POSITIONS_PER_PAGE + 1,
+            overflow % POSITIONS_PER_PAGE + 1
+        )
+    }
+
+    private companion object {
+        // Tylko założenie sugestii: tyle stron mieści klaser, którego używa właściciel kolekcji.
+        // Dane tego nie pilnują — stronę o dowolnym numerze można dodać ręcznie.
+        const val PAGES_PER_BINDER = 15
     }
 
     private fun initBinderPreFill(binderInfo: CapBinderInfo) {

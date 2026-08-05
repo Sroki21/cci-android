@@ -117,18 +117,6 @@ class CapsRepositoryTest {
     }
 
     @Test
-    fun `unmarkPurchasedLocally usuwa id i emituje collectionChanged`() = runTest {
-        every { purchasedCapsLocalStore.remove(1L) } returns Unit
-        val received = async { repository.collectionChanged.first() }
-        runCurrent()
-
-        repository.unmarkPurchasedLocally(1)
-
-        received.await()
-        verify(exactly = 1) { purchasedCapsLocalStore.remove(1L) }
-    }
-
-    @Test
     fun `searchSimilar dopina isInCollection na podstawie przypisanych i zakupionych id`() = runTest {
         val part = mockk<MultipartBody.Part>()
         fun cap(id: Long) = Cap(

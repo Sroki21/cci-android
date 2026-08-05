@@ -130,8 +130,4 @@ class CapsRepository @Inject constructor(
         _collectionChanged.tryEmit(Unit)
     }
 
-    fun unmarkPurchasedLocally(id: Int) {
-        purchasedCapsLocalStore.remove(id.toLong())
-        _collectionChanged.tryEmit(Unit)
-    }
 }

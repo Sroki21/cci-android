@@ -14,6 +14,7 @@ import pl.sroki.cci.android.data.datasource.remote.firestore.ProducerSelection
 import javax.inject.Inject
 import javax.inject.Singleton
 import pl.sroki.cci.android.model.binder.CapSlot
+import pl.sroki.cci.android.model.binder.POSITIONS_PER_PAGE
 
 @Singleton
 class CapPositionRepository @Inject constructor(
@@ -45,7 +46,7 @@ class CapPositionRepository @Inject constructor(
     fun getAllCapIdsFlow(): Flow<Set<Long>> = dao.getAllCapIdsFlow().map { it.toSet() }
 
     suspend fun assign(binderPageId: Long, position: Int, capId: Long, snapshot: CapSnapshot? = null): Long {
-        require(position in 1..35) { "Pozycja musi być w zakresie 1-35" }
+        require(position in 1..POSITIONS_PER_PAGE) { "Pozycja musi być w zakresie 1-$POSITIONS_PER_PAGE" }
         val uid = authManager.uid.value
         val firestoreId = if (uid != null) {
             val page = binderPageDao.getById(binderPageId)
@@ -68,7 +69,7 @@ class CapPositionRepository @Inject constructor(
     }
 
     suspend fun reassign(capId: Long, newBinderPageId: Long, newPosition: Int, snapshot: CapSnapshot? = null) {
-        require(newPosition in 1..35) { "Pozycja musi być w zakresie 1-35" }
+        require(newPosition in 1..POSITIONS_PER_PAGE) { "Pozycja musi być w zakresie 1-$POSITIONS_PER_PAGE" }
         val uid = authManager.uid.value
         val oldPos = dao.getByCapId(capId)
         val newFirestoreId = if (uid != null) {
@@ -115,5 +116,19 @@ class CapPositionRepository @Inject constructor(
             pos?.firestoreId?.let { capPositionFirestoreService.scheduleDelete(uid, it) }
         }
         dao.deleteByCapId(capId)
+    }
+
+    /**
+     * Odpięcie kapsla, który zostaje w kolekcji — wraca na listę „zakupione, ale nieprzypięte".
+     *
+     * `assign`/`reassign` zdejmują kapsel z tej listy, a samo `unassign` go tam nie odkłada.
+     * Odpięcie bez tego kroku gubiło kapsel: nie miał już pozycji w klaserze i nie było go
+     * w magazynie zakupionych, więc znikał z aplikacji, mimo że po stronie API dalej był
+     * w kolekcji. Dotyczy odpięcia z rozjazdu — przy przejściu na „Brak" kapsel wychodzi
+     * z kolekcji i wtedy używa się zwykłego `unassign`.
+     */
+    suspend fun unassignToPurchased(capId: Long) {
+        unassign(capId)
+        purchasedCapsLocalStore.add(capId)
     }
 }
