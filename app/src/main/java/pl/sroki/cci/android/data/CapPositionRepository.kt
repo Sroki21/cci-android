@@ -21,6 +21,7 @@ class CapPositionRepository @Inject constructor(
     private val binderPageDao: BinderPageDao,
     private val capCacheDao: CapCacheDao,
     private val capPositionFirestoreService: CapPositionFirestoreService,
+    private val purchasedCapsLocalStore: PurchasedCapsLocalStore,
     private val authManager: FirebaseAuthManager
 ) {
     // Wybór producenta zapisany lokalnie musi trafić do każdego nowo tworzonego dokumentu
@@ -55,7 +56,12 @@ class CapPositionRepository @Inject constructor(
             }
         } else null
         try {
-            return dao.insert(CapPosition(binderPageId = binderPageId, position = position, capId = capId, firestoreId = firestoreId))
+            val rowId = dao.insert(CapPosition(binderPageId = binderPageId, position = position, capId = capId, firestoreId = firestoreId))
+            // Kapsel w klaserze nie jest już "zakupiony, ale nieprzypięty". Bez tego zostawał
+            // na liście na zawsze — zakładka i tak go odfiltrowywała, ale zbiór puchł
+            // o wpisy, które nigdy niczego nie pokażą, i szedł w tej postaci do Firestore.
+            purchasedCapsLocalStore.remove(capId)
+            return rowId
         } catch (e: SQLiteConstraintException) {
             throw IllegalStateException("Pozycja $position jest już zajęta na tej stronie")
         }
@@ -76,6 +82,7 @@ class CapPositionRepository @Inject constructor(
         } else null
         try {
             dao.reassignFull(capId, CapPosition(binderPageId = newBinderPageId, position = newPosition, capId = capId, firestoreId = newFirestoreId))
+            purchasedCapsLocalStore.remove(capId)
         } catch (e: SQLiteConstraintException) {
             throw IllegalStateException("Pozycja $newPosition jest już zajęta na tej stronie")
         }

@@ -20,6 +20,7 @@ import pl.sroki.cci.android.data.datasource.local.CciDatabase
 import pl.sroki.cci.android.data.datasource.local.entity.Binder
 import pl.sroki.cci.android.data.datasource.local.entity.BinderPage
 import pl.sroki.cci.android.data.datasource.remote.firestore.CapPositionFirestoreService
+import io.mockk.mockk
 
 @RunWith(AndroidJUnit4::class)
 class CapPositionRepositoryTest {
@@ -39,6 +40,7 @@ class CapPositionRepositoryTest {
             binderPageDao = db.binderPageDao(),
             capCacheDao = db.capCacheDao(),
             capPositionFirestoreService = CapPositionFirestoreService(FirebaseFirestore.getInstance()),
+            purchasedCapsLocalStore = mockk(relaxed = true),
             authManager = FirebaseAuthManager(FirebaseAuth.getInstance())
         )
         val binderId = db.binderDao().insert(Binder(name = "Test"))

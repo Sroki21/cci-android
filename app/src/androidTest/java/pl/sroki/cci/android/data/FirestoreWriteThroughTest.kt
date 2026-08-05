@@ -16,6 +16,7 @@ import pl.sroki.cci.android.data.datasource.local.CciDatabase
 import pl.sroki.cci.android.data.datasource.remote.firestore.BinderFirestoreService
 import pl.sroki.cci.android.data.datasource.remote.firestore.BinderPageFirestoreService
 import pl.sroki.cci.android.data.datasource.remote.firestore.CapPositionFirestoreService
+import io.mockk.mockk
 
 @RunWith(AndroidJUnit4::class)
 class FirestoreWriteThroughTest {
@@ -58,6 +59,7 @@ class FirestoreWriteThroughTest {
             binderPageDao = db.binderPageDao(),
             capCacheDao = db.capCacheDao(),
             capPositionFirestoreService = capPositionFs,
+            purchasedCapsLocalStore = mockk(relaxed = true),
             authManager = authManager
         )
     }

@@ -137,6 +137,22 @@ class FirestoreRestoreUseCase @Inject constructor(
                 Log.i("CCI_SYNC", "backfill: wypchnięto ${lokalne.size} zakupionych kapsli")
             }
         }
+        prunePurchasedAlreadyInBinders()
+    }
+
+    /**
+     * Zdejmuje z listy "zakupionych" kapsle, które mają już pozycję w klaserze — nie są
+     * zakupione-ale-nieprzypięte, więc zakładka i tak ich nie pokaże. Osad po wcześniejszej
+     * wersji, w której przypięcie nie zdejmowało kapsla z tej listy; wykonuje się po
+     * uzgodnieniu z chmurą, żeby czyszczenie objęło też wpisy właśnie stamtąd pobrane.
+     */
+    private suspend fun prunePurchasedAlreadyInBinders() {
+        val przypiete = capPositionDao.getAllCapIds().toSet()
+        if (przypiete.isEmpty()) return
+        val doUsuniecia = purchasedCapsLocalStore.getIds().intersect(przypiete)
+        if (doUsuniecia.isEmpty()) return
+        doUsuniecia.forEach { purchasedCapsLocalStore.remove(it) } // zdejmuje też z Firestore
+        Log.i("CCI_SYNC", "zdjęto ${doUsuniecia.size} kapsli z listy zakupionych — są w klaserach")
     }
 
     suspend fun restoreIfEmpty() {
