@@ -83,7 +83,13 @@ class AuthRepository @Inject constructor(
     }
 
     suspend fun logout() {
-        try { authApiService.logout() } catch (e: Exception) { }
+        // Wylogowanie lokalne musi się udać niezależnie od odpowiedzi backendu, ale cisza
+        // ukrywałaby np. trwałą awarię endpointu — zostaje ślad w logu.
+        try {
+            authApiService.logout()
+        } catch (e: Exception) {
+            Log.w("CCI_AUTH", "wylogowanie po stronie backendu nieudane: ${e.message}")
+        }
         cookieJar.clear()
         credentialsStore.clear()
         sessionRepository.setLoggedIn(false)

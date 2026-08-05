@@ -65,9 +65,11 @@ fun PictureSearch(
     var cameraImageUri by remember { mutableStateOf<Uri?>(null) }
     var cropSourceUri by remember { mutableStateOf<Uri?>(null) }
 
-    if (cropSourceUri != null) {
+    // Lokalna kopia zamiast !! — smart cast nie działa na zmiennej ze stanu Compose.
+    val cropUri = cropSourceUri
+    if (cropUri != null) {
         CropScreen(
-            sourceUri = cropSourceUri!!,
+            sourceUri = cropUri,
             onConfirm = { croppedUri ->
                 viewModel.onImageSelected(croppedUri)
                 cropSourceUri = null

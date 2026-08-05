@@ -120,16 +120,19 @@ class MigrationTest {
     }
 
     @Test
-    fun migrateFullChain3to7_dataAndSchemaIntact() {
+    fun migrateFullChain3to8_dataAndSchemaIntact() {
         helper.createDatabase(TEST_DB, 3).use { db ->
             db.execSQL("INSERT INTO binder (id, name, firestore_id) VALUES (1, 'B', null)")
             db.execSQL("INSERT INTO binder_page (id, binder_id, page_number, firestore_id) VALUES (1, 1, 1, null)")
             db.execSQL("INSERT INTO cap_position (id, binder_page_id, position, cap_id, firestore_id, country) VALUES (1, 1, 1, 42, null, 'Germany')")
         }
 
+        // Łańcuch musi sięgać aktualnej wersji bazy — inaczej ostatnia migracja jest
+        // sprawdzana wyłącznie w izolacji, nigdy po przejściu przez wszystkie poprzednie.
         helper.runMigrationsAndValidate(
-            TEST_DB, 7, true,
-            CciDatabase.MIGRATION_3_4, CciDatabase.MIGRATION_4_5, CciDatabase.MIGRATION_5_6, CciDatabase.MIGRATION_6_7
+            TEST_DB, 8, true,
+            CciDatabase.MIGRATION_3_4, CciDatabase.MIGRATION_4_5, CciDatabase.MIGRATION_5_6,
+            CciDatabase.MIGRATION_6_7, CciDatabase.MIGRATION_7_8
         ).use { db ->
             db.query("SELECT country, image_url, name, catalog_status FROM cap_cache WHERE cap_id = 42").use { cursor ->
                 assert(cursor.moveToFirst())
@@ -141,6 +144,12 @@ class MigrationTest {
             db.query("SELECT count(*) FROM country_flag").use { cursor ->
                 assert(cursor.moveToFirst())
                 assertEquals(0, cursor.getInt(0))
+            }
+            // Kolumny z migracji 7→8 — obecne także po przejściu całego łańcucha.
+            db.query("SELECT selected_producer_id, producer FROM cap_cache WHERE cap_id = 42").use { cursor ->
+                assert(cursor.moveToFirst())
+                assert(cursor.isNull(cursor.getColumnIndexOrThrow("selected_producer_id")))
+                assertEquals("", cursor.getString(cursor.getColumnIndexOrThrow("producer")))
             }
             db.query("SELECT * FROM cap_position").use { cursor ->
                 try {

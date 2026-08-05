@@ -46,10 +46,15 @@ class SessionRefresher @Inject constructor(
 
     private val mutex = Mutex()
     private var lastSuccessAt = 0L
+    private var lastCsrfAt = 0L
 
     /** Tani wariant: sesja może wciąż żyć, a rozjechał się tylko token CSRF. */
     suspend fun refreshCsrf(): Boolean = mutex.withLock {
+        // To samo okno co przy pełnym logowaniu: dziesięć równoległych 401 nie ma powodu
+        // wywoływać dziesięciu razy sanctum/csrf-cookie — pierwszy odświeża dla wszystkich.
+        if (System.currentTimeMillis() - lastCsrfAt < FRESH_WINDOW_MS) return true
         runCatching { authApiService.initCsrf().isSuccessful }
+            .onSuccess { if (it) lastCsrfAt = System.currentTimeMillis() }
             .onFailure { Log.w("CCI_AUTH", "reauth: odświeżenie CSRF nieudane: ${it.message}") }
             .getOrDefault(false)
     }
