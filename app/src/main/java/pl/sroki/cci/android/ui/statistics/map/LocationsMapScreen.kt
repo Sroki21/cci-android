@@ -19,8 +19,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.CenterFocusStrong
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -30,7 +28,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -62,7 +59,6 @@ fun LocationsMapScreen(
 ) {
     val viewModel = hiltViewModel<LocationsMapViewModel>()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    var showLicense by remember { mutableStateOf(false) }
 
     Scaffold(topBar = {
         TopAppBar(
@@ -73,11 +69,6 @@ fun LocationsMapScreen(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = "Wstecz"
                     )
-                }
-            },
-            actions = {
-                IconButton(onClick = { showLicense = true }) {
-                    Icon(Icons.Filled.Info, contentDescription = "O mapie")
                 }
             }
         )
@@ -100,20 +91,6 @@ fun LocationsMapScreen(
                 is LocationsMapUiState.Success -> SuccessContent(state, onCountryClick)
             }
         }
-    }
-
-    if (showLicense) {
-        AlertDialog(
-            onDismissRequest = { showLicense = false },
-            title = { Text("O mapie") },
-            text = {
-                Text(
-                    "Mapa świata: Al MacDonald / Fritz Lekschas (simple-world-map), " +
-                        "licencja CC BY-SA 3.0."
-                )
-            },
-            confirmButton = { TextButton(onClick = { showLicense = false }) { Text("OK") } }
-        )
     }
 }
 
