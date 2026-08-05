@@ -33,9 +33,13 @@ runs:
         git -C "$GITHUB_WORKSPACE" diff "origin/$BASE_REF"...HEAD -- '*.kt' '*.gradle' > "$RUNNER_TEMP/review_diff_$GITHUB_RUN_ID.txt"
 
     - name: Setup Node.js
-      uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+      uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
       with:
-        node-version: '20'
+        node-version: '24'
+        # npm ci uruchamiamy w katalogu akcji, nie w korzeniu repo. Automatyczne
+        # cache'owanie z setup-node v5+ szukałoby lockfile'a w korzeniu, więc
+        # wyłączamy je jawnie, żeby przyszła zmiana w root package.json nie wywróciła CI.
+        package-manager-cache: false
 
     - name: Install dependencies
       shell: bash
