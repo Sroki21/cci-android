@@ -18,23 +18,39 @@ interface CapCacheDao {
 
     // Zapisuje tylko kraj, nie ruszając już zapisanego image_url (Statystyki/Detal).
     @Query("""
-        INSERT INTO cap_cache (cap_id, country, image_url, name, catalog_status, producer) VALUES (:capId, :country, '', '', 'unknown', '')
+        INSERT INTO cap_cache (cap_id, country, image_url, name, catalog_status, producer, image_unavailable)
+        VALUES (:capId, :country, '', '', 'unknown', '', 0)
         ON CONFLICT(cap_id) DO UPDATE SET country = :country
     """)
     suspend fun upsertCountry(capId: Long, country: String)
 
-    // Pełny wpis z kraju i zdjęcia (zakładka Klasery).
+    // Pełny wpis z kraju i zdjęcia (zakładka Klasery). Niepusty image_url zdejmuje znacznik
+    // braku zdjęcia — katalog mógł je w międzyczasie dodać.
     @Query("""
-        INSERT INTO cap_cache (cap_id, country, image_url, name, catalog_status, producer) VALUES (:capId, :country, :imageUrl, '', 'unknown', '')
-        ON CONFLICT(cap_id) DO UPDATE SET country = :country, image_url = :imageUrl
+        INSERT INTO cap_cache (cap_id, country, image_url, name, catalog_status, producer, image_unavailable)
+        VALUES (:capId, :country, :imageUrl, '', 'unknown', '', 0)
+        ON CONFLICT(cap_id) DO UPDATE SET
+            country = :country,
+            image_url = :imageUrl,
+            image_unavailable = CASE WHEN :imageUrl != '' THEN 0 ELSE image_unavailable END
     """)
     suspend fun upsertFull(capId: Long, country: String, imageUrl: String)
+
+    // Katalog nie ma zdjęcia dla tego kapsla (pusty image_url w odpowiedzi albo kapsel
+    // w ogóle nie istnieje). Wstawiamy wiersz nawet dla nieznanego kapsla — inaczej nie ma
+    // gdzie zapisać, że pytać nie warto.
+    @Query("""
+        INSERT INTO cap_cache (cap_id, country, image_url, name, catalog_status, producer, image_unavailable)
+        VALUES (:capId, '', '', '', 'unknown', '', 1)
+        ON CONFLICT(cap_id) DO UPDATE SET image_unavailable = 1
+    """)
+    suspend fun markImageUnavailable(capId: Long)
 
     // Snapshot identyfikujący kapsel + fingerprint; nie rusza pól weryfikacji
     // (last_verified_at, catalog_status), więc bezpieczny przy ponownym zapisie.
     @Query("""
-        INSERT INTO cap_cache (cap_id, name, country, image_url, created_at, created_by_id, updated_at, catalog_status, producer)
-        VALUES (:capId, :name, :country, :imageUrl, :createdAt, :createdById, :updatedAt, 'unknown', '')
+        INSERT INTO cap_cache (cap_id, name, country, image_url, created_at, created_by_id, updated_at, catalog_status, producer, image_unavailable)
+        VALUES (:capId, :name, :country, :imageUrl, :createdAt, :createdById, :updatedAt, 'unknown', '', 0)
         ON CONFLICT(cap_id) DO UPDATE SET
             name = :name, country = :country, image_url = :imageUrl,
             created_at = :createdAt, created_by_id = :createdById, updated_at = :updatedAt
@@ -56,8 +72,8 @@ interface CapCacheDao {
     // Ręczny wybór producenta/kraju dla kapsla "-Multiple countries" — nadpisuje country/producer,
     // nie rusza pozostałych pól snapshotu (name/image_url/fingerprint).
     @Query("""
-        INSERT INTO cap_cache (cap_id, country, producer, selected_producer_id, image_url, name, catalog_status)
-        VALUES (:capId, :country, :producer, :producerId, '', '', 'unknown')
+        INSERT INTO cap_cache (cap_id, country, producer, selected_producer_id, image_url, name, catalog_status, image_unavailable)
+        VALUES (:capId, :country, :producer, :producerId, '', '', 'unknown', 0)
         ON CONFLICT(cap_id) DO UPDATE SET
             country = :country, producer = :producer, selected_producer_id = :producerId
     """)

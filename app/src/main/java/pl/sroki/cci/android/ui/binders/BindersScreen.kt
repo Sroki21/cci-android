@@ -60,7 +60,6 @@ import pl.sroki.cci.android.model.binder.BinderPageView
 import pl.sroki.cci.android.model.binder.CapSlot
 import pl.sroki.cci.android.data.model.Country
 import pl.sroki.cci.android.model.Cap
-import pl.sroki.cci.android.model.binder.CatalogStatus
 import pl.sroki.cci.android.ui.components.CountryPickerDialog
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -81,10 +80,10 @@ fun BindersScreen(
         }
     }
 
-    val selectedCountry = vm.selectedCountryName
+    val selectedCountry = uiState.selectedCountryName
     // remember: bez niego pełny skan (klasery × strony × pozycje) leciał przy KAŻDEJ
     // rekompozycji, gdy filtr kraju jest aktywny — a kolekcja to ponad cztery tysiące pozycji.
-    val filteredBinders = remember(uiState, selectedCountry) {
+    val filteredBinders = remember(uiState) {
         if (selectedCountry.isEmpty()) uiState.binders
         else uiState.binders.filter { binder ->
             val pages = uiState.binderPages[binder.id] ?: emptyList()
@@ -116,7 +115,7 @@ fun BindersScreen(
             item {
                 CountryFilterRow(
                     countryName = selectedCountry,
-                    countries = vm.countries,
+                    countries = uiState.countries,
                     onCountrySelected = vm::setCountry
                 )
             }
@@ -141,7 +140,7 @@ fun BindersScreen(
                     expandedPageIds = uiState.expandedPageIds,
                     capPositions = uiState.capPositions,
                     capInfo = uiState.capInfo,
-                    capStatus = uiState.capStatus,
+                    flaggedCapIds = uiState.flaggedCapIds,
                     totalCaps = totalCaps,
                     selectedCountry = selectedCountry,
                     isLoading = uiState.isLoading,
@@ -284,7 +283,7 @@ private fun ExpandableBinderRow(
     expandedPageIds: Set<Long>,
     capPositions: Map<Long, List<CapSlot>>,
     capInfo: Map<Long, Cap>,
-    capStatus: Map<Long, CatalogStatus>,
+    flaggedCapIds: Set<Long>,
     totalCaps: Int,
     selectedCountry: String,
     isLoading: Boolean,
@@ -299,7 +298,7 @@ private fun ExpandableBinderRow(
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
         val binderFlagged = pages.any { page ->
-            (capPositions[page.id] ?: emptyList()).any { isFlagged(capStatus[it.capId]) }
+            (capPositions[page.id] ?: emptyList()).any { it.capId in flaggedCapIds }
         }
         var showBinderMenu by remember { mutableStateOf(false) }
         Box {
@@ -350,7 +349,7 @@ private fun ExpandableBinderRow(
                     val countries = caps.mapNotNull { capInfo[it.capId]?.country }.distinct().sorted()
                     val countriesSuffix = if (countries.isEmpty()) "" else " (${countries.joinToString(", ")})"
                     val pageLabel = "Strona ${page.pageNumber}$countriesSuffix${if (caps.isNotEmpty()) " - ${caps.size}" else ""}"
-                    val pageFlagged = allCaps.any { isFlagged(capStatus[it.capId]) }
+                    val pageFlagged = allCaps.any { it.capId in flaggedCapIds }
                     var showPageMenu by remember { mutableStateOf(false) }
                     Box {
                         Row(
@@ -420,7 +419,7 @@ private fun ExpandableBinderRow(
                                         .size(40.dp)
                                         .clip(CircleShape)
                                 )
-                                val capFlagged = isFlagged(capStatus[cap.capId])
+                                val capFlagged = cap.capId in flaggedCapIds
                                 Column(modifier = Modifier.padding(start = 8.dp)) {
                                     Text(
                                         text = "Pozycja ${cap.position}: ${cap.capId}",
@@ -451,10 +450,6 @@ private fun ExpandableBinderRow(
         }
     }
 }
-
-// Pytamy enum zamiast wyliczac statusy — poprzednia wersja pomijala producer_removed,
-// wiec kapsel z usunietym producentem nie byl w klaserach podswietlany.
-private fun isFlagged(status: CatalogStatus?): Boolean = status?.isFlagged == true
 
 @Composable
 private fun CreateBinderDialog(

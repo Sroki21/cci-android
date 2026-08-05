@@ -22,5 +22,9 @@ data class CapCache(
     // ponad surowy wpis z API. selectedProducerId identyfikuje wpis w cap.producers do
     // porównania przy weryfikacji (patrz CollectionVerifier).
     @ColumnInfo(name = "selected_producer_id") val selectedProducerId: Int? = null,
-    @ColumnInfo(name = "producer") val producer: String = ""
+    @ColumnInfo(name = "producer") val producer: String = "",
+    // Katalog nie ma zdjęcia dla tego kapsla (albo nie zna go wcale). Bez tego znacznika
+    // pusty image_url jest nieodróżnialny od "jeszcze nie pobraliśmy" i Klasery odpytywały
+    // API o ten sam kapsel przy każdym wejściu na ekran.
+    @ColumnInfo(name = "image_unavailable") val imageUnavailable: Boolean = false
 )

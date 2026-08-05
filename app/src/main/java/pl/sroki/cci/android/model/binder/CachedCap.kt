@@ -15,5 +15,7 @@ data class CachedCap(
     val updatedAt: String?,
     val catalogStatus: CatalogStatus,
     val selectedProducerId: Int?,
-    val producer: String
+    val producer: String,
+    /** Katalog nie ma zdjęcia tego kapsla — pytanie o nie ponownie nic nie da. */
+    val imageUnavailable: Boolean
 )

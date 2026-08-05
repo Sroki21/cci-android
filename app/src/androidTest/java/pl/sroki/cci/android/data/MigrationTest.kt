@@ -120,7 +120,7 @@ class MigrationTest {
     }
 
     @Test
-    fun migrateFullChain3to8_dataAndSchemaIntact() {
+    fun migrateFullChain3to9_dataAndSchemaIntact() {
         helper.createDatabase(TEST_DB, 3).use { db ->
             db.execSQL("INSERT INTO binder (id, name, firestore_id) VALUES (1, 'B', null)")
             db.execSQL("INSERT INTO binder_page (id, binder_id, page_number, firestore_id) VALUES (1, 1, 1, null)")
@@ -130,9 +130,9 @@ class MigrationTest {
         // Łańcuch musi sięgać aktualnej wersji bazy — inaczej ostatnia migracja jest
         // sprawdzana wyłącznie w izolacji, nigdy po przejściu przez wszystkie poprzednie.
         helper.runMigrationsAndValidate(
-            TEST_DB, 8, true,
+            TEST_DB, 9, true,
             CciDatabase.MIGRATION_3_4, CciDatabase.MIGRATION_4_5, CciDatabase.MIGRATION_5_6,
-            CciDatabase.MIGRATION_6_7, CciDatabase.MIGRATION_7_8
+            CciDatabase.MIGRATION_6_7, CciDatabase.MIGRATION_7_8, CciDatabase.MIGRATION_8_9
         ).use { db ->
             db.query("SELECT country, image_url, name, catalog_status FROM cap_cache WHERE cap_id = 42").use { cursor ->
                 assert(cursor.moveToFirst())
@@ -145,11 +145,12 @@ class MigrationTest {
                 assert(cursor.moveToFirst())
                 assertEquals(0, cursor.getInt(0))
             }
-            // Kolumny z migracji 7→8 — obecne także po przejściu całego łańcucha.
-            db.query("SELECT selected_producer_id, producer FROM cap_cache WHERE cap_id = 42").use { cursor ->
+            // Kolumny z migracji 7→8 i 8→9 — obecne także po przejściu całego łańcucha.
+            db.query("SELECT selected_producer_id, producer, image_unavailable FROM cap_cache WHERE cap_id = 42").use { cursor ->
                 assert(cursor.moveToFirst())
                 assert(cursor.isNull(cursor.getColumnIndexOrThrow("selected_producer_id")))
                 assertEquals("", cursor.getString(cursor.getColumnIndexOrThrow("producer")))
+                assertEquals(0, cursor.getInt(cursor.getColumnIndexOrThrow("image_unavailable")))
             }
             db.query("SELECT * FROM cap_position").use { cursor ->
                 try {
@@ -186,7 +187,12 @@ class MigrationTest {
     @Test
     fun migrate7To8_addsSelectedProducerColumns() {
         helper.createDatabase(TEST_DB, 7).use { db ->
-            db.execSQL("INSERT INTO cap_cache (cap_id, country, image_url) VALUES (9, 'Poland', 'u')")
+            // W schemacie 7 name i catalog_status są NOT NULL bez DEFAULT — DEFAULT istnieje
+            // wyłącznie w SQL migracji 6→7, a createDatabase odtwarza tabelę z 7.json.
+            db.execSQL(
+                "INSERT INTO cap_cache (cap_id, country, image_url, name, catalog_status) " +
+                    "VALUES (9, 'Poland', 'u', '', 'unknown')"
+            )
         }
 
         helper.runMigrationsAndValidate(TEST_DB, 8, true, CciDatabase.MIGRATION_7_8).use { db ->
@@ -194,6 +200,25 @@ class MigrationTest {
                 assert(cursor.moveToFirst())
                 assertNull(cursor.getString(cursor.getColumnIndexOrThrow("selected_producer_id")))
                 assertEquals("", cursor.getString(cursor.getColumnIndexOrThrow("producer")))
+            }
+        }
+    }
+
+    @Test
+    fun migrate8To9_addsImageUnavailableDefaultingToFalse() {
+        helper.createDatabase(TEST_DB, 8).use { db ->
+            db.execSQL(
+                "INSERT INTO cap_cache (cap_id, country, image_url, name, catalog_status, producer) " +
+                    "VALUES (11, 'Poland', '', '', 'unknown', '')"
+            )
+        }
+
+        // Istniejący wpis bez zdjęcia musi wyjść z migracji jako "jeszcze nie pytaliśmy" (0),
+        // a nie jako "katalog zdjęcia nie ma" — inaczej migracja zamroziłaby brak zdjęcia.
+        helper.runMigrationsAndValidate(TEST_DB, 9, true, CciDatabase.MIGRATION_8_9).use { db ->
+            db.query("SELECT image_unavailable FROM cap_cache WHERE cap_id = 11").use { cursor ->
+                assert(cursor.moveToFirst())
+                assertEquals(0, cursor.getInt(cursor.getColumnIndexOrThrow("image_unavailable")))
             }
         }
     }

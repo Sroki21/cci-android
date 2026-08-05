@@ -114,7 +114,8 @@ class CollectionVerifierTest {
         country = country,
         imageUrl = imageUrl,
         selectedProducerId = selectedProducerId,
-        producer = producer
+        producer = producer,
+        imageUnavailable = false
     )
 
     @Test

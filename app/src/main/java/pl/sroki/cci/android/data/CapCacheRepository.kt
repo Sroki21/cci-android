@@ -27,6 +27,8 @@ class CapCacheRepository @Inject constructor(private val dao: CapCacheDao) {
     suspend fun upsertFull(capId: Long, country: String, imageUrl: String) =
         dao.upsertFull(capId, country, imageUrl)
 
+    suspend fun markImageUnavailable(capId: Long) = dao.markImageUnavailable(capId)
+
     suspend fun upsertSnapshot(
         capId: Long,
         name: String,

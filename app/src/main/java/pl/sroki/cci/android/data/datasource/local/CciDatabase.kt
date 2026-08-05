@@ -19,7 +19,7 @@ import pl.sroki.cci.android.data.datasource.local.entity.PendingCap
 
 @Database(
     entities = [PendingCap::class, Binder::class, BinderPage::class, CapPosition::class, CapCache::class, CountryFlag::class],
-    version = 8,
+    version = 9,
     exportSchema = true
 )
 abstract class CciDatabase : RoomDatabase() {
@@ -117,6 +117,13 @@ abstract class CciDatabase : RoomDatabase() {
                 // Ręczny wybór producenta dla kapsli "-Multiple countries" (nadpisuje country/producer).
                 db.execSQL("ALTER TABLE `cap_cache` ADD COLUMN `selected_producer_id` INTEGER")
                 db.execSQL("ALTER TABLE `cap_cache` ADD COLUMN `producer` TEXT NOT NULL DEFAULT ''")
+            }
+        }
+        val MIGRATION_8_9 = object : Migration(8, 9) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Znacznik "katalog nie ma zdjęcia dla tego kapsla". Domyślnie 0, więc istniejące
+                // wpisy bez zdjęcia zostaną odpytane jeszcze raz — i dopiero wtedy oznaczone.
+                db.execSQL("ALTER TABLE `cap_cache` ADD COLUMN `image_unavailable` INTEGER NOT NULL DEFAULT 0")
             }
         }
     }

@@ -40,5 +40,6 @@ internal fun CapCache.toCachedCap() = CachedCap(
     updatedAt = updatedAt,
     catalogStatus = CatalogStatus.from(catalogStatus),
     selectedProducerId = selectedProducerId,
-    producer = producer
+    producer = producer,
+    imageUnavailable = imageUnavailable
 )
