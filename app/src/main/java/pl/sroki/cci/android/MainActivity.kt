@@ -9,13 +9,12 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -74,7 +73,6 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun Navigation(
     isLoggedIn: Boolean = false,
-    countriesViewModel: CountriesViewModel = viewModel(),
     assignedCapsViewModel: AssignedCapsViewModel = hiltViewModel(),
 ) {
     val navController = rememberNavController()
@@ -99,7 +97,11 @@ fun Navigation(
             )
         }
         composable(route = Screen.Countries.route) {
-            countriesViewModel.getCountries()
+            // ViewModel powstaje razem z ekranem, nie z calym NavHostem, a pobranie idzie przez
+            // LaunchedEffect — wywolanie wprost w ciele composable strzelalo do API przy KAZDEJ
+            // rekompozycji, bo getCountries() nie jest idempotentne.
+            val countriesViewModel = hiltViewModel<CountriesViewModel>()
+            LaunchedEffect(Unit) { countriesViewModel.getCountries() }
             Countries(
                 countriesUiState = countriesViewModel.countriesUiState,
                 onBack = { navController.popBackStack() },
@@ -287,18 +289,6 @@ fun NavigationItem(
     )
 }
 
-@Preview(showBackground = true)
-@Composable
-fun DefaultPreview() {
-    CCITheme {
-        Navigation()
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun DarkThemePreview() {
-    CCITheme(darkTheme = true) {
-        Navigation()
-    }
-}
+// Podglady DefaultPreview/DarkThemePreview usuniete: wolaly Navigation(), ktorego domyslny
+// assignedCapsViewModel to hiltViewModel() — w podgladzie nie ma komponentu Hilta, wiec oba
+// wysypywaly sie przy renderowaniu i nigdy niczego nie pokazywaly.

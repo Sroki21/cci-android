@@ -46,6 +46,8 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import coil.compose.AsyncImage
@@ -99,7 +101,10 @@ private fun SuccessContent(
     state: LocationsMapUiState.Success,
     onCountryClick: (String) -> Unit,
 ) {
-    var selected by remember { mutableStateOf<MapCountry?>(null) }
+    // Trzymamy ISO, nie caly obiekt: po odswiezeniu danych karta ma pokazywac aktualna liczbe
+    // kapsli, a nie te zapamietana w chwili klikniecia.
+    var selectedIso by remember { mutableStateOf<String?>(null) }
+    val selected = selectedIso?.let { state.countries[it] }
 
     Column(Modifier.fillMaxSize()) {
         Text(
@@ -116,8 +121,8 @@ private fun SuccessContent(
         ) {
             WorldMapCanvas(
                 state = state,
-                selectedIso = selected?.iso,
-                onCountrySelected = { iso -> selected = state.countries[iso] },
+                selectedIso = selectedIso,
+                onCountrySelected = { iso -> selectedIso = iso },
                 modifier = Modifier.fillMaxSize()
             )
 
@@ -157,66 +162,78 @@ private fun WorldMapCanvas(
     var userScale by remember { mutableFloatStateOf(1f) }
     var userOffset by remember { mutableStateOf(Offset.Zero) }
 
-    // Parametry dopasowania viewBox -> ekran; ustalane przy pierwszym rysowaniu, używane też w hit-teście.
-    var fitScale by remember { mutableFloatStateOf(0f) }
-    var fitOffset by remember { mutableStateOf(Offset.Zero) }
+    // Rozmiar obszaru rysowania; dopasowanie viewBox -> ekran liczone z niego raz, nie w trakcie
+    // rysowania. Wcześniej fitScale/fitOffset były zapisywane wewnątrz draw scope i czytane
+    // przez handlery gestów — działało, ale zapis stanu w fazie rysowania jest kruchy.
+    var canvasSize by remember { mutableStateOf(IntSize.Zero) }
+    val fit = remember(canvasSize, viewBox) {
+        if (canvasSize.width == 0 || viewBox.width <= 0f || viewBox.height <= 0f) {
+            null
+        } else {
+            val scale = minOf(canvasSize.width / viewBox.width, canvasSize.height / viewBox.height)
+            MapFit(
+                scale = scale,
+                offset = Offset(
+                    (canvasSize.width - viewBox.width * scale) / 2f,
+                    (canvasSize.height - viewBox.height * scale) / 2f,
+                ),
+                contentWidth = viewBox.width * scale,
+                contentHeight = viewBox.height * scale,
+            )
+        }
+    }
+
+    // Konwersja android.graphics.Path -> Path Compose raz na mapę, a nie dla ~200 krajów
+    // przy każdej klatce przeciągania.
+    val composePaths = remember(state.map) {
+        state.map.countries.map { (iso, path) -> iso to path.asComposePath() }
+    }
 
     Box(modifier = modifier) {
         Canvas(
             modifier = Modifier
                 .fillMaxSize()
-                .pointerInput(Unit) {
+                .onSizeChanged { canvasSize = it }
+                .pointerInput(fit) {
+                    val currentFit = fit ?: return@pointerInput
                     detectTransformGestures { centroid, pan, zoom, _ ->
                         val newScale = (userScale * zoom).coerceIn(1f, MAX_ZOOM)
                         val k = newScale / userScale
-                        var next = (userOffset - centroid) * k + centroid + pan
-                        // Rysowanie (niżej) skaluje z pivotem w (0,0) ekranu, więc przy
-                        // offset=0 mapa jest zakotwiczona lewym górnym rogiem, a nadmiar
-                        // treści wystaje POZA prawą/dolną krawędź ekranu — offset=0 to
-                        // górna granica zakresu (bez luki po lewej/górze), a dolna granica
-                        // to -(contentWidth - width), czyli -2*maxX, nie -maxX. Symetryczny
-                        // zakres [-maxX, maxX] (poprzednia wersja) obcinał więc realny
-                        // zasięg w prawo/dół dokładnie o połowę, niezależnie od poziomu
-                        // zoomu — stąd wrażenie, że granica "ustawia się" tam, gdzie
-                        // dotknięto, i nie da się jej przesunąć dalszym zoomem.
-                        val maxX = ((size.width * newScale - size.width) / 2f).coerceAtLeast(0f)
-                        val maxY = ((size.height * newScale - size.height) / 2f).coerceAtLeast(0f)
-                        next = Offset(next.x.coerceIn(-2f * maxX, 0f), next.y.coerceIn(-2f * maxY, 0f))
+                        val next = (userOffset - centroid) * k + centroid + pan
                         userScale = newScale
-                        userOffset = next
+                        userOffset = clampMapOffset(
+                            offset = next,
+                            scale = newScale,
+                            viewportWidth = size.width.toFloat(),
+                            viewportHeight = size.height.toFloat(),
+                            fit = currentFit,
+                        )
                     }
                 }
-                .pointerInput(state.map) {
+                .pointerInput(state.map, fit) {
+                    val currentFit = fit ?: return@pointerInput
                     detectTapGestures { tap ->
-                        if (fitScale <= 0f) return@detectTapGestures
                         // Ekran -> przestrzeń viewBox (odwrócenie transformacji rysowania).
                         val base = (tap - userOffset) / userScale
-                        val vx = (base.x - fitOffset.x) / fitScale + viewBox.minX
-                        val vy = (base.y - fitOffset.y) / fitScale + viewBox.minY
+                        val vx = (base.x - currentFit.offset.x) / currentFit.scale + viewBox.minX
+                        val vy = (base.y - currentFit.offset.y) / currentFit.scale + viewBox.minY
                         val iso = state.map.countryAt(vx, vy) ?: return@detectTapGestures
                         if (state.countries.containsKey(iso)) onCountrySelected(iso)
                     }
                 }
         ) {
             drawRect(color = oceanColor)
-            if (viewBox.width <= 0f || viewBox.height <= 0f) return@Canvas
-
-            fitScale = minOf(size.width / viewBox.width, size.height / viewBox.height)
-            fitOffset = Offset(
-                (size.width - viewBox.width * fitScale) / 2f,
-                (size.height - viewBox.height * fitScale) / 2f,
-            )
+            if (fit == null) return@Canvas
 
             withTransform({
                 translate(userOffset.x, userOffset.y)
                 scale(userScale, userScale, pivot = Offset.Zero)
-                translate(fitOffset.x, fitOffset.y)
-                scale(fitScale, fitScale, pivot = Offset.Zero)
+                translate(fit.offset.x, fit.offset.y)
+                scale(fit.scale, fit.scale, pivot = Offset.Zero)
                 translate(-viewBox.minX, -viewBox.minY)
             }) {
-                val strokeWidth = 0.3f / (fitScale * userScale)
-                state.map.countries.forEach { (iso, path) ->
-                    val composePath = path.asComposePath()
+                val strokeWidth = 0.3f / (fit.scale * userScale)
+                composePaths.forEach { (iso, composePath) ->
                     val owned = (state.countries[iso]?.count ?: 0) > 0
                     drawPath(composePath, color = if (owned) ownedColor else landColor, style = Fill)
                     val isSelected = iso == selectedIso

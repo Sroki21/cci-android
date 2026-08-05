@@ -16,15 +16,17 @@ sealed class Screen(val route: String) {
 
     object Latest : Screen("latest")
     object Country : Screen("countries/{countryId}?name={name}") {
-        fun createUrl(id: Long, name: String) = "countries/$id?name=$name"
+        fun createUrl(id: Long, name: String) = "countries/$id?name=${Uri.encode(name)}"
     }
 
     object CapDetail : Screen("caps/{capId}") {
         fun createUrl(id: Long) = "caps/$id"
     }
 
+    // Uri.encode jest tu obowiazkowe: bez niego "&" w frazie rozpoczynal kolejny parametr,
+    // a wszystko po nim przepadalo — wyszukiwarka po cichu szukala czegos innego, niz wpisano.
     object QuickSearchResults : Screen("caps/search?query={query}") {
-        fun createUrl(query: String) = "caps/search?query=$query"
+        fun createUrl(query: String) = "caps/search?query=${Uri.encode(query)}"
     }
 
     object OwnedCountries : Screen("owned-countries")
