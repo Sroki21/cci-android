@@ -17,6 +17,7 @@ import pl.sroki.cci.android.data.datasource.local.CciDatabase
 import pl.sroki.cci.android.data.datasource.remote.firestore.BinderFirestoreService
 import pl.sroki.cci.android.data.datasource.remote.firestore.BinderPageFirestoreService
 import pl.sroki.cci.android.data.datasource.remote.firestore.CapPositionFirestoreService
+import io.mockk.mockk
 
 @RunWith(AndroidJUnit4::class)
 class FirestoreRestoreTest {
@@ -51,7 +52,9 @@ class FirestoreRestoreTest {
             capCacheDao = db.capCacheDao(),
             binderService = binderFs,
             binderPageService = binderPageFs,
-            capPositionService = capPositionFs
+            capPositionService = capPositionFs,
+            purchasedCapsService = mockk(relaxed = true),
+            purchasedCapsLocalStore = mockk(relaxed = true)
         )
         // Seed Firestore: 1 Binder → 1 BinderPage → 1 CapPosition (ze snapshotem)
         val binderFsId = binderFs.scheduleCreate(uid, "Restore Test Klaser")

@@ -22,6 +22,7 @@ import pl.sroki.cci.android.data.datasource.remote.firestore.BinderPageFirestore
 import pl.sroki.cci.android.data.datasource.remote.firestore.CapPositionDocument
 import pl.sroki.cci.android.data.datasource.remote.firestore.CapPositionFirestoreService
 import pl.sroki.cci.android.data.datasource.remote.firestore.ProducerSelection
+import pl.sroki.cci.android.data.datasource.remote.firestore.PurchasedCapsFirestoreService
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -69,7 +70,9 @@ class FirestoreRestoreUseCase @Inject constructor(
     private val capCacheDao: CapCacheDao,
     private val binderService: BinderFirestoreService,
     private val binderPageService: BinderPageFirestoreService,
-    private val capPositionService: CapPositionFirestoreService
+    private val capPositionService: CapPositionFirestoreService,
+    private val purchasedCapsService: PurchasedCapsFirestoreService,
+    private val purchasedCapsLocalStore: PurchasedCapsLocalStore
 ) {
     private companion object {
         const val PREFS_NAME = "sync_state"
@@ -108,6 +111,32 @@ class FirestoreRestoreUseCase @Inject constructor(
         prefs.edit().putInt(KEY_PRODUCER_BACKFILL, PRODUCER_BACKFILL_VERSION).apply()
         Log.i("CCI_SYNC", "backfill wyborów producenta: wypchnięto $pushed")
         return pushed
+    }
+
+    /**
+     * Uzgadnia listę "zakupionych" z chmurą. Rozmyślnie bez scalania zbiorów: przy pustym
+     * zbiorze po jednej stronie kopiujemy w tę stronę, w pozostałych przypadkach nie ruszamy
+     * niczego. Scalanie wskrzeszałoby kapsle świadomie usunięte z kolekcji na innym urządzeniu.
+     */
+    suspend fun syncPurchasedCaps() {
+        val uid = authManager.uid.value ?: return
+        val zdalne = runCatching { purchasedCapsService.fetch(uid) }.getOrElse {
+            Log.w("CCI_SYNC", "nie udało się pobrać listy zakupionych: ${it.message}")
+            return
+        }
+        when {
+            // Świeża instalacja: lokalnie pusto, w chmurze jest komplet.
+            purchasedCapsLocalStore.isEmpty() && zdalne.isNotEmpty() -> {
+                purchasedCapsLocalStore.replaceAllLocally(zdalne)
+                Log.i("CCI_SYNC", "odtworzono ${zdalne.size} zakupionych kapsli z Firestore")
+            }
+            // Instalacja sprzed synchronizacji: lokalnie jest lista, w chmurze jeszcze nic.
+            zdalne.isEmpty() && !purchasedCapsLocalStore.isEmpty() -> {
+                val lokalne = purchasedCapsLocalStore.getIds()
+                purchasedCapsService.scheduleReplaceAll(uid, lokalne)
+                Log.i("CCI_SYNC", "backfill: wypchnięto ${lokalne.size} zakupionych kapsli")
+            }
+        }
     }
 
     suspend fun restoreIfEmpty() {

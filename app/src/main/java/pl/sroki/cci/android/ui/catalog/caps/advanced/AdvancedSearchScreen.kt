@@ -46,7 +46,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -74,10 +74,10 @@ fun AdvancedSearchScreen(
     onCapClick: (Cap) -> Unit
 ) {
     val viewModel = hiltViewModel<AdvancedSearchViewModel>()
-    val hasSearched by viewModel.hasSearched.collectAsState()
-    val totalResults by viewModel.totalResults.collectAsState()
-    val isLoggedIn by viewModel.isLoggedIn.collectAsState()
-    val producerSuggestions by viewModel.producerSuggestions.collectAsState()
+    val hasSearched by viewModel.hasSearched.collectAsStateWithLifecycle()
+    val totalResults by viewModel.totalResults.collectAsStateWithLifecycle()
+    val isLoggedIn by viewModel.isLoggedIn.collectAsStateWithLifecycle()
+    val producerSuggestions by viewModel.producerSuggestions.collectAsStateWithLifecycle()
     val caps = viewModel.caps.collectAsLazyPagingItems()
 
     var filterFormVisible by remember { mutableStateOf(true) }

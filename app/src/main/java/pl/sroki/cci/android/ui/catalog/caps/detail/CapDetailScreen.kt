@@ -15,7 +15,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -82,7 +82,7 @@ fun CapDetailScreen(
 ) {
     val viewModel = hiltViewModel<CapDetailViewModel>()
     val uiState = viewModel.capDetailUiState
-    val isLoggedIn by viewModel.isLoggedIn.collectAsState()
+    val isLoggedIn by viewModel.isLoggedIn.collectAsStateWithLifecycle()
     var statusMenuExpanded by remember { mutableStateOf(false) }
     val snackbarState = remember { SnackbarHostState() }
 

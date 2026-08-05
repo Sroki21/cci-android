@@ -39,7 +39,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
@@ -68,7 +68,7 @@ fun BindersScreen(
     onCapClick: (Long) -> Unit,
 ) {
     val vm = hiltViewModel<BindersViewModel>()
-    val uiState by vm.uiState.collectAsState()
+    val uiState by vm.uiState.collectAsStateWithLifecycle()
     val snackbarState = remember { SnackbarHostState() }
 
     LaunchedEffect(Unit) {

@@ -17,6 +17,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import pl.sroki.cci.android.R
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import pl.sroki.cci.android.NavigationItem
 import pl.sroki.cci.android.navigation.Screen
 import pl.sroki.cci.android.ui.home.HomeEvent
@@ -31,8 +32,8 @@ fun HomeScreen(
     onLoginClick: () -> Unit = {}
 ) {
     val vm = hiltViewModel<HomeViewModel>()
-    val uiState by vm.uiState.collectAsState()
-    val flaggedCount by vm.flaggedCount.collectAsState()
+    val uiState by vm.uiState.collectAsStateWithLifecycle()
+    val flaggedCount by vm.flaggedCount.collectAsStateWithLifecycle()
 
     var query by remember { mutableStateOf("") }
     val snackbarState = remember { SnackbarHostState() }

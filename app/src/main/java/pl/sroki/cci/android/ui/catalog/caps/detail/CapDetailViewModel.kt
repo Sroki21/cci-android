@@ -1,11 +1,13 @@
 package pl.sroki.cci.android.ui.catalog.caps.detail
 
+import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import io.sentry.Sentry
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -151,11 +153,16 @@ class CapDetailViewModel @Inject constructor(
             capCacheRepository.selectProducer(capId, producer.id, producer.name, producer.country.name)
             capCacheRepository.markVerified(capId, "ok", System.currentTimeMillis())
             // Utrwal wybór w Firestore — bez tego żyje tylko w Roomie i ginie przy reinstalacji.
+            // Nieudane wypchnięcie musi zostawić ślad: cicha porażka cofa nas dokładnie do stanu
+            // sprzed tej poprawki, tyle że bez żadnej informacji, że tak się stało.
             runCatching {
                 capPositionRepository.updateProducerSelection(
                     capId,
                     ProducerSelection(producer.id, producer.name, producer.country.name)
                 )
+            }.onFailure {
+                Log.w("CCI_SYNC", "wybór producenta dla kapsla $capId nie trafił do Firestore", it)
+                Sentry.captureException(it)
             }
             catalogStatus = "ok"
             catalogChanges = emptyList()

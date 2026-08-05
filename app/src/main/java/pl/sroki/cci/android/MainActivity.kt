@@ -9,7 +9,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -78,7 +78,7 @@ fun Navigation(
     assignedCapsViewModel: AssignedCapsViewModel = hiltViewModel(),
 ) {
     val navController = rememberNavController()
-    val assignedCapIds by assignedCapsViewModel.assignedCapIds.collectAsState()
+    val assignedCapIds by assignedCapsViewModel.assignedCapIds.collectAsStateWithLifecycle()
 
     CompositionLocalProvider(LocalAssignedCapIds provides assignedCapIds) {
     NavHost(

@@ -60,7 +60,9 @@ class FirestoreRestoreUseCaseTest {
             capCacheDao = db.capCacheDao(),
             binderService = binderService,
             binderPageService = binderPageService,
-            capPositionService = capPositionService
+            capPositionService = capPositionService,
+            purchasedCapsService = mockk(relaxed = true),
+            purchasedCapsLocalStore = mockk(relaxed = true)
         )
     }
 
@@ -92,7 +94,8 @@ class FirestoreRestoreUseCaseTest {
             ApplicationProvider.getApplicationContext<Context>(),
             authManager, db, db.binderDao(), db.binderPageDao(),
             failingCapDao, db.capCacheDao(),
-            binderService, binderPageService, capPositionService
+            binderService, binderPageService, capPositionService,
+            mockk(relaxed = true), mockk(relaxed = true)
         )
 
         var threw = false
