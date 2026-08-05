@@ -28,6 +28,7 @@ import pl.sroki.cci.android.model.Purpose
 import pl.sroki.cci.android.model.UserPublic
 import retrofit2.HttpException
 import retrofit2.Response
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.time.Instant
 
@@ -244,6 +245,30 @@ class CollectionVerifierTest {
         coVerify(exactly = 1) {
             capCacheRepository.upsertSnapshot(any(), any(), any(), any(), any(), any(), any())
         }
+    }
+
+    @Test
+    fun `runFullScan — anulowanie W TRAKCIE zatrzymuje pozostale kapsle`() = runTest {
+        // Odtwarza realne kliknięcie Anuluj: flaga zapala się PO starcie skanowania, gdy
+        // wszystkie korutyny już ruszyły i czekają na semaforze. Sprawdzenie anulowania
+        // przed semaforem przepuszczało wtedy komplet — użytkownik klikał, a skan szedł dalej.
+        val ids = (1L..40L).toList()
+        coEvery { capPositionRepository.getAllCapIds() } returns ids
+        coEvery { capCacheRepository.getOne(any()) } returns null
+
+        val anulowane = AtomicBoolean(false)
+        val przetworzone = AtomicInteger(0)
+        coEvery { capsRepository.getById(any()) } coAnswers {
+            if (przetworzone.incrementAndGet() >= 5) anulowane.set(true)
+            capExtended()
+        }
+
+        verifier.runFullScan(isCancelled = { anulowane.get() })
+
+        assertTrue(
+            "anulowanie zignorowane — przetworzono ${przetworzone.get()} z ${ids.size}",
+            przetworzone.get() < ids.size
+        )
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)

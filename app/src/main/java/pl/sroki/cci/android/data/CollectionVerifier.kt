@@ -128,12 +128,17 @@ class CollectionVerifier @Inject constructor(
         coroutineScope {
             ids.map { id ->
                 async {
-                    if (isCancelled()) return@async
+                    // Anulowanie sprawdzane PO zdobyciu pozwolenia, nie przed. Wszystkie korutyny
+                    // startują naraz, więc warunek przed semaforem przechodzi u każdej w ułamku
+                    // sekundy — zanim użytkownik zdąży kliknąć Anuluj. Potem czekają już za
+                    // bramką i flaga nie ma czego zatrzymać. Tutaj każda sprawdza ją ponownie,
+                    // gdy faktycznie przychodzi jej kolej.
                     semaphore.withPermit {
+                        if (isCancelled()) return@withPermit
                         runCatching { verify(id) }
                         delay(THROTTLE_MS) // grzecznościowe tempo wobec crowncaps
                     }
-                    onProgress(done.incrementAndGet(), total)
+                    if (!isCancelled()) onProgress(done.incrementAndGet(), total)
                 }
             }.awaitAll()
         }
