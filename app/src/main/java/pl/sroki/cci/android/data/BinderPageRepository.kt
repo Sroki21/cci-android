@@ -34,13 +34,22 @@ class BinderPageRepository @Inject constructor(
         return db.withTransaction {
             val count = dao.countByBinderId(binderId)
             check(count < 15) { "Klaser może mieć maksymalnie 15 stron" }
+            // Numer z MAX, nie z COUNT — po usunięciu strony ze środka liczba stron przestaje
+            // odpowiadać najwyższemu numerowi i COUNT+1 trafiał w numer już zajęty.
+            val pageNumber = dao.maxPageNumber(binderId) + 1
             val firestoreId = if (uid != null) {
                 val binder = binderDao.getById(binderId)
                 binder?.firestoreId?.let { binderFirestoreId ->
-                    binderPageFirestoreService.scheduleCreate(uid, binderFirestoreId, count + 1)
+                    binderPageFirestoreService.scheduleCreate(uid, binderFirestoreId, pageNumber)
                 }
             } else null
-            dao.insert(BinderPage(binderId = binderId, pageNumber = count + 1, firestoreId = firestoreId))
+            try {
+                dao.insert(BinderPage(binderId = binderId, pageNumber = pageNumber, firestoreId = firestoreId))
+            } catch (e: SQLiteConstraintException) {
+                // Nie powinno się zdarzyć po przejściu na MAX+1, ale do UI musi iść zdanie,
+                // a nie surowy wyjątek SQLite — tak jak w updatePageNumber i moveToBinder.
+                throw IllegalStateException("Strona o numerze $pageNumber już istnieje w tym klaserze")
+            }
         }
     }
 

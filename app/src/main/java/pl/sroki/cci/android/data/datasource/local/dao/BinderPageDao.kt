@@ -27,6 +27,12 @@ interface BinderPageDao {
     @Query("SELECT COUNT(*) FROM binder_page WHERE binder_id = :binderId")
     suspend fun countByBinderId(binderId: Long): Int
 
+    // Najwyższy zajęty numer strony. Nowa strona idzie na koniec, więc liczy się MAX, nie COUNT:
+    // po usunięciu strony ze środka (1, 2, 3 -> 1, 3) COUNT+1 wskazywał numer 3, który już istnieje,
+    // i wstawienie leciało na UNIQUE(binder_id, page_number).
+    @Query("SELECT COALESCE(MAX(page_number), 0) FROM binder_page WHERE binder_id = :binderId")
+    suspend fun maxPageNumber(binderId: Long): Int
+
     @Query("SELECT * FROM binder_page WHERE id = :id LIMIT 1")
     suspend fun getById(id: Long): BinderPage?
 }
