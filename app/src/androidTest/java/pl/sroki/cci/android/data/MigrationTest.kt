@@ -120,7 +120,32 @@ class MigrationTest {
     }
 
     @Test
-    fun migrateFullChain3to9_dataAndSchemaIntact() {
+    fun migrate9To10_dropsPendingCapAndIndexesCapId() {
+        helper.createDatabase(TEST_DB, 9).use { db ->
+            db.execSQL("INSERT INTO pending_cap (cap_id) VALUES (7)")
+            db.execSQL("INSERT INTO binder (id, name, firestore_id) VALUES (1, 'B', null)")
+            db.execSQL("INSERT INTO binder_page (id, binder_id, page_number, firestore_id) VALUES (1, 1, 1, null)")
+            db.execSQL("INSERT INTO cap_position (id, binder_page_id, position, cap_id, firestore_id) VALUES (1, 1, 1, 42, null)")
+        }
+
+        helper.runMigrationsAndValidate(TEST_DB, 10, true, CciDatabase.MIGRATION_9_10).use { db ->
+            // Martwa tabela ma zniknąć — razem z encją, DAO i repozytorium bez konsumentów.
+            db.query("SELECT name FROM sqlite_master WHERE type='table' AND name='pending_cap'").use { cursor ->
+                assertEquals(0, cursor.count)
+            }
+            // Kapsle w klaserach nie mogą ucierpieć na sprzątaniu.
+            db.query("SELECT cap_id FROM cap_position WHERE id = 1").use { cursor ->
+                assert(cursor.moveToFirst())
+                assertEquals(42, cursor.getInt(0))
+            }
+            db.query("SELECT name FROM sqlite_master WHERE type='index' AND name='index_cap_position_cap_id'").use { cursor ->
+                assertEquals(1, cursor.count)
+            }
+        }
+    }
+
+    @Test
+    fun migrateFullChain3to10_dataAndSchemaIntact() {
         helper.createDatabase(TEST_DB, 3).use { db ->
             db.execSQL("INSERT INTO binder (id, name, firestore_id) VALUES (1, 'B', null)")
             db.execSQL("INSERT INTO binder_page (id, binder_id, page_number, firestore_id) VALUES (1, 1, 1, null)")
@@ -130,9 +155,10 @@ class MigrationTest {
         // Łańcuch musi sięgać aktualnej wersji bazy — inaczej ostatnia migracja jest
         // sprawdzana wyłącznie w izolacji, nigdy po przejściu przez wszystkie poprzednie.
         helper.runMigrationsAndValidate(
-            TEST_DB, 9, true,
+            TEST_DB, 10, true,
             CciDatabase.MIGRATION_3_4, CciDatabase.MIGRATION_4_5, CciDatabase.MIGRATION_5_6,
-            CciDatabase.MIGRATION_6_7, CciDatabase.MIGRATION_7_8, CciDatabase.MIGRATION_8_9
+            CciDatabase.MIGRATION_6_7, CciDatabase.MIGRATION_7_8, CciDatabase.MIGRATION_8_9,
+            CciDatabase.MIGRATION_9_10
         ).use { db ->
             db.query("SELECT country, image_url, name, catalog_status FROM cap_cache WHERE cap_id = 42").use { cursor ->
                 assert(cursor.moveToFirst())

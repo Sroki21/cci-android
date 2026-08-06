@@ -17,7 +17,6 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import pl.sroki.cci.android.model.Cap
-import pl.sroki.cci.android.model.caps
 import pl.sroki.cci.android.ui.theme.CCITheme
 import pl.sroki.cci.android.ui.theme.ImageBackground
 import pl.sroki.cci.android.ui.theme.StatusInCollection
@@ -54,7 +53,7 @@ fun CapGridCard(cap: Cap, onClick: () -> Unit, modifier: Modifier = Modifier) {
 fun CapGridViewPreview() {
     CCITheme {
         LazyVerticalGrid(columns = GridCells.Fixed(2)) {
-            items(caps) { cap ->
+            items(previewCaps) { cap ->
                 CapGridCard(cap = cap, onClick = {})
             }
         }

@@ -1,12 +1,10 @@
 package pl.sroki.cci.android.data.datasource.local.dao
 
 import androidx.room.Dao
-import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
-import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
 import pl.sroki.cci.android.data.model.CapBinderInfo
 import pl.sroki.cci.android.data.datasource.local.entity.CapPosition
@@ -21,12 +19,6 @@ interface CapPositionDao {
     // całą pętlę wyjątkiem UNIQUE. Pojedynczy konfliktowy slot nie może uciąć reszty kapsli.
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertOrIgnore(pos: CapPosition): Long
-
-    @Delete
-    suspend fun delete(pos: CapPosition)
-
-    @Update
-    suspend fun update(pos: CapPosition)
 
     @Query("SELECT * FROM cap_position WHERE binder_page_id = :binderPageId")
     fun getByPage(binderPageId: Long): Flow<List<CapPosition>>
@@ -67,12 +59,6 @@ interface CapPositionDao {
 
     @Query("SELECT COUNT(*) FROM cap_position")
     suspend fun countAll(): Int
-
-    @Transaction
-    suspend fun reassign(capId: Long, newBinderPageId: Long, newPosition: Int) {
-        deleteByCapId(capId)
-        insert(CapPosition(binderPageId = newBinderPageId, position = newPosition, capId = capId))
-    }
 
     @Transaction
     suspend fun reassignFull(capId: Long, newPos: CapPosition) {

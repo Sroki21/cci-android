@@ -22,7 +22,6 @@ import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
 import kotlinx.coroutines.delay
 import pl.sroki.cci.android.model.Cap
-import pl.sroki.cci.android.model.caps
 import pl.sroki.cci.android.ui.components.FullSizeLoader
 import pl.sroki.cci.android.ui.theme.CCITheme
 import retrofit2.HttpException
@@ -161,7 +160,7 @@ private class FakePagingSource(private val success: Boolean = false) : PagingSou
         return if (success) {
             delay(2000L)
             LoadResult.Page(
-                data = listOf(caps.first()),
+                data = listOf(previewCaps.first()),
                 prevKey = null,
                 nextKey = null
             )

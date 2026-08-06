@@ -18,7 +18,10 @@ import androidx.room.PrimaryKey
     ],
     indices = [
         Index(value = ["binder_page_id", "position"], unique = true),
-        Index("binder_page_id")
+        Index("binder_page_id"),
+        // cap_id jest kluczem wyszukiwania w pięciu zapytaniach, w tym w dwóch Flow
+        // przeliczanych po każdej zmianie tabeli. Bez indeksu każde z nich robiło pełny skan.
+        Index("cap_id")
     ]
 )
 data class CapPosition(

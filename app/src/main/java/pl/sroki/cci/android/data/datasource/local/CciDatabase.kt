@@ -9,21 +9,18 @@ import pl.sroki.cci.android.data.datasource.local.dao.BinderPageDao
 import pl.sroki.cci.android.data.datasource.local.dao.CapCacheDao
 import pl.sroki.cci.android.data.datasource.local.dao.CapPositionDao
 import pl.sroki.cci.android.data.datasource.local.dao.CountryFlagDao
-import pl.sroki.cci.android.data.datasource.local.dao.PendingCapDao
 import pl.sroki.cci.android.data.datasource.local.entity.Binder
 import pl.sroki.cci.android.data.datasource.local.entity.BinderPage
 import pl.sroki.cci.android.data.datasource.local.entity.CapCache
 import pl.sroki.cci.android.data.datasource.local.entity.CapPosition
 import pl.sroki.cci.android.data.datasource.local.entity.CountryFlag
-import pl.sroki.cci.android.data.datasource.local.entity.PendingCap
 
 @Database(
-    entities = [PendingCap::class, Binder::class, BinderPage::class, CapPosition::class, CapCache::class, CountryFlag::class],
-    version = 9,
+    entities = [Binder::class, BinderPage::class, CapPosition::class, CapCache::class, CountryFlag::class],
+    version = 10,
     exportSchema = true
 )
 abstract class CciDatabase : RoomDatabase() {
-    abstract fun pendingCapDao(): PendingCapDao
     abstract fun binderDao(): BinderDao
     abstract fun binderPageDao(): BinderPageDao
     abstract fun capPositionDao(): CapPositionDao
@@ -124,6 +121,18 @@ abstract class CciDatabase : RoomDatabase() {
                 // Znacznik "katalog nie ma zdjęcia dla tego kapsla". Domyślnie 0, więc istniejące
                 // wpisy bez zdjęcia zostaną odpytane jeszcze raz — i dopiero wtedy oznaczone.
                 db.execSQL("ALTER TABLE `cap_cache` ADD COLUMN `image_unavailable` INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+        val MIGRATION_9_10 = object : Migration(9, 10) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Tabela pending_cap istniała od wersji 1 i nigdy nie dostała ani jednego
+                // konsumenta — encja, DAO i repozytorium były martwe.
+                db.execSQL("DROP TABLE IF EXISTS `pending_cap`")
+                // cap_id występuje w pięciu zapytaniach (JOIN, IN, GROUP BY), a indeksowane były
+                // tylko binder_page_id i (binder_page_id, position). flaggedCountFlow
+                // i flaggedCapsFlow to Flow przeliczane po każdej zmianie obu tabel, czyli pełny
+                // skan cap_position w kółko przez cały skan weryfikacji.
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_cap_position_cap_id` ON `cap_position` (`cap_id`)")
             }
         }
     }

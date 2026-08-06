@@ -13,7 +13,6 @@ import pl.sroki.cci.android.data.datasource.local.dao.BinderPageDao
 import pl.sroki.cci.android.data.datasource.local.dao.CapCacheDao
 import pl.sroki.cci.android.data.datasource.local.dao.CapPositionDao
 import pl.sroki.cci.android.data.datasource.local.dao.CountryFlagDao
-import pl.sroki.cci.android.data.datasource.local.dao.PendingCapDao
 import javax.inject.Singleton
 
 @Module
@@ -32,13 +31,11 @@ object DatabaseModule {
                 CciDatabase.MIGRATION_5_6,
                 CciDatabase.MIGRATION_6_7,
                 CciDatabase.MIGRATION_7_8,
-                CciDatabase.MIGRATION_8_9
+                CciDatabase.MIGRATION_8_9,
+                CciDatabase.MIGRATION_9_10
             )
             .fallbackToDestructiveMigration(dropAllTables = true)
             .build()
-
-    @Provides
-    fun providePendingCapDao(db: CciDatabase): PendingCapDao = db.pendingCapDao()
 
     @Provides
     fun provideBinderDao(db: CciDatabase): BinderDao = db.binderDao()
