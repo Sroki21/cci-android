@@ -31,26 +31,35 @@ class BinderPageRepository @Inject constructor(
 
     suspend fun addPage(binderId: Long): Long {
         val uid = authManager.uid.value
-        return db.withTransaction {
+        val binderFirestoreId = if (uid != null) binderDao.getById(binderId)?.firestoreId else null
+        // Id dokumentu nadaje Firestore lokalnie, bez zapisu — wysyłka czeka na powodzenie
+        // transakcji. Wcześniej scheduleCreate stało w środku db.withTransaction: przerwana
+        // transakcja (limit 15 stron albo kolizja numeru) cofała Rooma, ale dokument strony
+        // zostawał w chmurze i wracał przy najbliższym odtwarzaniu.
+        val firestoreId = if (uid != null && binderFirestoreId != null) {
+            binderPageFirestoreService.newDocumentId(uid)
+        } else null
+
+        val strona = db.withTransaction {
             val count = dao.countByBinderId(binderId)
             check(count < 15) { "Klaser może mieć maksymalnie 15 stron" }
             // Numer z MAX, nie z COUNT — po usunięciu strony ze środka liczba stron przestaje
             // odpowiadać najwyższemu numerowi i COUNT+1 trafiał w numer już zajęty.
             val pageNumber = dao.maxPageNumber(binderId) + 1
-            val firestoreId = if (uid != null) {
-                val binder = binderDao.getById(binderId)
-                binder?.firestoreId?.let { binderFirestoreId ->
-                    binderPageFirestoreService.scheduleCreate(uid, binderFirestoreId, pageNumber)
-                }
-            } else null
-            try {
+            val id = try {
                 dao.insert(BinderPage(binderId = binderId, pageNumber = pageNumber, firestoreId = firestoreId))
             } catch (e: SQLiteConstraintException) {
                 // Nie powinno się zdarzyć po przejściu na MAX+1, ale do UI musi iść zdanie,
                 // a nie surowy wyjątek SQLite — tak jak w updatePageNumber i moveToBinder.
                 throw IllegalStateException("Strona o numerze $pageNumber już istnieje w tym klaserze")
             }
+            id to pageNumber
         }
+
+        if (uid != null && binderFirestoreId != null && firestoreId != null) {
+            binderPageFirestoreService.scheduleCreate(uid, firestoreId, binderFirestoreId, strona.second)
+        }
+        return strona.first
     }
 
     suspend fun updatePageNumber(pageId: Long, newPageNumber: Int) {

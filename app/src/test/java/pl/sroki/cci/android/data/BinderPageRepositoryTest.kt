@@ -1,8 +1,10 @@
 package pl.sroki.cci.android.data
 
+import android.database.sqlite.SQLiteConstraintException
 import androidx.room.withTransaction
 import io.mockk.coEvery
 import io.mockk.coVerify
+import io.mockk.coVerifyOrder
 import io.mockk.mockk
 import io.mockk.mockkStatic
 import io.mockk.slot
@@ -15,6 +17,7 @@ import org.junit.Test
 import pl.sroki.cci.android.data.datasource.local.CciDatabase
 import pl.sroki.cci.android.data.datasource.local.dao.BinderDao
 import pl.sroki.cci.android.data.datasource.local.dao.BinderPageDao
+import pl.sroki.cci.android.data.datasource.local.entity.Binder
 import pl.sroki.cci.android.data.datasource.local.entity.BinderPage
 import pl.sroki.cci.android.data.datasource.remote.firestore.BinderPageFirestoreService
 
@@ -50,7 +53,9 @@ class BinderPageRepositoryTest {
         binderDao = mockk(relaxed = true)
         firestore = mockk(relaxed = true)
         val authManager = mockk<FirebaseAuthManager>()
-        coEvery { authManager.uid } returns MutableStateFlow(null)
+        coEvery { authManager.uid } returns MutableStateFlow(UID)
+        coEvery { binderDao.getById(BINDER_ID) } returns Binder(id = BINDER_ID, name = "Belgia", firestoreId = "binder-fs-1")
+        coEvery { firestore.newDocumentId(UID) } returns "page-fs-1"
 
         repo = BinderPageRepository(
             db = db,
@@ -101,8 +106,12 @@ class BinderPageRepositoryTest {
         assertEquals(21, wstawiona.captured.pageNumber)
     }
 
+    /**
+     * E2: scheduleCreate stało wewnątrz db.withTransaction. Przerwana transakcja cofała Rooma,
+     * ale dokumentu strony w chmurze nikt już nie wycofywał — wracał przy najbliższym restore.
+     */
     @Test
-    fun `pelny klaser odrzuca dodanie strony`() = runTest {
+    fun `pelny klaser nie zostawia dokumentu strony w chmurze`() = runTest {
         coEvery { dao.countByBinderId(BINDER_ID) } returns 15
         coEvery { dao.maxPageNumber(BINDER_ID) } returns 15
 
@@ -110,6 +119,32 @@ class BinderPageRepositoryTest {
 
         assertTrue(wynik.isFailure)
         coVerify(exactly = 0) { dao.insert(any()) }
-        coVerify(exactly = 0) { firestore.scheduleCreate(any(), any(), any()) }
+        coVerify(exactly = 0) { firestore.scheduleCreate(any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `nieudany zapis lokalny nie wysyla strony do chmury`() = runTest {
+        coEvery { dao.countByBinderId(BINDER_ID) } returns 2
+        coEvery { dao.maxPageNumber(BINDER_ID) } returns 3
+        coEvery { dao.insert(any()) } throws mockk<SQLiteConstraintException>(relaxed = true)
+
+        val wynik = runCatching { repo.addPage(BINDER_ID) }
+
+        assertTrue(wynik.isFailure)
+        coVerify(exactly = 0) { firestore.scheduleCreate(any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `chmura dostaje strone dopiero po zapisie lokalnym`() = runTest {
+        coEvery { dao.countByBinderId(BINDER_ID) } returns 2
+        coEvery { dao.maxPageNumber(BINDER_ID) } returns 3
+        coEvery { dao.insert(any()) } returns 99L
+
+        repo.addPage(BINDER_ID)
+
+        coVerifyOrder {
+            dao.insert(any())
+            firestore.scheduleCreate(UID, "page-fs-1", "binder-fs-1", 4)
+        }
     }
 }

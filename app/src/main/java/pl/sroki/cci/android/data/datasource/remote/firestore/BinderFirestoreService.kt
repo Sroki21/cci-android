@@ -11,10 +11,16 @@ class BinderFirestoreService @Inject constructor(private val firestore: Firebase
 
     private fun col(uid: String) = firestore.collection("users/$uid/binders")
 
-    fun scheduleCreate(uid: String, name: String): String {
-        val ref = col(uid).document()
-        ref.set(mapOf("name" to name, "updatedAt" to FieldValue.serverTimestamp()))
-        return ref.id
+    /**
+     * Identyfikator nowego dokumentu. Firestore nadaje go lokalnie, bez sieci i bez zapisu, więc
+     * można go wpisać do Roomu ZANIM cokolwiek poleci do chmury — a wysłać dopiero wtedy, gdy
+     * zapis lokalny się powiódł. Bez tego rozdziału nieudany insert zostawiał dokument-ducha.
+     */
+    fun newDocumentId(uid: String): String = col(uid).document().id
+
+    fun scheduleCreate(uid: String, firestoreId: String, name: String) {
+        col(uid).document(firestoreId)
+            .set(mapOf("name" to name, "updatedAt" to FieldValue.serverTimestamp()))
     }
 
     fun scheduleUpdate(uid: String, firestoreId: String, name: String) {

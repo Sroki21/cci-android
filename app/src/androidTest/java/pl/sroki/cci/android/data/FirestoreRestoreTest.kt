@@ -57,10 +57,12 @@ class FirestoreRestoreTest {
             purchasedCapsLocalStore = mockk(relaxed = true)
         )
         // Seed Firestore: 1 Binder → 1 BinderPage → 1 CapPosition (ze snapshotem)
-        val binderFsId = binderFs.scheduleCreate(uid, "Restore Test Klaser")
-        val pageFsId = binderPageFs.scheduleCreate(uid, binderFsId, 1)
+        val binderFsId = binderFs.newDocumentId(uid)
+        binderFs.scheduleCreate(uid, binderFsId, "Restore Test Klaser")
+        val pageFsId = binderPageFs.newDocumentId(uid)
+        binderPageFs.scheduleCreate(uid, pageFsId, binderFsId, 1)
         capPositionFs.scheduleCreate(
-            uid, pageFsId, 3, 77L,
+            uid, capPositionFs.newDocumentId(uid), pageFsId, 3, 77L,
             pl.sroki.cci.android.data.model.CapSnapshot(
                 name = "Test Cap",
                 country = "Poland",

@@ -12,15 +12,19 @@ class CapPositionFirestoreService @Inject constructor(private val firestore: Fir
 
     private fun col(uid: String) = firestore.collection("users/$uid/cap_positions")
 
+    /** Patrz [BinderFirestoreService.newDocumentId] — id bez sieci, wysyłka dopiero po Roomie. */
+    fun newDocumentId(uid: String): String = col(uid).document().id
+
     fun scheduleCreate(
         uid: String,
+        firestoreId: String,
         binderPageFirestoreId: String,
         position: Int,
         capId: Long,
         snapshot: CapSnapshot? = null,
         producerSelection: ProducerSelection? = null
-    ): String {
-        val ref = col(uid).document()
+    ) {
+        val ref = col(uid).document(firestoreId)
         // Pola snapshotu prefiksowane "cap" — "updatedAt" jest już zajęte przez znacznik sync.
         val data = buildMap<String, Any?> {
             put("binderPageFirestoreId", binderPageFirestoreId)
@@ -45,7 +49,6 @@ class CapPositionFirestoreService @Inject constructor(private val firestore: Fir
             }
         }
         ref.set(data)
-        return ref.id
     }
 
     fun scheduleDelete(uid: String, firestoreId: String) {

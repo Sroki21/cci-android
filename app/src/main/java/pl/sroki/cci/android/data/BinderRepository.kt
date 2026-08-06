@@ -27,8 +27,13 @@ class BinderRepository @Inject constructor(
     suspend fun create(name: String): Long {
         require(name.isNotBlank()) { "Nazwa klasera nie może być pusta" }
         val uid = authManager.uid.value
-        val firestoreId = uid?.let { binderFirestoreService.scheduleCreate(it, name) }
-        return binderDao.insert(Binder(name = name, firestoreId = firestoreId))
+        // Id dokumentu powstaje lokalnie, więc trafia do Roomu przed jakąkolwiek wysyłką.
+        val firestoreId = uid?.let { binderFirestoreService.newDocumentId(it) }
+        val id = binderDao.insert(Binder(name = name, firestoreId = firestoreId))
+        // Chmura dopiero po udanym zapisie lokalnym — inaczej nieudany insert zostawiał klaser
+        // w Firestore, a ten wracał przy najbliższym odtwarzaniu.
+        if (uid != null && firestoreId != null) binderFirestoreService.scheduleCreate(uid, firestoreId, name)
+        return id
     }
 
     suspend fun delete(binderId: Long) {

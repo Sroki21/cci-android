@@ -48,45 +48,58 @@ class CapPositionRepository @Inject constructor(
     suspend fun assign(binderPageId: Long, position: Int, capId: Long, snapshot: CapSnapshot? = null): Long {
         require(position in 1..POSITIONS_PER_PAGE) { "Pozycja musi być w zakresie 1-$POSITIONS_PER_PAGE" }
         val uid = authManager.uid.value
-        val firestoreId = if (uid != null) {
-            val page = binderPageDao.getById(binderPageId)
-            page?.firestoreId?.let {
-                capPositionFirestoreService.scheduleCreate(
-                    uid, it, position, capId, snapshot, producerSelectionOf(capId)
-                )
-            }
+        val pageFirestoreId = if (uid != null) binderPageDao.getById(binderPageId)?.firestoreId else null
+        // Id dokumentu bez sieci i bez zapisu; wysyłka po udanym insercie. Wcześniej dokument
+        // pozycji leciał do chmury PRZED Roomem, więc kolizja UNIQUE ("Pozycja jest już zajęta")
+        // zostawiała pozycję, która istnieje w Firestore i nie istnieje lokalnie — a ta wracała
+        // przy najbliższym odtwarzaniu i potrafiła wyprzeć z kolekcji inny kapsel.
+        val firestoreId = if (uid != null && pageFirestoreId != null) {
+            capPositionFirestoreService.newDocumentId(uid)
         } else null
-        try {
-            val rowId = dao.insert(CapPosition(binderPageId = binderPageId, position = position, capId = capId, firestoreId = firestoreId))
-            // Kapsel w klaserze nie jest już "zakupiony, ale nieprzypięty". Bez tego zostawał
-            // na liście na zawsze — zakładka i tak go odfiltrowywała, ale zbiór puchł
-            // o wpisy, które nigdy niczego nie pokażą, i szedł w tej postaci do Firestore.
-            purchasedCapsLocalStore.remove(capId)
-            return rowId
+
+        val rowId = try {
+            dao.insert(CapPosition(binderPageId = binderPageId, position = position, capId = capId, firestoreId = firestoreId))
         } catch (e: SQLiteConstraintException) {
             throw IllegalStateException("Pozycja $position jest już zajęta na tej stronie")
         }
+        if (uid != null && pageFirestoreId != null && firestoreId != null) {
+            capPositionFirestoreService.scheduleCreate(
+                uid, firestoreId, pageFirestoreId, position, capId, snapshot, producerSelectionOf(capId)
+            )
+        }
+        // Kapsel w klaserze nie jest już "zakupiony, ale nieprzypięty". Bez tego zostawał
+        // na liście na zawsze — zakładka i tak go odfiltrowywała, ale zbiór puchł
+        // o wpisy, które nigdy niczego nie pokażą, i szedł w tej postaci do Firestore.
+        purchasedCapsLocalStore.remove(capId)
+        return rowId
     }
 
     suspend fun reassign(capId: Long, newBinderPageId: Long, newPosition: Int, snapshot: CapSnapshot? = null) {
         require(newPosition in 1..POSITIONS_PER_PAGE) { "Pozycja musi być w zakresie 1-$POSITIONS_PER_PAGE" }
         val uid = authManager.uid.value
         val oldPos = dao.getByCapId(capId)
-        val newFirestoreId = if (uid != null) {
-            oldPos?.firestoreId?.let { capPositionFirestoreService.scheduleDelete(uid, it) }
-            val newPage = binderPageDao.getById(newBinderPageId)
-            newPage?.firestoreId?.let {
-                capPositionFirestoreService.scheduleCreate(
-                    uid, it, newPosition, capId, snapshot, producerSelectionOf(capId)
-                )
-            }
+        val newPageFirestoreId = if (uid != null) binderPageDao.getById(newBinderPageId)?.firestoreId else null
+        val newFirestoreId = if (uid != null && newPageFirestoreId != null) {
+            capPositionFirestoreService.newDocumentId(uid)
         } else null
+
         try {
             dao.reassignFull(capId, CapPosition(binderPageId = newBinderPageId, position = newPosition, capId = capId, firestoreId = newFirestoreId))
-            purchasedCapsLocalStore.remove(capId)
         } catch (e: SQLiteConstraintException) {
             throw IllegalStateException("Pozycja $newPosition jest już zajęta na tej stronie")
         }
+        // Chmura dopiero po udanym przeniesieniu w Roomie. Wcześniej kasowanie starego dokumentu
+        // i tworzenie nowego szło PRZED zapisem lokalnym, więc nieudane przeniesienie zostawiało
+        // chmurę przestawioną, a Rooma na starej pozycji — rozjazd wychodził dopiero przy restore.
+        if (uid != null) {
+            oldPos?.firestoreId?.let { capPositionFirestoreService.scheduleDelete(uid, it) }
+            if (newPageFirestoreId != null && newFirestoreId != null) {
+                capPositionFirestoreService.scheduleCreate(
+                    uid, newFirestoreId, newPageFirestoreId, newPosition, capId, snapshot, producerSelectionOf(capId)
+                )
+            }
+        }
+        purchasedCapsLocalStore.remove(capId)
     }
 
     /** Odśwież snapshot pozycji w Firestore (po „zaakceptuj nowy" w rozjeździe). */

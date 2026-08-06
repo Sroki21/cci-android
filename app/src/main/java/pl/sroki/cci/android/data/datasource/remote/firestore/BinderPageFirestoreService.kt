@@ -11,16 +11,17 @@ class BinderPageFirestoreService @Inject constructor(private val firestore: Fire
 
     private fun col(uid: String) = firestore.collection("users/$uid/binder_pages")
 
-    fun scheduleCreate(uid: String, binderFirestoreId: String, pageNumber: Int): String {
-        val ref = col(uid).document()
-        ref.set(
+    /** Patrz [BinderFirestoreService.newDocumentId] — id bez sieci, wysyłka dopiero po Roomie. */
+    fun newDocumentId(uid: String): String = col(uid).document().id
+
+    fun scheduleCreate(uid: String, firestoreId: String, binderFirestoreId: String, pageNumber: Int) {
+        col(uid).document(firestoreId).set(
             mapOf(
                 "binderFirestoreId" to binderFirestoreId,
                 "pageNumber" to pageNumber,
                 "updatedAt" to FieldValue.serverTimestamp()
             )
         )
-        return ref.id
     }
 
     fun scheduleDelete(uid: String, firestoreId: String) {
