@@ -14,6 +14,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import pl.sroki.cci.android.ui.components.ErrorWithRetry
 import pl.sroki.cci.android.ui.components.FullSizeLoader
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -41,6 +42,7 @@ fun CountriesListScreen(
         Box(Modifier.padding(innerPadding)) {
             when {
                 uiState.isLoading -> FullSizeLoader()
+                uiState.error != null -> ErrorWithRetry(uiState.error!!, onRetry = viewModel::retry)
                 uiState.countries.isEmpty() -> Box(
                     Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center

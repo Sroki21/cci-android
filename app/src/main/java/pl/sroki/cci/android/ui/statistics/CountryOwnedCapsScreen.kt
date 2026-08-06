@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import pl.sroki.cci.android.model.Cap
 import pl.sroki.cci.android.ui.catalog.caps.CapGridCard
+import pl.sroki.cci.android.ui.components.ErrorWithRetry
 import pl.sroki.cci.android.ui.components.FullSizeLoader
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -47,6 +48,7 @@ fun CountryOwnedCapsScreen(
         Box(Modifier.padding(innerPadding)) {
             when {
                 uiState.isLoading -> FullSizeLoader()
+                uiState.error != null -> ErrorWithRetry(uiState.error!!, onRetry = viewModel::retry)
                 uiState.caps.isEmpty() -> Box(
                     Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
