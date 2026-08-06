@@ -96,6 +96,28 @@ class ChallengeInterceptorTest {
     }
 
     @Test
+    fun `rezygnacja zeruje stan, zeby kolejny challenge znow otworzyl WebView`() {
+        // Bez tego flaga zostawała podniesiona, a niedokończony sygnał trafiał do kolejnych
+        // żądań — nic już nie otwierało WebView i wszystko wisiało do restartu aplikacji.
+        every { clearanceStore.requireChallenge() } returns CompletableDeferred(false)
+        val chain = chain(request(), mutableListOf(403 to true))
+
+        interceptor.intercept(chain)
+
+        io.mockk.verify(exactly = 1) { clearanceStore.abandonChallenge() }
+    }
+
+    @Test
+    fun `udane clearance nie zeruje stanu`() {
+        every { clearanceStore.requireChallenge() } returns CompletableDeferred(true)
+        val chain = chain(request(), mutableListOf(403 to true, 200 to false))
+
+        interceptor.intercept(chain)
+
+        io.mockk.verify(exactly = 0) { clearanceStore.abandonChallenge() }
+    }
+
+    @Test
     fun `po wyczerpaniu prob oddaje 403 zamiast wisiec`() {
         every { clearanceStore.requireChallenge() } returns CompletableDeferred(true)
         // Bramka uparcie flaguje mimo clearance — po MAX_ATTEMPTS przestajemy próbować.

@@ -36,8 +36,14 @@ class ChallengeInterceptor(private val clearanceStore: ClearanceStore) : Interce
             val signal = clearanceStore.requireChallenge()
             val cleared = runBlocking { withTimeoutOrNull(WAIT_MS) { signal.await() } } ?: false
             Log.d("CCI_CF", "clearance dla ${chain.request().url.encodedPath}: proba ${attempts + 1}, cleared=$cleared")
-            // Użytkownik zamknął challenge bez rozwiązania — nie ma sensu ponawiać.
-            if (!cleared) break
+            if (!cleared) {
+                // Użytkownik zamknął challenge albo minął timeout — nie ma sensu ponawiać. Stan
+                // trzeba jednak wyzerować, inaczej flaga zostaje podniesiona, a niedokończony
+                // sygnał trafia do kolejnych żądań: nic już nie otwiera WebView i wszystko wisi
+                // do restartu aplikacji.
+                clearanceStore.abandonChallenge()
+                break
+            }
             response.close()
             attempts++
             response = chain.proceed(chain.request())

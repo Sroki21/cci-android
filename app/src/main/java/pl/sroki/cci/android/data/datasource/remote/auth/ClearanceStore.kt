@@ -57,8 +57,11 @@ class ClearanceStore @Inject constructor(
     // Na tym czeka zablokowane żądanie, aż użytkownik rozwiąże challenge w WebView. Współdzielone
     // przez wszystkie żądania, które trafiły na bramkę naraz: WebView otwiera się raz, a po
     // zdobyciu clearance wszystkie wstrzymane żądania budzą się i ponawiają. true = jest clearance.
-    @Volatile
     private var pending: CompletableDeferred<Boolean>? = null
+
+    // Wartość cf_clearance, którą bramka właśnie odrzuciła. Bez niej nie da się odróżnić
+    // rozwiązanego challengu od cookie, które i tak już mieliśmy — patrz [isFreshClearance].
+    private var rejectedClearance: String? = null
 
     /**
      * Zgłasza wykryty challenge i zwraca sygnał, na którym [ChallengeInterceptor] czeka do czasu
@@ -70,6 +73,8 @@ class ClearanceStore @Inject constructor(
         val signal = if (existing != null && !existing.isCompleted) {
             existing
         } else {
+            // Nowy challenge: zapamiętaj clearance, z którym żądanie właśnie odbiło się od bramki.
+            rejectedClearance = currentClearance()
             Log.d("CCI_CF", "challenge wykryty — otwieram WebView")
             CompletableDeferred<Boolean>().also { pending = it }
         }
@@ -84,11 +89,32 @@ class ClearanceStore @Inject constructor(
      * „brak clearance"), żeby nie wisiały aż do timeoutu.
      */
     @Synchronized
-    fun dismissChallenge() {
+    fun dismissChallenge() = releaseChallenge()
+
+    /**
+     * Rezygnacja po stronie interceptora: oczekiwanie wygasło albo skończyły się próby.
+     *
+     * Bez tego mechanizm zostawał w stanie, z którego wychodził tylko restart aplikacji: flaga
+     * [challengeRequired] zostawała `true`, więc nawigacja (reagująca na przejście `false → true`)
+     * nie otwierała już WebView, a nieukończone [pending] było oddawane kolejnym żądaniom jako
+     * ten sam martwy sygnał — czekały pełny timeout i padały.
+     */
+    @Synchronized
+    fun abandonChallenge() {
+        Log.d("CCI_CF", "rezygnacja z challengu — zeruje stan, kolejny znow otworzy WebView")
+        releaseChallenge()
+    }
+
+    private fun releaseChallenge() {
         _challengeRequired.value = false
         pending?.complete(false)
         pending = null
     }
+
+    private fun currentClearance(): String? =
+        cookieJar.loadForRequest(baseUrl.toHttpUrl())
+            .firstOrNull { it.name == CLEARANCE_COOKIE }
+            ?.value
 
     /**
      * Przenosi cookies rozwiązanego challengu z WebView do jara OkHttpa i zapamiętuje UA WebView.
@@ -96,8 +122,10 @@ class ClearanceStore @Inject constructor(
      */
     @Synchronized
     fun syncFromWebView(webViewUserAgent: String): Boolean {
-        userAgent = webViewUserAgent
-        prefs.edit().putString("user_agent", webViewUserAgent).apply()
+        if (userAgent != webViewUserAgent) {
+            userAgent = webViewUserAgent
+            prefs.edit().putString("user_agent", webViewUserAgent).apply()
+        }
 
         val url = baseUrl.toHttpUrl()
         val rawCookies = CookieManager.getInstance().getCookie(baseUrl) ?: return false
@@ -106,15 +134,29 @@ class ClearanceStore @Inject constructor(
         if (cookies.isEmpty()) return false
 
         cookieJar.saveFromResponse(url, cookies)
-        val hasClearance = cookies.any { it.name == CLEARANCE_COOKIE }
-        Log.d("CCI_CF", "sync z WebView: ${cookies.size} cookies, cf_clearance=$hasClearance")
-        if (hasClearance) {
+        val fresh = isFreshClearance(cookies, rejectedClearance)
+        Log.d("CCI_CF", "sync z WebView: ${cookies.size} cookies, swieze cf_clearance=$fresh")
+        if (fresh) {
             _challengeRequired.value = false
-            // Budzi wstrzymane żądania — teraz jar ma cf_clearance, więc ponowienie przejdzie.
+            // Budzi wstrzymane żądania — teraz jar ma świeże cf_clearance, więc ponowienie przejdzie.
             pending?.complete(true)
             pending = null
         }
-        return hasClearance
+        return fresh
+    }
+
+    /**
+     * Czy przeniesione cookies niosą `cf_clearance` **inne** niż to, które bramka odrzuciła.
+     *
+     * Sama obecność cookie nic nie znaczy: w `CookieManager` WebView zwykle siedzi to samo,
+     * właśnie unieważnione clearance. Uznawanie challengu za rozwiązany po samej obecności
+     * zamykało ekran już na stronie „Just a moment…", ponowienie szło z tym samym cookie i
+     * wracało z kolejnym challengem — trzy takie cykle po ~0,7 s wyglądały jak migające
+     * okienko zakończone błędem, bo użytkownik nie miał kiedy niczego kliknąć.
+     */
+    fun isFreshClearance(cookies: List<Cookie>, rejected: String?): Boolean {
+        val clearance = cookies.firstOrNull { it.name == CLEARANCE_COOKIE }?.value
+        return clearance != null && clearance != rejected
     }
 
     /**

@@ -3,6 +3,7 @@ package pl.sroki.cci.android.data.datasource.remote.auth
 import io.mockk.mockk
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -101,5 +102,35 @@ class ClearanceStoreTest {
         val cookies = store.parseWebViewCookies("cf_clearance=abc", url, now)
 
         assertEquals(1, store.selectTransferable(cookies, appHasSession = true).size)
+    }
+
+    @Test
+    fun `to samo clearance, ktore bramka odrzucila, nie jest swieze`() {
+        // Sedno migających okienek: WebView oddaje cookie, które już mieliśmy i które przed
+        // chwilą zostało unieważnione — ekran zamykał się na stronie „Just a moment…".
+        val cookies = store.parseWebViewCookies("cf_clearance=stare", url, now)
+
+        assertFalse(store.isFreshClearance(cookies, rejected = "stare"))
+    }
+
+    @Test
+    fun `nowe clearance po rozwiazanym challengu jest swieze`() {
+        val cookies = store.parseWebViewCookies("cf_clearance=nowe", url, now)
+
+        assertTrue(store.isFreshClearance(cookies, rejected = "stare"))
+    }
+
+    @Test
+    fun `pierwszy challenge bez wczesniejszego clearance uznaje kazde za swieze`() {
+        val cookies = store.parseWebViewCookies("cf_clearance=pierwsze", url, now)
+
+        assertTrue(store.isFreshClearance(cookies, rejected = null))
+    }
+
+    @Test
+    fun `brak clearance nigdy nie jest swiezy`() {
+        val cookies = store.parseWebViewCookies("crowncapsinfo-session=abc", url, now)
+
+        assertFalse(store.isFreshClearance(cookies, rejected = null))
     }
 }
