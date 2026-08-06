@@ -6,9 +6,12 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Path
+import android.graphics.RectF
 import androidx.core.graphics.PathParser
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import org.xmlpull.v1.XmlPullParser
 import org.xmlpull.v1.XmlPullParserFactory
@@ -36,14 +39,22 @@ class WorldMap(
     private val hitTestBitmap: Bitmap,
     private val indexToIso: List<String>,
 ) {
-    /** Kod ISO kraju zawierającego punkt (x, y) w przestrzeni viewBox, lub null. */
-    fun countryAt(x: Float, y: Float): String? {
-        val px = (x - viewBox.minX).toInt()
-        val py = (y - viewBox.minY).toInt()
-        if (px !in 0 until hitTestBitmap.width || py !in 0 until hitTestBitmap.height) return null
-        val packed = hitTestBitmap.getPixel(px, py) and 0x00FFFFFF
-        if (packed == 0) return null
-        return indexToIso.getOrNull(packed - 1)
+    /**
+     * Kod ISO kraju zawierającego punkt (x, y) w przestrzeni viewBox, lub null.
+     *
+     * @param tolerance promień (w jednostkach viewBox), w którym szukamy najbliższego kraju,
+     *   gdy pod samym punktem jest morze. Patrz [hitTestIndex].
+     */
+    fun countryAt(x: Float, y: Float, tolerance: Float = 0f): String? {
+        val index = hitTestIndex(x, y, viewBox, tolerance) { px, py ->
+            if (px !in 0 until hitTestBitmap.width || py !in 0 until hitTestBitmap.height) {
+                0
+            } else {
+                hitTestBitmap.getPixel(px, py) and 0x00FFFFFF
+            }
+        }
+        if (index == 0) return null
+        return indexToIso.getOrNull(index - 1)
     }
 }
 
@@ -58,10 +69,14 @@ class WorldMapParser @Inject constructor(
     @Volatile
     private var cached: WorldMap? = null
 
+    // @Volatile daje widoczność, nie atomowość: dwa równoległe wejścia na mapę mijały się między
+    // sprawdzeniem a zapisem i parsowały SVG dwa razy, budując dwie bitmapy po kilka MB.
+    private val mutex = Mutex()
+
     suspend fun load(): WorldMap {
         cached?.let { return it }
         return withContext(Dispatchers.Default) {
-            cached ?: parse().also { cached = it }
+            mutex.withLock { cached ?: parse().also { cached = it } }
         }
     }
 
@@ -100,16 +115,26 @@ class WorldMapParser @Inject constructor(
 
     /**
      * Rysuje każdy kraj unikalnym kolorem-indeksem (1..N, spakowanym w RGB) do bitmapy
-     * bez antyaliasingu, w skali 1px = 1 jednostka viewBox. Indeks 0 (czarny) = brak kraju.
+     * bez antyaliasingu, w skali [HIT_TEST_SCALE] px na jednostkę viewBox. Indeks 0 (czarny)
+     * = brak kraju.
+     *
+     * Skala 1:1 dawała bitmapę 784×458 dla całego świata, więc państwa mniejsze od piksela
+     * (Malta, Singapur, Luksemburg, Czarnogóra, Cypr, Liban) nie zamalowywały niczego i nie dało
+     * się ich tapnąć nawet po maksymalnym przybliżeniu. Podwojenie skali kosztuje ~5,7 MB zamiast
+     * ~1,4 MB i samo w sobie nie wystarcza — dlatego druga pętla dorysowuje kropkę o średnicy
+     * [MIN_COUNTRY_PX] każdemu krajowi, którego cała ścieżka jest mniejsza niż ta kropka.
+     * Idzie ona PO wszystkich krajach, żeby większy sąsiad jej nie zamalował.
      */
     private fun buildHitTestBitmap(
         countries: Map<String, Path>,
         viewBox: ViewBox,
     ): Pair<Bitmap, List<String>> {
-        val width = viewBox.width.toInt().coerceAtLeast(1)
-        val height = viewBox.height.toInt().coerceAtLeast(1)
+        val width = (viewBox.width * HIT_TEST_SCALE).toInt().coerceAtLeast(1)
+        val height = (viewBox.height * HIT_TEST_SCALE).toInt().coerceAtLeast(1)
         val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
+        // Kolejność ma znaczenie: scale, potem translate daje px = (v − min) · HIT_TEST_SCALE.
+        canvas.scale(HIT_TEST_SCALE.toFloat(), HIT_TEST_SCALE.toFloat())
         canvas.translate(-viewBox.minX, -viewBox.minY)
         val paint = Paint().apply {
             isAntiAlias = false
@@ -117,13 +142,25 @@ class WorldMapParser @Inject constructor(
         }
         val indexToIso = ArrayList<String>(countries.size)
         countries.entries.forEachIndexed { i, (iso, path) ->
-            val index = i + 1 // 0 zarezerwowane pod "brak kraju"
-            paint.color = Color.argb(0xFF, (index shr 16) and 0xFF, (index shr 8) and 0xFF, index and 0xFF)
+            paint.color = indexColor(i + 1) // 0 zarezerwowane pod "brak kraju"
             canvas.drawPath(path, paint)
             indexToIso += iso
         }
+
+        val bounds = RectF()
+        val minSize = MIN_COUNTRY_PX.toFloat() / HIT_TEST_SCALE
+        countries.values.forEachIndexed { i, path ->
+            path.computeBounds(bounds, true)
+            if (bounds.width() < minSize || bounds.height() < minSize) {
+                paint.color = indexColor(i + 1)
+                canvas.drawCircle(bounds.centerX(), bounds.centerY(), minSize / 2f, paint)
+            }
+        }
         return bitmap to indexToIso
     }
+
+    private fun indexColor(index: Int): Int =
+        Color.argb(0xFF, (index shr 16) and 0xFF, (index shr 8) and 0xFF, index and 0xFF)
 
     private fun addPath(into: LinkedHashMap<String, Path>, iso: String, pathData: String) {
         val sub = runCatching { PathParser.createPathFromPathData(pathData) }.getOrNull() ?: return

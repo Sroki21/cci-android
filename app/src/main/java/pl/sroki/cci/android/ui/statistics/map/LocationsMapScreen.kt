@@ -143,6 +143,9 @@ private fun SuccessContent(
 
 private const val MAX_ZOOM = 16f
 
+/** Promień wokół tapnięcia, w którym szukamy kraju, gdy palec trafił obok — patrz hitTestIndex. */
+private const val TAP_TOLERANCE_DP = 12
+
 @Composable
 private fun WorldMapCanvas(
     state: LocationsMapUiState.Success,
@@ -212,12 +215,16 @@ private fun WorldMapCanvas(
                 }
                 .pointerInput(state.map, fit) {
                     val currentFit = fit ?: return@pointerInput
+                    val tapToleranceDp = TAP_TOLERANCE_DP.dp.toPx()
                     detectTapGestures { tap ->
                         // Ekran -> przestrzeń viewBox (odwrócenie transformacji rysowania).
                         val base = (tap - userOffset) / userScale
                         val vx = (base.x - currentFit.offset.x) / currentFit.scale + viewBox.minX
                         val vy = (base.y - currentFit.offset.y) / currentFit.scale + viewBox.minY
-                        val iso = state.map.countryAt(vx, vy) ?: return@detectTapGestures
+                        // Stała tolerancja na ekranie przeliczona na jednostki viewBox: im większe
+                        // przybliżenie, tym mniejszy promień, bo tym precyzyjniej da się celować.
+                        val tolerance = tapToleranceDp / (currentFit.scale * userScale)
+                        val iso = state.map.countryAt(vx, vy, tolerance) ?: return@detectTapGestures
                         if (state.countries.containsKey(iso)) onCountrySelected(iso)
                     }
                 }
