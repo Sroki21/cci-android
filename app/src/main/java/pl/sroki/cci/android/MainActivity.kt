@@ -34,6 +34,8 @@ import pl.sroki.cci.android.ui.catalog.countries.Countries
 import pl.sroki.cci.android.ui.catalog.countries.CountriesViewModel
 import pl.sroki.cci.android.ui.catalog.country.CountryCapsScreen
 import pl.sroki.cci.android.ui.catalog.latest.LatestCapsScreen
+import pl.sroki.cci.android.ui.auth.ClearanceScreen
+import pl.sroki.cci.android.ui.auth.ClearanceViewModel
 import pl.sroki.cci.android.ui.auth.LoginScreen
 import pl.sroki.cci.android.ui.binders.BindersScreen
 import pl.sroki.cci.android.ui.catalog.caps.advanced.AdvancedSearchScreen
@@ -77,6 +79,16 @@ fun Navigation(
 ) {
     val navController = rememberNavController()
     val assignedCapIds by assignedCapsViewModel.assignedCapIds.collectAsStateWithLifecycle()
+
+    // Gdy interceptor napotka bramkę Cloudflare, otwieramy ekran WebView z rozwiązaniem challengu.
+    // launchSingleTop, żeby seria zablokowanych żądań nie ustawiła kilku kopii ekranu na stosie.
+    val clearanceViewModel = hiltViewModel<ClearanceViewModel>()
+    val challengeRequired by clearanceViewModel.challengeRequired.collectAsStateWithLifecycle()
+    LaunchedEffect(challengeRequired) {
+        if (challengeRequired) {
+            navController.navigate(Screen.Clearance.route) { launchSingleTop = true }
+        }
+    }
 
     CompositionLocalProvider(LocalAssignedCapIds provides assignedCapIds) {
     NavHost(
@@ -212,6 +224,15 @@ fun Navigation(
         }
         composable(route = Screen.Login.route) {
             LoginScreen(onLoginSuccess = { navController.popBackStack() })
+        }
+        composable(route = Screen.Clearance.route) {
+            ClearanceScreen(
+                onDone = {
+                    if (!navController.popBackStack(Screen.Clearance.route, inclusive = true)) {
+                        navController.popBackStack()
+                    }
+                }
+            )
         }
         composable(route = Screen.Purchased.route) {
             PurchasedScreen(

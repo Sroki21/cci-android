@@ -25,8 +25,11 @@ import pl.sroki.cci.android.data.datasource.remote.ProducerApiService
 import pl.sroki.cci.android.data.datasource.remote.auth.AcceptJsonInterceptor
 import pl.sroki.cci.android.data.datasource.remote.auth.AuthApiService
 import pl.sroki.cci.android.data.datasource.remote.auth.BearerTokenInterceptor
+import pl.sroki.cci.android.data.datasource.remote.auth.ChallengeInterceptor
+import pl.sroki.cci.android.data.datasource.remote.auth.ClearanceStore
 import pl.sroki.cci.android.data.datasource.remote.auth.CsrfInterceptor
 import pl.sroki.cci.android.data.datasource.remote.auth.ReauthInterceptor
+import pl.sroki.cci.android.data.datasource.remote.auth.UserAgentInterceptor
 import retrofit2.Converter
 import retrofit2.Retrofit
 import javax.inject.Named
@@ -60,7 +63,8 @@ object NetworkModule {
     fun provideOkHttpClient(
         cookieJar: PersistentCookieJar,
         sessionRepository: SessionRepository,
-        sessionRefresher: Lazy<SessionRefresher>
+        sessionRefresher: Lazy<SessionRefresher>,
+        clearanceStore: ClearanceStore
     ): OkHttpClient {
         val capsDetailRegex = Regex("/api/v1/caps/\\d+$")
         val builder = OkHttpClient.Builder()
@@ -68,6 +72,10 @@ object NetworkModule {
             // MUSI być pierwszy: jego ponowienie przechodzi jeszcze raz przez interceptory
             // poniżej, więc dostaje świeże cookie sesji, świeży CSRF i świeży Bearer token.
             .addInterceptor(ReauthInterceptor(sessionRefresher, sessionRepository))
+            // Wykrywa bramkę Cloudflare (403 Cf-Mitigated: challenge) i sygnalizuje UI.
+            .addInterceptor(ChallengeInterceptor(clearanceStore))
+            // UA zgodny z WebView — warunek ważności cf_clearance przeniesionego z przeglądarki.
+            .addInterceptor(UserAgentInterceptor(clearanceStore))
             .addInterceptor(AcceptJsonInterceptor())
             .addInterceptor(BearerTokenInterceptor(sessionRepository))
             .addInterceptor(CsrfInterceptor(cookieJar))
@@ -149,10 +157,14 @@ object NetworkModule {
     @Named("auth")
     fun provideAuthOkHttpClient(
         cookieJar: PersistentCookieJar,
-        sessionRepository: SessionRepository
+        sessionRepository: SessionRepository,
+        clearanceStore: ClearanceStore
     ): OkHttpClient {
         val builder = OkHttpClient.Builder()
             .cookieJar(cookieJar)
+            // Logowanie też dostaje bramkę Cloudflare — te same dwa interceptory co w kliencie głównym.
+            .addInterceptor(ChallengeInterceptor(clearanceStore))
+            .addInterceptor(UserAgentInterceptor(clearanceStore))
             .addInterceptor(AcceptJsonInterceptor())
             .addInterceptor(BearerTokenInterceptor(sessionRepository))
             .addInterceptor(CsrfInterceptor(cookieJar))

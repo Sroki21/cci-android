@@ -41,6 +41,7 @@ sealed class Screen(val route: String) {
     }
     object Purchased : Screen("purchased")
     object Login : Screen("login")
+    object Clearance : Screen("clearance")
     object Binders : Screen("binders")
     object Statistics : Screen("statistics")
     object LocationsMap : Screen("locations-map")
