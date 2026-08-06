@@ -1,5 +1,6 @@
 package pl.sroki.cci.android.data
 
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -7,18 +8,20 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import pl.sroki.cci.android.data.datasource.remote.firestore.CapPositionFirestoreService
+import pl.sroki.cci.android.data.model.CapSnapshot
+import pl.sroki.cci.android.model.binder.CatalogStatus
 import pl.sroki.cci.android.model.toSnapshot
 import retrofit2.HttpException
 import java.io.IOException
 import java.util.concurrent.atomic.AtomicInteger
 import javax.inject.Inject
 import javax.inject.Singleton
-import pl.sroki.cci.android.model.binder.CatalogStatus
 
 /**
- * Wynik skanu kolekcji. [reachedCatalog] to liczba kapsli, dla których pobranie z katalogu
- * naprawdę się powiodło — zero przy skanie ze wszystkimi kapslami znaczy, że katalog był
- * nieosiągalny (offline/403), a nie że kolekcja jest czysta.
+ * Wynik skanu kolekcji. [reachedCatalog] to liczba kapsli, dla których katalog naprawdę
+ * odpowiedział — licząc 404, bo to również dowód, że serwer był osiągalny. Zero przy skanie ze
+ * wszystkimi kapslami znaczy, że katalog był nieosiągalny (offline/403), a nie że kolekcja
+ * jest czysta.
  */
 data class ScanOutcome(val total: Int, val reachedCatalog: Int) {
     // Przy pustej kolekcji nie ma czego skanować — traktujemy to jako skan „udany".
@@ -44,10 +47,10 @@ class CollectionVerifier @Inject constructor(
     private val semaphore = Semaphore(4)
 
     /**
-     * @param onCatalogReached wołane, gdy pobranie kapsla z katalogu się powiodło (fetch doszedł
-     *   do skutku). Pozwala [runBatch] odróżnić skan, który realnie dotknął serwera, od takiego,
-     *   w którym wszystkie pobrania padły (offline/403) — bez zmiany zwracanego statusu, na którym
-     *   opierają się testy i pojedyncze wywołania.
+     * @param onCatalogReached wołane, gdy katalog odpowiedział — zarówno przy udanym pobraniu, jak
+     *   i przy 404 (kapsla nie ma, ale serwer był osiągalny). Pozwala [runBatch] odróżnić skan,
+     *   który realnie dotknął serwera, od takiego, w którym wszystkie pobrania padły (offline/403)
+     *   — bez zmiany zwracanego statusu, na którym opierają się testy i pojedyncze wywołania.
      */
     suspend fun verify(capId: Long, onCatalogReached: () -> Unit = {}): CatalogStatus {
         val stored = capCacheRepository.getOne(capId)
@@ -55,6 +58,9 @@ class CollectionVerifier @Inject constructor(
             capsRepository.getById(capId.toInt())
         } catch (e: HttpException) {
             if (e.code() == 404) {
+                // 404 to też odpowiedź katalogu: serwer był osiągalny, kapsel z niego zniknął.
+                // Bez tego skan złożony z samych 404 wyglądałby jak skan offline.
+                onCatalogReached()
                 capCacheRepository.markVerified(capId, CatalogStatus.MISSING, now())
                 return CatalogStatus.MISSING
             }
@@ -143,7 +149,9 @@ class CollectionVerifier @Inject constructor(
                     // gdy faktycznie przychodzi jej kolej.
                     semaphore.withPermit {
                         if (isCancelled()) return@withPermit
-                        runCatching { verify(id) { reached.incrementAndGet() } }
+                        // Awaria pojedynczego kapsla nie przerywa skanu, ale anulowanie musi
+                        // przejść dalej — patrz [runCatchingCancellable].
+                        runCatchingCancellable { verify(id) { reached.incrementAndGet() } }
                         delay(THROTTLE_MS) // grzecznościowe tempo wobec crowncaps
                     }
                     if (!isCancelled()) onProgress(done.incrementAndGet(), total)
@@ -153,16 +161,35 @@ class CollectionVerifier @Inject constructor(
         return ScanOutcome(total = total, reachedCatalog = reached.get())
     }
 
-    private suspend fun writeSnapshot(capId: Long, s: pl.sroki.cci.android.data.model.CapSnapshot) =
+    private suspend fun writeSnapshot(capId: Long, s: CapSnapshot) =
         capCacheRepository.upsertSnapshot(
             capId, s.name, s.country, s.imageUrl, s.createdAt, s.createdById, s.updatedAt
         )
 
-    private suspend fun pushSnapshot(capId: Long, s: pl.sroki.cci.android.data.model.CapSnapshot) {
+    private suspend fun pushSnapshot(capId: Long, s: CapSnapshot) {
         val uid = authManager.uid.value ?: return
-        val fsId = runCatching { capPositionRepository.getByCapId(capId)?.firestoreId }.getOrNull() ?: return
+        val fsId = runCatchingCancellable {
+            capPositionRepository.getByCapId(capId)?.firestoreId
+        } ?: return
         capPositionFirestoreService.scheduleUpdateSnapshot(uid, fsId, s)
     }
+
+    /**
+     * `runCatching`, które **nie** połyka anulowania.
+     *
+     * Zwykłe `runCatching` łapie `Throwable`, więc zjada też `CancellationException` rzucone przez
+     * anulowaną korutynę — a to psuje kooperatywne anulowanie skanu. Tutaj działało wyłącznie
+     * przypadkiem, bo tuż za nim stoi `delay`, które rzuca je ponownie; przesunięcie throttle'a
+     * cicho zepsułoby przycisk Anuluj przy pełnym skanie.
+     */
+    private inline fun <T> runCatchingCancellable(block: () -> T): T? =
+        try {
+            block()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            null
+        }
 
     private fun now() = System.currentTimeMillis()
 

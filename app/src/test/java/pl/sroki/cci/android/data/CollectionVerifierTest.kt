@@ -6,7 +6,9 @@ import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.just
 import io.mockk.mockk
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -14,6 +16,8 @@ import kotlinx.coroutines.test.runTest
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -293,5 +297,47 @@ class CollectionVerifierTest {
         verifier.runFullScan()
 
         assertTrue("max concurrent calls: ${maxObserved.get()}", maxObserved.get() <= 4)
+    }
+
+    @Test
+    fun `runFullScan — skan samych 404 liczy sie jako udany`() = runTest {
+        // 404 to odpowiedź serwera, nie awaria łączności. Skan złożony z samych 404 nie może
+        // wyglądać jak skan offline, bo od healthy zależy oznaczenie backfillu jako zrobionego.
+        coEvery { capPositionRepository.getAllCapIds() } returns (1L..3L).toList()
+        coEvery { capCacheRepository.getOne(any()) } returns capCache()
+        val notFound = Response.error<Any>(
+            404, "{}".toResponseBody("application/json".toMediaType())
+        )
+        coEvery { capsRepository.getById(any()) } throws HttpException(notFound)
+
+        val outcome = verifier.runFullScan()
+
+        assertEquals(3, outcome.reachedCatalog)
+        assertTrue("skan samych 404 ma byc healthy", outcome.healthy)
+    }
+
+    @Test
+    fun `runFullScan — brak lacznosci daje skan niezdrowy`() = runTest {
+        coEvery { capPositionRepository.getAllCapIds() } returns (1L..3L).toList()
+        coEvery { capCacheRepository.getOne(any()) } returns capCache()
+        coEvery { capsRepository.getById(any()) } throws java.io.IOException("brak sieci")
+
+        val outcome = verifier.runFullScan()
+
+        assertEquals(0, outcome.reachedCatalog)
+        assertFalse("skan bez ani jednej odpowiedzi nie moze byc healthy", outcome.healthy)
+    }
+
+    @Test
+    fun `runFullScan — anulowanie korutyny przechodzi przez obsluge bledow`() = runTest {
+        // runCatching łapie Throwable, więc zjadałoby CancellationException i psuło kooperatywne
+        // anulowanie. Działało tylko przypadkiem, bo delay tuż za nim rzuca je ponownie.
+        coEvery { capPositionRepository.getAllCapIds() } returns (1L..3L).toList()
+        coEvery { capCacheRepository.getOne(any()) } returns null
+        coEvery { capsRepository.getById(any()) } throws CancellationException("anulowane")
+
+        assertThrows(CancellationException::class.java) {
+            runBlocking { verifier.runFullScan() }
+        }
     }
 }
