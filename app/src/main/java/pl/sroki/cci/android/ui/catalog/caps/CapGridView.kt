@@ -10,7 +10,6 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material3.Card
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
@@ -21,14 +20,16 @@ import pl.sroki.cci.android.model.Cap
 import pl.sroki.cci.android.model.caps
 import pl.sroki.cci.android.ui.theme.CCITheme
 import pl.sroki.cci.android.ui.theme.ImageBackground
+import pl.sroki.cci.android.ui.theme.StatusInCollection
+import pl.sroki.cci.android.ui.theme.StatusPurchased
 
 @Composable
 fun CapGridCard(cap: Cap, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val assignedCapIds = LocalAssignedCapIds.current
     val border = when {
         !cap.isInCollection -> null
-        cap.id in assignedCapIds -> BorderStroke(6.dp, Color(0xFF00FF00)) // W kolekcji → zielona
-        else -> BorderStroke(6.dp, Color(0xFF2196F3))                    // Zakupiony → niebieska
+        cap.id in assignedCapIds -> BorderStroke(6.dp, StatusInCollection) // W kolekcji → zielona
+        else -> BorderStroke(6.dp, StatusPurchased)                        // Zakupiony → niebieska
     }
     Card(
         border = border

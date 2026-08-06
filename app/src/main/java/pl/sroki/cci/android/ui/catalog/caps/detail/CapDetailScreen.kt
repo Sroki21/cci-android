@@ -1,16 +1,18 @@
 package pl.sroki.cci.android.ui.catalog.caps.detail
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.runtime.Composable
@@ -22,6 +24,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import pl.sroki.cci.android.ui.components.FullSizeLoader
+import pl.sroki.cci.android.ui.theme.StatusInCollection
+import pl.sroki.cci.android.ui.theme.StatusMissing
+import pl.sroki.cci.android.ui.theme.StatusPurchased
 import pl.sroki.cci.android.model.binder.CatalogStatus
 
 @Composable
@@ -65,9 +70,15 @@ private fun DriftBanner(
                 }
             }
             Row {
-                TextButton(onClick = onKeep) { Text("Zachowaj") }
+                // PRODUCER_REMOVED wynika z wiszącego selectedProducerId, którego ani „Zachowaj",
+                // ani „Zaakceptuj nowy" nie ruszają — oba tylko ustawiłyby OK w Roomie, a następny
+                // skan kolekcji znów by oflagował. Trwale rozwiązuje to wybór producenta w polu
+                // „Kraj" (zgodnie z treścią banera) albo „Odepnij"; te dwa przyciski chowamy.
+                if (status != CatalogStatus.PRODUCER_REMOVED) {
+                    TextButton(onClick = onKeep) { Text("Zachowaj") }
+                }
                 // Kapsla usuniętego z katalogu nie da się "zaakceptować" — nie ma czego pobrać.
-                if (status != CatalogStatus.MISSING) {
+                if (status != CatalogStatus.MISSING && status != CatalogStatus.PRODUCER_REMOVED) {
                     TextButton(onClick = onAccept) { Text("Zaakceptuj nowy") }
                 }
                 TextButton(onClick = onUnlink) { Text("Odepnij") }
@@ -90,7 +101,7 @@ fun CapDetailScreen(
     var statusMenuExpanded by remember { mutableStateOf(false) }
     val snackbarState = remember { SnackbarHostState() }
 
-    LaunchedEffect(true) {
+    LaunchedEffect(id) {
         viewModel.getCap(id)
     }
 
@@ -113,9 +124,9 @@ fun CapDetailScreen(
                         Spacer(Modifier.weight(1f))
                         if (uiState is CapDetailUiState.Success && isLoggedIn) {
                             val (label, color) = when (uiState.status) {
-                                CapStatus.IN_COLLECTION -> "W kolekcji" to Color(0xFF00FF00)
-                                CapStatus.PURCHASED -> "Zakupiony" to Color(0xFF2196F3)
-                                CapStatus.MISSING -> "Brak" to Color(0xFFF44336)
+                                CapStatus.IN_COLLECTION -> "W kolekcji" to StatusInCollection
+                                CapStatus.PURCHASED -> "Zakupiony" to StatusPurchased
+                                CapStatus.MISSING -> "Brak" to StatusMissing
                             }
                             Box {
                                 Text(
@@ -129,7 +140,7 @@ fun CapDetailScreen(
                                 ) {
                                     if (uiState.status != CapStatus.PURCHASED) {
                                         DropdownMenuItem(
-                                            text = { Text("Zakupiony", color = Color(0xFF2196F3)) },
+                                            text = { Text("Zakupiony", color = StatusPurchased) },
                                             onClick = {
                                                 viewModel.setStatus(CapStatus.PURCHASED)
                                                 statusMenuExpanded = false
@@ -138,7 +149,7 @@ fun CapDetailScreen(
                                     }
                                     if (uiState.status != CapStatus.MISSING) {
                                         DropdownMenuItem(
-                                            text = { Text("Brak", color = Color(0xFFF44336)) },
+                                            text = { Text("Brak", color = StatusMissing) },
                                             onClick = {
                                                 viewModel.setStatus(CapStatus.MISSING)
                                                 statusMenuExpanded = false
@@ -163,9 +174,16 @@ fun CapDetailScreen(
     ) { innerPadding ->
         Box(Modifier.padding(innerPadding)) {
             when (uiState) {
-                is CapDetailUiState.Error -> Text("Błąd ładowania")
+                is CapDetailUiState.Error -> Column(
+                    modifier = Modifier.fillMaxSize(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center,
+                ) {
+                    Text("Nie udało się załadować kapsla")
+                    TextButton(onClick = { viewModel.getCap(id) }) { Text("Spróbuj ponownie") }
+                }
                 is CapDetailUiState.Loading -> FullSizeLoader()
-                is CapDetailUiState.Success -> androidx.compose.foundation.layout.Column {
+                is CapDetailUiState.Success -> Column {
                     DriftBanner(
                         status = viewModel.catalogStatus,
                         changes = viewModel.catalogChanges,
