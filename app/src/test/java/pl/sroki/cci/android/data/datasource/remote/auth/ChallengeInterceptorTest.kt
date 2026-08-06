@@ -9,8 +9,6 @@ import okhttp3.Request
 import okhttp3.Response
 import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotNull
-import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Test
 
@@ -51,10 +49,7 @@ class ChallengeInterceptorTest {
         return chain
     }
 
-    private fun request(marker: Boolean = false) = Request.Builder()
-        .url(URL)
-        .apply { if (marker) header("X-CCI-Clearance", "1") }
-        .build()
+    private fun request() = Request.Builder().url(URL).build()
 
     @Test
     fun `odpowiedz bez naglowka Cloudflare przechodzi bez czekania`() {
@@ -75,8 +70,18 @@ class ChallengeInterceptorTest {
 
         assertEquals(200, response.code)
         assertEquals(2, proceeded.size)
-        // Ponowienie niesie znacznik, żeby uparta bramka nie zapętliła żądania.
-        assertNotNull(proceeded[1].header("X-CCI-Clearance"))
+    }
+
+    @Test
+    fun `gdy pierwsze clearance nie wystarcza, ponawia jeszcze raz`() {
+        // Świeży cf_clearance bywa od razu ponownie oflagowany — druga próba już przechodzi.
+        every { clearanceStore.requireChallenge() } returns CompletableDeferred(true)
+        val chain = chain(request(), mutableListOf(403 to true, 403 to true, 200 to false))
+
+        val response = interceptor.intercept(chain)
+
+        assertEquals(200, response.code)
+        assertEquals(3, proceeded.size)
     }
 
     @Test
@@ -91,24 +96,16 @@ class ChallengeInterceptorTest {
     }
 
     @Test
-    fun `juz ponowione zadanie nie czeka drugi raz`() {
-        val chain = chain(request(marker = true), mutableListOf(403 to true))
+    fun `po wyczerpaniu prob oddaje 403 zamiast wisiec`() {
+        every { clearanceStore.requireChallenge() } returns CompletableDeferred(true)
+        // Bramka uparcie flaguje mimo clearance — po MAX_ATTEMPTS przestajemy próbować.
+        val chain = chain(request(), mutableListOf(403 to true, 403 to true, 403 to true, 403 to true))
 
         val response = interceptor.intercept(chain)
 
         assertEquals(403, response.code)
-        assertEquals(1, proceeded.size)
-        // requireChallenge nie powinno być w ogóle wołane — nie ma drugiego okna challengu.
-        io.mockk.verify(exactly = 0) { clearanceStore.requireChallenge() }
-    }
-
-    @Test
-    fun `pierwsze proceed idzie z oryginalnym zadaniem bez znacznika`() {
-        every { clearanceStore.requireChallenge() } returns CompletableDeferred(true)
-        val chain = chain(request(), mutableListOf(403 to true, 200 to false))
-
-        interceptor.intercept(chain)
-
-        assertNull(proceeded[0].header("X-CCI-Clearance"))
+        // Wywołanie pierwotne + 3 ponowienia.
+        assertEquals(4, proceeded.size)
+        io.mockk.verify(exactly = 3) { clearanceStore.requireChallenge() }
     }
 }

@@ -119,11 +119,14 @@ class ClearanceStore @Inject constructor(
     private companion object {
         const val CLEARANCE_COOKIE = "cf_clearance"
 
-        // cf_clearance realnie żyje dłużej, ale dokładnego Max-Age nie da się odczytać przez
-        // CookieManager.getCookie (zwraca same pary nazwa=wartość). Nadajemy skromny czas życia:
-        // PersistentCookieJar zapisuje tylko cookies z datą wygaśnięcia, więc clearance przetrwa
-        // restart, a po wygaśnięciu challenge po prostu wróci i użytkownik rozwiąże go raz jeszcze.
-        val EXPIRY_MS = 20 * 60 * 1000L
+        // Trzymamy przeniesione cookies jak najdłużej po stronie klienta. O realnym czasie życia
+        // cf_clearance decyduje i tak Cloudflare (ustawienie „Challenge Passage" serwisu), a
+        // dokładnego Max-Age nie da się odczytać przez CookieManager.getCookie. Dlatego zamiast
+        // kasować cookie lokalnie po sztywnym czasie (wcześniej 20 min — wyrzucało wciąż ważne
+        // clearance), trzymamy je bardzo długo i wysyłamy, dopóki serwer nie odrzuci. Gdy naprawdę
+        // wygaśnie, przychodzi 403 z challengem, ChallengeInterceptor otwiera WebView, a nowe
+        // cf_clearance nadpisuje to cookie. Długi czas życia = clearance przeżywa restart aplikacji.
+        val EXPIRY_MS = 365L * 24 * 60 * 60 * 1000
     }
 
     /**

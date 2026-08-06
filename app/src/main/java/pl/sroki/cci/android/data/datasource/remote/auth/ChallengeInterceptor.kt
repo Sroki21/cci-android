@@ -21,25 +21,28 @@ import okhttp3.Response
 class ChallengeInterceptor(private val clearanceStore: ClearanceStore) : Interceptor {
 
     private companion object {
-        const val RETRY_MARKER = "X-CCI-Clearance"
-        // Ile czekamy na ręczne rozwiązanie challengu, zanim oddamy pierwotny 403.
+        // Ile czekamy na jedno ręczne rozwiązanie challengu, zanim oddamy 403.
         const val WAIT_MS = 120_000L
+        // Ile razy ponawiamy. Świeżo zdobyty cf_clearance bywa od razu ponownie oflagowany
+        // (Cloudflare potrafi wystawić kolejny interstitial), więc jedno ponowienie to za mało —
+        // trzeba doczekać kilku rozwiązań. Kilka prób pod rząd, potem oddajemy 403.
+        const val MAX_ATTEMPTS = 3
     }
 
     override fun intercept(chain: Interceptor.Chain): Response {
-        val response = chain.proceed(chain.request())
-        if (!response.isChallenge()) return response
-        // Po jednym ponowieniu odpuszczamy — inaczej uparta bramka zapętliłaby żądanie.
-        if (chain.request().header(RETRY_MARKER) != null) return response
-
-        val signal = clearanceStore.requireChallenge()
-        val cleared = runBlocking { withTimeoutOrNull(WAIT_MS) { signal.await() } } ?: false
-        Log.d("CCI_CF", "czekanie na clearance dla ${chain.request().url.encodedPath}: cleared=$cleared")
-        if (!cleared) return response
-
-        response.close()
-        val retried = chain.request().newBuilder().header(RETRY_MARKER, "1").build()
-        return chain.proceed(retried)
+        var response = chain.proceed(chain.request())
+        var attempts = 0
+        while (response.isChallenge() && attempts < MAX_ATTEMPTS) {
+            val signal = clearanceStore.requireChallenge()
+            val cleared = runBlocking { withTimeoutOrNull(WAIT_MS) { signal.await() } } ?: false
+            Log.d("CCI_CF", "clearance dla ${chain.request().url.encodedPath}: proba ${attempts + 1}, cleared=$cleared")
+            // Użytkownik zamknął challenge bez rozwiązania — nie ma sensu ponawiać.
+            if (!cleared) break
+            response.close()
+            attempts++
+            response = chain.proceed(chain.request())
+        }
+        return response
     }
 
     private fun Response.isChallenge(): Boolean =
