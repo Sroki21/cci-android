@@ -48,11 +48,11 @@ class CapPositionFirestoreService @Inject constructor(private val firestore: Fir
                 put("capCountry", producerSelection.country)
             }
         }
-        ref.set(data)
+        ref.set(data).zglosBladZapisu("utworzenie pozycji kapsla")
     }
 
     fun scheduleDelete(uid: String, firestoreId: String) {
-        col(uid).document(firestoreId).delete()
+        col(uid).document(firestoreId).delete().zglosBladZapisu("usunięcie pozycji kapsla")
     }
 
     /** Odświeża snapshot w istniejącym dokumencie pozycji (po udanej weryfikacji baseline/ok). */
@@ -66,7 +66,7 @@ class CapPositionFirestoreService @Inject constructor(private val firestore: Fir
                 "capCreatedById" to snapshot.createdById,
                 "capUpdatedAt" to snapshot.updatedAt
             )
-        )
+        ).zglosBladZapisu("aktualizacja snapshotu kapsla")
     }
 
     /**
@@ -81,12 +81,17 @@ class CapPositionFirestoreService @Inject constructor(private val firestore: Fir
                 "capProducer" to selection.producer,
                 "capCountry" to selection.country
             )
-        )
+        ).zglosBladZapisu("zapis wyboru producenta")
     }
 
     fun scheduleDeleteByPage(uid: String, pageFirestoreId: String) {
         col(uid).whereEqualTo("binderPageFirestoreId", pageFirestoreId).get()
-            .addOnSuccessListener { snap -> snap.documents.forEach { it.reference.delete() } }
+            .addOnSuccessListener { snap ->
+                snap.documents.forEach {
+                    it.reference.delete().zglosBladZapisu("usunięcie pozycji ze strony")
+                }
+            }
+            .zglosBladZapisu("odczyt pozycji strony do usunięcia")
     }
 
     suspend fun fetchAll(uid: String): List<CapPositionDocument> =

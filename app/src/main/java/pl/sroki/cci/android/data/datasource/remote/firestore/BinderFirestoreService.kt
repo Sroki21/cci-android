@@ -21,15 +21,17 @@ class BinderFirestoreService @Inject constructor(private val firestore: Firebase
     fun scheduleCreate(uid: String, firestoreId: String, name: String) {
         col(uid).document(firestoreId)
             .set(mapOf("name" to name, "updatedAt" to FieldValue.serverTimestamp()))
+            .zglosBladZapisu("utworzenie klasera")
     }
 
     fun scheduleUpdate(uid: String, firestoreId: String, name: String) {
         col(uid).document(firestoreId)
             .update("name", name, "updatedAt", FieldValue.serverTimestamp())
+            .zglosBladZapisu("zmiana nazwy klasera")
     }
 
     fun scheduleDelete(uid: String, firestoreId: String) {
-        col(uid).document(firestoreId).delete()
+        col(uid).document(firestoreId).delete().zglosBladZapisu("usunięcie klasera")
     }
 
     suspend fun fetchAll(uid: String): List<BinderDocument> =

@@ -11,6 +11,9 @@ class LatestCapsPagingSource @Inject constructor(
     private val capsRepository: CapsRepository
 ) : PagingSource<Int, Cap>() {
 
+    // Powtórzony kapsel na styku stron wywalał listę — patrz PageDeduplicator.
+    private val dedup = PageDeduplicator()
+
     override fun getRefreshKey(state: PagingState<Int, Cap>): Int? {
         val anchorPosition = state.anchorPosition ?: return null
         val anchorPage = state.closestPageToPosition(anchorPosition) ?: return null
@@ -22,7 +25,7 @@ class LatestCapsPagingSource @Inject constructor(
             val page = params.key ?: STARTING_KEY
             val pagination = capsRepository.getLatest(page)
             LoadResult.Page(
-                data = pagination.data,
+                data = dedup.odsiej(pagination.data),
                 prevKey = if (page == STARTING_KEY) null else page - 1,
                 nextKey = if (pagination.currentPage == pagination.lastPage) null else page + 1
             )

@@ -15,6 +15,9 @@ class SimilarCapsPagingSource(
     private val capsRepository: CapsRepository
 ) : PagingSource<Int, Cap>() {
 
+    // Powtórzony kapsel na styku stron wywalał listę — patrz PageDeduplicator.
+    private val dedup = PageDeduplicator()
+
     override fun getRefreshKey(state: PagingState<Int, Cap>): Int? {
         val anchorPosition = state.anchorPosition ?: return null
         val anchorPage = state.closestPageToPosition(anchorPosition) ?: return null
@@ -29,7 +32,7 @@ class SimilarCapsPagingSource(
             val requestBody = imageBytes.toRequestBody(mimeType.toMediaType())
             val part = MultipartBody.Part.createFormData("image", "photo.jpg", requestBody)
             val response = capsRepository.searchSimilar(part)
-            LoadResult.Page(data = response.caps, prevKey = null, nextKey = null)
+            LoadResult.Page(data = dedup.odsiej(response.caps), prevKey = null, nextKey = null)
         } catch (e: Exception) {
             LoadResult.Error(e)
         }

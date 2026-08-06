@@ -21,11 +21,11 @@ class BinderPageFirestoreService @Inject constructor(private val firestore: Fire
                 "pageNumber" to pageNumber,
                 "updatedAt" to FieldValue.serverTimestamp()
             )
-        )
+        ).zglosBladZapisu("utworzenie strony")
     }
 
     fun scheduleDelete(uid: String, firestoreId: String) {
-        col(uid).document(firestoreId).delete()
+        col(uid).document(firestoreId).delete().zglosBladZapisu("usunięcie strony")
     }
 
     fun scheduleUpdate(uid: String, firestoreId: String, pageNumber: Int) {
@@ -34,7 +34,7 @@ class BinderPageFirestoreService @Inject constructor(private val firestore: Fire
                 "pageNumber" to pageNumber,
                 "updatedAt" to FieldValue.serverTimestamp()
             )
-        )
+        ).zglosBladZapisu("zmiana numeru strony")
     }
 
     fun scheduleMove(uid: String, firestoreId: String, newBinderFirestoreId: String) {
@@ -43,7 +43,7 @@ class BinderPageFirestoreService @Inject constructor(private val firestore: Fire
                 "binderFirestoreId" to newBinderFirestoreId,
                 "updatedAt" to FieldValue.serverTimestamp()
             )
-        )
+        ).zglosBladZapisu("przeniesienie strony")
     }
 
     suspend fun fetchAll(uid: String): List<BinderPageDocument> =

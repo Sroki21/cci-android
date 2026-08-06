@@ -23,15 +23,18 @@ class PurchasedCapsFirestoreService @Inject constructor(private val firestore: F
 
     fun scheduleAdd(uid: String, capId: Long) {
         doc(uid).set(mapOf(FIELD to FieldValue.arrayUnion(capId)), SetOptions.merge())
+            .zglosBladZapisu("dodanie do zakupionych")
     }
 
     fun scheduleRemove(uid: String, capId: Long) {
         doc(uid).set(mapOf(FIELD to FieldValue.arrayRemove(capId)), SetOptions.merge())
+            .zglosBladZapisu("zdjęcie z zakupionych")
     }
 
     /** Nadpisanie całości — używane wyłącznie przy jednorazowym backfillu. */
     fun scheduleReplaceAll(uid: String, capIds: Set<Long>) {
         doc(uid).set(mapOf(FIELD to capIds.toList()), SetOptions.merge())
+            .zglosBladZapisu("zapis listy zakupionych")
     }
 
     suspend fun fetch(uid: String): Set<Long> {

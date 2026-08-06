@@ -34,7 +34,10 @@ object DatabaseModule {
                 CciDatabase.MIGRATION_8_9,
                 CciDatabase.MIGRATION_9_10
             )
-            .fallbackToDestructiveMigration(dropAllTables = true)
+            // Bez fallbackToDestructiveMigration: jedna zapomniana migracja przy podbiciu wersji
+            // kasowała CAŁĄ bazę użytkownika po cichu. Zalogowanemu odbudowałby ją restoreIfEmpty,
+            // niezalogowanemu nic — jego dane nigdy nie trafiły do chmury. Teraz brak migracji
+            // to twardy błąd przy starcie, widoczny od razu, zamiast pustej kolekcji.
             .build()
 
     @Provides

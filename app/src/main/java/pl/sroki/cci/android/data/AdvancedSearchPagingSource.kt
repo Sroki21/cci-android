@@ -30,6 +30,9 @@ class AdvancedSearchPagingSource(
     private val pureCountryId: Int? =
         filter.countryId.takeIf { !hasTextFilter && !hasProducer }
 
+    // Powtórzony kapsel na styku stron wywalał listę — patrz PageDeduplicator.
+    private val dedup = PageDeduplicator()
+
     override fun getRefreshKey(state: PagingState<Int, Cap>): Int? {
         val anchorPosition = state.anchorPosition ?: return null
         val anchorPage = state.closestPageToPosition(anchorPosition) ?: return null
@@ -74,7 +77,7 @@ class AdvancedSearchPagingSource(
             }
 
             LoadResult.Page(
-                data = filteredData,
+                data = dedup.odsiej(filteredData),
                 prevKey = if (page == STARTING_KEY) null else page - 1,
                 nextKey = if (result.currentPage == result.lastPage) null else lastFetched + 1
             )
