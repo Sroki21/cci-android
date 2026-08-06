@@ -101,7 +101,8 @@ class ClearanceStore @Inject constructor(
 
         val url = baseUrl.toHttpUrl()
         val rawCookies = CookieManager.getInstance().getCookie(baseUrl) ?: return false
-        val cookies = parseWebViewCookies(rawCookies, url)
+        val appHasSession = cookieJar.loadForRequest(url).any { it.name == SESSION_COOKIE }
+        val cookies = selectTransferable(parseWebViewCookies(rawCookies, url), appHasSession)
         if (cookies.isEmpty()) return false
 
         cookieJar.saveFromResponse(url, cookies)
@@ -116,8 +117,29 @@ class ClearanceStore @Inject constructor(
         return hasClearance
     }
 
+    /**
+     * Wybiera cookies, które wolno przenieść z WebView do jara OkHttpa.
+     *
+     * Cookies Cloudflare przenosimy zawsze — po to jest cały ten mechanizm. Cookies sesji serwisu
+     * przenosimy **tylko wtedy, gdy aplikacja własnej sesji jeszcze nie ma**. W WebView użytkownik
+     * jest zwykle gościem: otwiera się tam po to, żeby przejść challenge, nie żeby się zalogować.
+     * Przeniesienie gościnnego `crowncapsinfo-session` razem z `XSRF-TOKEN` nadpisywało
+     * uwierzytelnioną sesję OkHttpa, przez co `POST /data/…` (m.in. wyszukiwanie kapsla) wracał
+     * z 403 — a `AuthRepository` wciąż widział cookie o właściwej nazwie i uznawał użytkownika za
+     * zalogowanego, więc nie było ani ponowienia, ani wylogowania. Odzyskiwanie wygasłej sesji
+     * należy do `ReauthInterceptor` (ciche logowanie), nie do tego ekranu.
+     */
+    fun selectTransferable(cookies: List<Cookie>, appHasSession: Boolean): List<Cookie> =
+        if (appHasSession) cookies.filterNot { it.name in SESSION_COOKIES } else cookies
+
     private companion object {
         const val CLEARANCE_COOKIE = "cf_clearance"
+        const val SESSION_COOKIE = "crowncapsinfo-session"
+
+        // Cookies, którymi serwis identyfikuje sesję webową — nie wolno ich nadpisać gościnnymi
+        // z WebView, gdy aplikacja ma już zalogowaną sesję. XSRF-TOKEN idzie w parze z sesją:
+        // token z innej sesji dałby 419 przy pierwszym POST.
+        val SESSION_COOKIES = setOf(SESSION_COOKIE, "XSRF-TOKEN")
 
         // Trzymamy przeniesione cookies jak najdłużej po stronie klienta. O realnym czasie życia
         // cf_clearance decyduje i tak Cloudflare (ustawienie „Challenge Passage" serwisu), a

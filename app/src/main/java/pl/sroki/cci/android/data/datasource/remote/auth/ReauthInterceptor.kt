@@ -40,16 +40,27 @@ class ReauthInterceptor(
         val request = chain.request()
         val response = chain.proceed(request)
 
-        if (response.code !in RECOVERABLE_CODES) return response
         if (request.header(RETRY_MARKER) != null) return response
 
         val path = request.url.encodedPath
         return when {
-            path.startsWith("/data/") -> recoverWebSession(chain, request, response)
-            path.startsWith("/api/") -> recoverApiToken(chain, request, response)
+            path.startsWith("/data/") && response.isRecoverableWebSession() ->
+                recoverWebSession(chain, request, response)
+            path.startsWith("/api/") && response.code in RECOVERABLE_CODES ->
+                recoverApiToken(chain, request, response)
             else -> response
         }
     }
+
+    /**
+     * 401 i 419 to zwykłe wygaśnięcie sesji i rotacja tokenu CSRF. 403 dokładamy, bo serwis
+     * odpowiada nim, gdy sesja przestała być uwierzytelniona i żądanie wygląda dla niego jak
+     * żądanie gościa — takie 403 szło wcześniej prosto do UI zamiast uruchomić odnowienie sesji.
+     * Bramka Cloudflare ma ten sam kod, więc ją wykluczamy: obsługuje ją [ChallengeInterceptor],
+     * który stoi niżej w łańcuchu, a ciche logowanie i tak by się o nią rozbiło.
+     */
+    private fun Response.isRecoverableWebSession(): Boolean =
+        code in RECOVERABLE_CODES || (code == 403 && !isCloudflareChallenge())
 
     private fun recoverWebSession(
         chain: Interceptor.Chain,

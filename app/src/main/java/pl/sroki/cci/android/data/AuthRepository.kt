@@ -3,7 +3,6 @@ package pl.sroki.cci.android.data
 import android.util.Log
 import io.sentry.Sentry
 import com.franmontiel.persistentcookiejar.PersistentCookieJar
-import kotlinx.serialization.json.Json
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import pl.sroki.cci.android.data.datasource.local.CredentialsStore
 import pl.sroki.cci.android.data.datasource.remote.auth.AuthApiService
@@ -21,10 +20,6 @@ class AuthRepository @Inject constructor(
     private val firebaseAuthManager: FirebaseAuthManager,
     private val firestoreRestoreUseCase: FirestoreRestoreUseCase
 ) {
-    companion object {
-        private val json = Json { ignoreUnknownKeys = true }
-    }
-
     init {
         val hasSession = cookieJar
             .loadForRequest("https://crowncaps.info/".toHttpUrl())
@@ -72,7 +67,7 @@ class AuthRepository @Inject constructor(
                 }
                 422 -> {
                     val raw = response.errorBody()?.string() ?: ""
-                    val err = json.decodeFromString<LoginErrorResponse>(raw)
+                    val err = AppJson.decodeFromString<LoginErrorResponse>(raw)
                     Result.failure(Exception(err.errors["email"]?.firstOrNull() ?: "Błąd logowania"))
                 }
                 else -> Result.failure(Exception("Błąd logowania: ${response.code()}"))

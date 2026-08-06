@@ -32,7 +32,7 @@ class ChallengeInterceptor(private val clearanceStore: ClearanceStore) : Interce
     override fun intercept(chain: Interceptor.Chain): Response {
         var response = chain.proceed(chain.request())
         var attempts = 0
-        while (response.isChallenge() && attempts < MAX_ATTEMPTS) {
+        while (response.isCloudflareChallenge() && attempts < MAX_ATTEMPTS) {
             val signal = clearanceStore.requireChallenge()
             val cleared = runBlocking { withTimeoutOrNull(WAIT_MS) { signal.await() } } ?: false
             Log.d("CCI_CF", "clearance dla ${chain.request().url.encodedPath}: proba ${attempts + 1}, cleared=$cleared")
@@ -44,7 +44,14 @@ class ChallengeInterceptor(private val clearanceStore: ClearanceStore) : Interce
         }
         return response
     }
-
-    private fun Response.isChallenge(): Boolean =
-        header("cf-mitigated").equals("challenge", ignoreCase = true)
 }
+
+/**
+ * Czy odpowiedź to bramka Cloudflare, a nie odmowa samego serwisu.
+ *
+ * Obie mają kod 403, więc odróżnia je wyłącznie nagłówek `Cf-Mitigated`. Rozpoznanie jest tu
+ * wspólne dla [ChallengeInterceptor] (ten challenge obsługuje) i [ReauthInterceptor] (ten musi go
+ * przepuścić, żeby nie brać bramki za wygasłą sesję).
+ */
+internal fun Response.isCloudflareChallenge(): Boolean =
+    header("cf-mitigated").equals("challenge", ignoreCase = true)

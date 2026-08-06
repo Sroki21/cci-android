@@ -6,7 +6,6 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.serialization.json.Json
 import dagger.Lazy
 import pl.sroki.cci.android.data.datasource.remote.auth.AuthApiService
 import pl.sroki.cci.android.model.LoginResponse
@@ -21,9 +20,6 @@ class SessionRepository @Inject constructor(
     private val authApiService: Lazy<AuthApiService>
 ) {
 
-    companion object {
-        private val json = Json { ignoreUnknownKeys = true }
-    }
     private val prefs = context.getSharedPreferences("session", Context.MODE_PRIVATE)
 
     private val _isLoggedIn = MutableStateFlow(false)
@@ -76,7 +72,7 @@ class SessionRepository @Inject constructor(
             ?: run { Log.d("CCI_AUTH", "api token: empty body"); return false }
         val token = when {
             raw.trimStart().startsWith('"') -> raw.trim().removeSurrounding("\"")
-            raw.trimStart().startsWith('{') -> json.decodeFromString<LoginResponse>(raw).token
+            raw.trimStart().startsWith('{') -> AppJson.decodeFromString<LoginResponse>(raw).token
             else -> raw.trim().takeIf { it.isNotBlank() }
         }
         Log.d("CCI_AUTH", "api token fetched: ${token != null}, raw length=${raw.length}")

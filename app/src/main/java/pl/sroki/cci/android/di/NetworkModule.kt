@@ -11,17 +11,19 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
-import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import pl.sroki.cci.android.BuildConfig
+import pl.sroki.cci.android.data.AppJson
 import pl.sroki.cci.android.data.SessionRefresher
 import pl.sroki.cci.android.data.SessionRepository
 import pl.sroki.cci.android.data.datasource.remote.CapApiService
 import pl.sroki.cci.android.data.datasource.remote.CategoryApiService
 import pl.sroki.cci.android.data.datasource.remote.CountryApiService
+import pl.sroki.cci.android.data.datasource.remote.LocaleCookieInterceptor
 import pl.sroki.cci.android.data.datasource.remote.ProducerApiService
+import pl.sroki.cci.android.data.datasource.remote.ProductFilterInterceptor
 import pl.sroki.cci.android.data.datasource.remote.auth.AcceptJsonInterceptor
 import pl.sroki.cci.android.data.datasource.remote.auth.AuthApiService
 import pl.sroki.cci.android.data.datasource.remote.auth.BearerTokenInterceptor
@@ -48,8 +50,7 @@ object NetworkModule {
     @Singleton
     @Provides
     fun provideConverterFactory(): Converter.Factory {
-        val json = Json { ignoreUnknownKeys = true }
-        return json.asConverterFactory("application/json".toMediaType())
+        return AppJson.asConverterFactory("application/json".toMediaType())
     }
 
     @Singleton
@@ -58,17 +59,30 @@ object NetworkModule {
         return PersistentCookieJar(SetCookieCache(), SharedPrefsCookiePersistor(context))
     }
 
+    /**
+     * Wspólny fundament obu klientów: jedna pula połączeń, jeden dispatcher, jeden jar cookies.
+     * Klienty wyprowadzają się z niego przez `newBuilder()` i dokładają własne interceptory —
+     * budowane osobno trzymałyby po własnym zestawie gniazd i wątków do tego samego hosta.
+     */
+    @Singleton
+    @Provides
+    @Named("base")
+    fun provideBaseOkHttpClient(cookieJar: PersistentCookieJar): OkHttpClient {
+        return OkHttpClient.Builder()
+            .cookieJar(cookieJar)
+            .build()
+    }
+
     @Singleton
     @Provides
     fun provideOkHttpClient(
+        @Named("base") baseClient: OkHttpClient,
         cookieJar: PersistentCookieJar,
         sessionRepository: SessionRepository,
         sessionRefresher: Lazy<SessionRefresher>,
         clearanceStore: ClearanceStore
     ): OkHttpClient {
-        val capsDetailRegex = Regex("/api/v1/caps/\\d+$")
-        val builder = OkHttpClient.Builder()
-            .cookieJar(cookieJar)
+        val builder = baseClient.newBuilder()
             // MUSI być pierwszy: jego ponowienie przechodzi jeszcze raz przez interceptory
             // poniżej, więc dostaje świeże cookie sesji, świeży CSRF i świeży Bearer token.
             .addInterceptor(ReauthInterceptor(sessionRefresher, sessionRepository))
@@ -79,38 +93,26 @@ object NetworkModule {
             .addInterceptor(AcceptJsonInterceptor())
             .addInterceptor(BearerTokenInterceptor(sessionRepository))
             .addInterceptor(CsrfInterceptor(cookieJar))
-            .addInterceptor { chain ->
-                val req = chain.request()
-                val path = req.url.encodedPath
-                val isCapsListPath = req.method == "GET" &&
-                    (path == "/api/v1/caps" || path.endsWith("/caps")) &&
-                    !capsDetailRegex.matches(path)
-                val isCollectionQuery = req.url.queryParameter("in_collection") != null
-                if (isCapsListPath && !isCollectionQuery) {
-                    val newUrl = req.url.newBuilder()
-                        .addQueryParameter("productId", "1")
-                        .build()
-                    chain.proceed(req.newBuilder().url(newUrl).build())
-                } else {
-                    chain.proceed(req)
-                }
-            }
-        builder.addNetworkInterceptor { chain ->
-            val req = chain.request()
-            val cookies = req.header("Cookie") ?: ""
-            val fixed = if ("user-locale=" in cookies)
-                cookies.replace(Regex("user-locale=[^;\\s]*"), "user-locale=pl")
-            else
-                if (cookies.isEmpty()) "user-locale=pl" else "$cookies; user-locale=pl"
-            chain.proceed(req.newBuilder().header("Cookie", fixed).build())
-        }
+            .addInterceptor(ProductFilterInterceptor())
+            .addNetworkInterceptor(LocaleCookieInterceptor())
         if (BuildConfig.DEBUG) {
-            builder.addNetworkInterceptor(
-                HttpLoggingInterceptor().apply { level = HttpLoggingInterceptor.Level.BODY }
-            )
+            builder.addNetworkInterceptor(loggingInterceptor(HttpLoggingInterceptor.Level.BODY))
         }
         return builder.build()
     }
+
+    /**
+     * Log sieciowy bez sekretów. Nagłówki `Authorization`, `Cookie` i `Set-Cookie` niosą Bearer
+     * token oraz cookie sesji — komu wpadną w ręce, ten wchodzi na konto. Ciała redaguje się
+     * doborem poziomu: katalog może iść na `BODY`, klient auth nie, bo wysyła hasło.
+     */
+    private fun loggingInterceptor(level: HttpLoggingInterceptor.Level) =
+        HttpLoggingInterceptor().apply {
+            this.level = level
+            redactHeader("Authorization")
+            redactHeader("Cookie")
+            redactHeader("Set-Cookie")
+        }
 
     @Singleton
     @Provides
@@ -156,12 +158,12 @@ object NetworkModule {
     @Provides
     @Named("auth")
     fun provideAuthOkHttpClient(
+        @Named("base") baseClient: OkHttpClient,
         cookieJar: PersistentCookieJar,
         sessionRepository: SessionRepository,
         clearanceStore: ClearanceStore
     ): OkHttpClient {
-        val builder = OkHttpClient.Builder()
-            .cookieJar(cookieJar)
+        val builder = baseClient.newBuilder()
             // Logowanie też dostaje bramkę Cloudflare — te same dwa interceptory co w kliencie głównym.
             .addInterceptor(ChallengeInterceptor(clearanceStore))
             .addInterceptor(UserAgentInterceptor(clearanceStore))
@@ -170,9 +172,8 @@ object NetworkModule {
             .addInterceptor(CsrfInterceptor(cookieJar))
             .followRedirects(false)
         if (BuildConfig.DEBUG) {
-            builder.addNetworkInterceptor(
-                HttpLoggingInterceptor().apply { level = HttpLoggingInterceptor.Level.BODY }
-            )
+            // HEADERS, nie BODY: ciałem żądania jest tu LoginRequest z hasłem użytkownika.
+            builder.addNetworkInterceptor(loggingInterceptor(HttpLoggingInterceptor.Level.HEADERS))
         }
         return builder.build()
     }

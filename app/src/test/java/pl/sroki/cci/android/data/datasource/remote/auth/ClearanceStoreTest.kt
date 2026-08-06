@@ -70,4 +70,36 @@ class ClearanceStoreTest {
         assertEquals("", cookie.value)
         assertNull(null)
     }
+
+    private fun webViewCookies() = store.parseWebViewCookies(
+        "cf_clearance=abc; crowncapsinfo-session=goscinna; XSRF-TOKEN=tok",
+        url,
+        now,
+    )
+
+    @Test
+    fun `gdy aplikacja ma sesje, goscinna sesja z WebView nie jest przenoszona`() {
+        // Sedno błędu 403: WebView otwiera się na sam challenge, użytkownik jest tam gościem.
+        val transferable = store.selectTransferable(webViewCookies(), appHasSession = true)
+
+        assertEquals(listOf("cf_clearance"), transferable.map { it.name })
+    }
+
+    @Test
+    fun `gdy aplikacja nie ma sesji, przenosimy takze sesje z WebView`() {
+        // Użytkownik mógł zalogować się na stronie — wtedy ta sesja jest jedyną, jaką mamy.
+        val transferable = store.selectTransferable(webViewCookies(), appHasSession = false)
+
+        assertEquals(
+            listOf("cf_clearance", "crowncapsinfo-session", "XSRF-TOKEN"),
+            transferable.map { it.name },
+        )
+    }
+
+    @Test
+    fun `clearance przechodzi nawet gdy WebView nie ma zadnych cookies sesji`() {
+        val cookies = store.parseWebViewCookies("cf_clearance=abc", url, now)
+
+        assertEquals(1, store.selectTransferable(cookies, appHasSession = true).size)
+    }
 }

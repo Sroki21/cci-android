@@ -168,4 +168,60 @@ class ReauthInterceptorTest {
         assertEquals(401, response.code)
         assertEquals(1, proceeded.size)
     }
+
+    /** Łańcuch oddający 403 opatrzone nagłówkiem bramki Cloudflare. */
+    private fun challengeChain(url: String): Interceptor.Chain {
+        val request = Request.Builder().url(url).build()
+        val chain = mockk<Interceptor.Chain>(relaxed = true)
+        every { chain.request() } returns request
+        every { chain.proceed(any()) } answers {
+            val sent = firstArg<Request>()
+            proceeded += sent
+            Response.Builder()
+                .code(403)
+                .request(sent)
+                .protocol(Protocol.HTTP_1_1)
+                .message("test")
+                .header("cf-mitigated", "challenge")
+                .body("".toResponseBody(null))
+                .build()
+        }
+        return chain
+    }
+
+    @Test
+    fun `403 na data — wygasla sesja jest odnawiana zamiast oddac blad do UI`() {
+        // Serwis odrzuca żądanie gościa autoryzacją, nie uwierzytelnieniem — wyszukiwanie kapsla
+        // po dłuższej chwili od logowania wracało z 403 prosto na ekran.
+        coEvery { sessionRefresher.refreshCsrf() } returns false
+        coEvery { sessionRefresher.reauthenticate() } returns ReauthResult.SUCCESS
+        val chain = chain(WEB_URL, 403, 200)
+
+        val response = interceptor.intercept(chain)
+
+        assertEquals(200, response.code)
+        assertEquals(2, proceeded.size)
+        assertNotNull(proceeded[1].header("X-CCI-Reauth"))
+    }
+
+    @Test
+    fun `403 od bramki Cloudflare nie uruchamia odnawiania sesji`() {
+        val chain = challengeChain(WEB_URL)
+
+        val response = interceptor.intercept(chain)
+
+        assertEquals(403, response.code)
+        assertEquals(1, proceeded.size)
+        verify(exactly = 0) { sessionRepository.setLoggedIn(any()) }
+    }
+
+    @Test
+    fun `403 na api nie odswieza tokenu — tam koncem sesji jest 401`() {
+        val chain = chain(API_URL, 403)
+
+        val response = interceptor.intercept(chain)
+
+        assertEquals(403, response.code)
+        assertEquals(1, proceeded.size)
+    }
 }
