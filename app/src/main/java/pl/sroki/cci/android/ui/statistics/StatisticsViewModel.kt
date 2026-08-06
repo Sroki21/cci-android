@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -48,14 +49,21 @@ class StatisticsViewModel @Inject constructor(
     private val _uiState = MutableStateFlow<StatisticsUiState>(StatisticsUiState.Loading)
     val uiState: StateFlow<StatisticsUiState> = _uiState.asStateFlow()
 
+    // Poprzedni przebieg jest anulowany przy każdym load(): seria uzupełniania krajów to setki
+    // żądań, a dwa przebiegi naraz tylko biją się o te same id.
+    private var loadJob: Job? = null
+
     init { load() }
 
     fun load() {
-        viewModelScope.launch {
+        loadJob?.cancel()
+        loadJob = viewModelScope.launch {
             _uiState.value = StatisticsUiState.Loading
             try {
                 if (flagByCountry.isEmpty()) {
-                    flagByCountry = countriesRepository.getFlagMap()
+                    // Flagi to dodatek — ich brak nie może wywalić całego ekranu w stan Error.
+                    flagByCountry = runCatching { countriesRepository.getFlagMap() }
+                        .getOrDefault(emptyMap())
                 }
                 showCurrentStats(isRefreshing = true)
                 val missingIds = capCacheRepository.getMissingForPositioned()
@@ -91,8 +99,11 @@ class StatisticsViewModel @Inject constructor(
             coroutineScope {
                 batch.map { id ->
                     async {
-                        withTimeoutOrNull(6_000L) {
-                            semaphore.withPermit {
+                        // Permit PRZED timeoutem: odwrotna kolejność liczyła 6 s już od wejścia
+                        // do kolejki, więc przy 30 id na 15 permitów druga połowa potrafiła
+                        // wygasnąć, zanim w ogóle wystartowała — kraje gubiły się bez śladu.
+                        semaphore.withPermit {
+                            withTimeoutOrNull(6_000L) {
                                 runCatching { capsRepository.getById(id.toInt()) }
                                     .getOrNull()
                                     ?.let { cap ->
