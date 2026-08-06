@@ -33,9 +33,10 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -48,9 +49,10 @@ import androidx.core.content.FileProvider
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.paging.compose.collectAsLazyPagingItems
 import coil.compose.AsyncImage
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import pl.sroki.cci.android.model.Cap
 import pl.sroki.cci.android.ui.catalog.caps.CapsView
-import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -62,23 +64,18 @@ fun PictureSearch(
     val context = LocalContext.current
     val caps = viewModel.caps.collectAsLazyPagingItems()
 
-    var cameraImageUri by remember { mutableStateOf<Uri?>(null) }
-    var cropSourceUri by remember { mutableStateOf<Uri?>(null) }
+    // rememberSaveable, bo aparat to osobna aktywność i system potrafi w tym czasie odtworzyć
+    // ekran (obrót, brak pamięci). Przy zwykłym remember cameraImageUri wracało jako null,
+    // wynik aparatu wpadał w pustkę i zrobione zdjęcie przepadało bez śladu.
+    var cameraImageUri by rememberSaveable { mutableStateOf<Uri?>(null) }
+    var cropSourceUri by rememberSaveable { mutableStateOf<Uri?>(null) }
 
-    // Lokalna kopia zamiast !! — smart cast nie działa na zmiennej ze stanu Compose.
-    val cropUri = cropSourceUri
-    if (cropUri != null) {
-        CropScreen(
-            sourceUri = cropUri,
-            onConfirm = { croppedUri ->
-                viewModel.onImageSelected(croppedUri)
-                cropSourceUri = null
-            },
-            onDismiss = { cropSourceUri = null }
-        )
-        return
+    LaunchedEffect(Unit) {
+        withContext(Dispatchers.IO) { pruneImageCache(context.cacheDir) }
     }
 
+    // Launchery deklarowane przed kadrowaniem: gdyby stały za wcześniejszym return, wychodziłyby
+    // z kompozycji na czas kadrowania i rejestrowały się od nowa po każdym powrocie.
     val cameraLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.TakePicture()
     ) { success ->
@@ -99,6 +96,20 @@ fun PictureSearch(
         ActivityResultContracts.PickVisualMedia()
     ) { uri ->
         uri?.let { cropSourceUri = it }
+    }
+
+    // Lokalna kopia zamiast !! — smart cast nie działa na zmiennej ze stanu Compose.
+    val cropUri = cropSourceUri
+    if (cropUri != null) {
+        CropScreen(
+            sourceUri = cropUri,
+            onConfirm = { croppedUri ->
+                viewModel.onImageSelected(croppedUri)
+                cropSourceUri = null
+            },
+            onDismiss = { cropSourceUri = null }
+        )
+        return
     }
 
     Scaffold(
@@ -200,7 +211,6 @@ fun PictureSearch(
 }
 
 private fun createCameraUri(context: Context): Uri {
-    val file = File(context.cacheDir, "camera_images/photo_${System.currentTimeMillis()}.jpg")
-        .also { it.parentFile?.mkdirs() }
+    val file = newCameraFile(context.cacheDir)
     return FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
 }
