@@ -17,20 +17,25 @@ interface CapCacheDao {
     suspend fun getByIds(ids: List<Long>): List<CapCache>
 
     // Zapisuje tylko kraj, nie ruszając już zapisanego image_url (Statystyki/Detal).
+    // country pod warunkiem — patrz [upsertSnapshot].
     @Query("""
         INSERT INTO cap_cache (cap_id, country, image_url, name, catalog_status, producer, image_unavailable)
         VALUES (:capId, :country, '', '', 'unknown', '', 0)
-        ON CONFLICT(cap_id) DO UPDATE SET country = :country
+        ON CONFLICT(cap_id) DO UPDATE SET
+            country = CASE WHEN selected_producer_id IS NULL THEN :country ELSE country END
     """)
     suspend fun upsertCountry(capId: Long, country: String)
 
     // Pełny wpis z kraju i zdjęcia (zakładka Klasery). Niepusty image_url zdejmuje znacznik
     // braku zdjęcia — katalog mógł je w międzyczasie dodać.
+    // country pod warunkiem — patrz [upsertSnapshot]. Tędy szła najczęstsza ścieżka kasowania
+    // ręcznego wyboru: backfill zdjęć w zakładce Klasery dotyczy właśnie kapsli wstawionych
+    // do klaserów, a te mają wybór producenta.
     @Query("""
         INSERT INTO cap_cache (cap_id, country, image_url, name, catalog_status, producer, image_unavailable)
         VALUES (:capId, :country, :imageUrl, '', 'unknown', '', 0)
         ON CONFLICT(cap_id) DO UPDATE SET
-            country = :country,
+            country = CASE WHEN selected_producer_id IS NULL THEN :country ELSE country END,
             image_url = :imageUrl,
             image_unavailable = CASE WHEN :imageUrl != '' THEN 0 ELSE image_unavailable END
     """)
@@ -48,11 +53,18 @@ interface CapCacheDao {
 
     // Snapshot identyfikujący kapsel + fingerprint; nie rusza pól weryfikacji
     // (last_verified_at, catalog_status), więc bezpieczny przy ponownym zapisie.
+    //
+    // country pod warunkiem: ręczny wybór producenta (selected_producer_id) jest silniejszy niż
+    // surowa wartość z katalogu. Dla kapsla "-Multiple countries" katalog oddaje stały placeholder,
+    // więc bezwarunkowe nadpisanie zostawiało wiersz wewnętrznie sprzeczny — country z katalogu
+    // obok producer/selected_producer_id z ręcznego wyboru — a CollectionVerifier porównywał go
+    // z krajem wybranego producenta i stawiał UPDATED na kapslu, w którym katalog nic nie zmienił.
     @Query("""
         INSERT INTO cap_cache (cap_id, name, country, image_url, created_at, created_by_id, updated_at, catalog_status, producer, image_unavailable)
         VALUES (:capId, :name, :country, :imageUrl, :createdAt, :createdById, :updatedAt, 'unknown', '', 0)
         ON CONFLICT(cap_id) DO UPDATE SET
-            name = :name, country = :country, image_url = :imageUrl,
+            name = :name, image_url = :imageUrl,
+            country = CASE WHEN selected_producer_id IS NULL THEN :country ELSE country END,
             created_at = :createdAt, created_by_id = :createdById, updated_at = :updatedAt
     """)
     suspend fun upsertSnapshot(

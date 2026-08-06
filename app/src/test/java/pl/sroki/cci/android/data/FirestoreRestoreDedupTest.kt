@@ -19,7 +19,7 @@ import pl.sroki.cci.android.data.model.BinderCapCount
  * klasera nie ma UNIQUE — dwa ręcznie utworzone klasery "Belgia" znaczyły, że kolejne
  * uruchomienie kasowało starszy razem z kapslami (kaskada FK).
  */
-class FirestoreRestoreUseCaseTest {
+class FirestoreRestoreDedupTest {
 
     private lateinit var binderDao: BinderDao
     private lateinit var zapisaneWersje: MutableMap<String, Int>

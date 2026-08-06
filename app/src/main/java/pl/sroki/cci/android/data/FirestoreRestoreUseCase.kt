@@ -306,9 +306,10 @@ class FirestoreRestoreUseCase @Inject constructor(
                     doc.capId, s.name, s.country, s.imageUrl, s.createdAt, s.createdById, s.updatedAt
                 )
             }
-            // Ręczny wybór producenta — musi iść PO snapshocie, bo nadpisuje country wybranym
-            // krajem. Bez tego kapsel "-Multiple countries" wracał po reinstalacji do surowego
-            // kraju z katalogu, a weryfikacja zgłaszała go jako rozjazd.
+            // Ręczny wybór producenta nadpisuje country wybranym krajem. Bez tego kapsel
+            // "-Multiple countries" wracał po reinstalacji do surowego kraju z katalogu,
+            // a weryfikacja zgłaszała go jako rozjazd. Kolejność (po snapshocie) była kiedyś
+            // jedyną ochroną; dziś upsertSnapshot i tak nie rusza kraju kapsla z wyborem.
             doc.producerSelection?.let { sel ->
                 capCacheDao.selectProducer(doc.capId, sel.producerId, sel.producer, sel.country)
             }
