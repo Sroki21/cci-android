@@ -121,7 +121,8 @@ fun Navigation(
                     navController.navigate(
                         Screen.Country.createUrl(it.id, it.name)
                     )
-                }
+                },
+                onRetry = { countriesViewModel.getCountries() }
             )
         }
         composable(route = Screen.PictureSearch.route) {

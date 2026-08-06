@@ -20,6 +20,8 @@ import androidx.compose.ui.unit.dp
 import androidx.paging.*
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
+import androidx.paging.compose.itemContentType
+import androidx.paging.compose.itemKey
 import kotlinx.coroutines.delay
 import pl.sroki.cci.android.model.Cap
 import pl.sroki.cci.android.ui.components.FullSizeLoader
@@ -60,8 +62,18 @@ fun CapsView(caps: LazyPagingItems<Cap>, onCapClick: (Cap) -> Unit = {}) {
             is LoadState.Error -> errorItem(state.error, caps::retry)
         }
 
-        items(caps, key = { it.id }) { cap ->
-            CapGridCard(cap = cap, onClick = { onCapClick(cap) })
+        // Oficjalne itemKey/itemContentType z paging-compose. Własna wersja nadawała WSZYSTKIM
+        // placeholderom klucz 0, więc dwa null-e naraz dawały „Key 0 was already used" i wywalały
+        // ekran. Dziś to mina uśpiona (PagingSource-y nie zwracają itemsBefore/itemsAfter, więc
+        // placeholdery nie powstają), ale itemKey generuje dla nich unikalny PagingPlaceholderKey.
+        items(
+            count = caps.itemCount,
+            key = caps.itemKey { it.id },
+            contentType = caps.itemContentType { "cap" },
+        ) { index ->
+            caps[index]?.let { cap ->
+                CapGridCard(cap = cap, onClick = { onCapClick(cap) })
+            }
         }
         when (val state = caps.loadState.append) {
             is LoadState.NotLoading -> Unit
@@ -109,26 +121,6 @@ private fun CenteredMessage(text: String) {
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(text = text, style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)
-    }
-}
-
-fun <T : Any> LazyGridScope.items(
-    items: LazyPagingItems<T>,
-    key: ((item: T) -> Any)? = null,
-    itemContent: @Composable LazyGridItemScope.(value: T) -> Unit
-) {
-    items(
-        count = items.itemCount,
-        key = if (key == null) null else { index ->
-            val item = items.peek(index)
-            if (item == null) {
-                0
-            } else {
-                key(item)
-            }
-        }
-    ) { index ->
-        items[index]?.let { itemContent(it) }
     }
 }
 

@@ -3,7 +3,7 @@ package pl.sroki.cci.android.ui.catalog.countries
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -17,6 +17,7 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import pl.sroki.cci.android.data.fakeCountries
 import pl.sroki.cci.android.data.model.Country
+import pl.sroki.cci.android.ui.components.ErrorWithRetry
 import pl.sroki.cci.android.ui.components.FullSizeLoader
 import pl.sroki.cci.android.ui.theme.CCITheme
 
@@ -26,18 +27,19 @@ fun Countries(
     countriesUiState: CountriesUiState,
     onCountryClick: (Country) -> Unit,
     onBack: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onRetry: () -> Unit = {},
 ) {
     Scaffold(topBar = {
         TopAppBar(
             title = {
-                Text(text = "Countries")
+                Text(text = "Kraje")
             },
             navigationIcon = {
                 IconButton(onClick = onBack) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Back"
+                        contentDescription = "Wstecz"
                     )
                 }
             }
@@ -49,14 +51,18 @@ fun Countries(
                 is CountriesUiState.Success -> LazyColumn(
                     modifier = modifier.fillMaxSize()
                 ) {
-                    itemsIndexed(countriesUiState.countries) { _, country ->
+                    items(countriesUiState.countries, key = { it.id }) { country ->
                         CountryItem(
                             country = country,
                             onClick = { onCountryClick(country) }
                         )
                     }
                 }
-                is CountriesUiState.Error -> Text("Error")
+                // Wcześniej dosłownie Text("Error"): bez treści błędu i bez sposobu na ponowienie.
+                is CountriesUiState.Error -> ErrorWithRetry(
+                    message = "Nie udało się pobrać listy krajów",
+                    onRetry = onRetry,
+                )
             }
         }
     }

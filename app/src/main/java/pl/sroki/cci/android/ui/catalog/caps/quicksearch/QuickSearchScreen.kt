@@ -20,7 +20,6 @@ fun QuickSearchScreen(
     onCapClick: (Cap) -> Unit,
 ) {
     val viewModel = hiltViewModel<QuickSearchViewModel>()
-    viewModel.query = query
 
     val caps = viewModel.caps.collectAsLazyPagingItems()
 

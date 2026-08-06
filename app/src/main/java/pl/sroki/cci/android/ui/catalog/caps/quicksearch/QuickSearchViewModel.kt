@@ -1,5 +1,6 @@
 package pl.sroki.cci.android.ui.catalog.caps.quicksearch
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.paging.Pager
@@ -15,10 +16,16 @@ import pl.sroki.cci.android.model.Cap
 import javax.inject.Inject
 
 @HiltViewModel
-class QuickSearchViewModel @Inject constructor(private val repository: CapsRepository) :
-    ViewModel() {
+class QuickSearchViewModel @Inject constructor(
+    savedStateHandle: SavedStateHandle,
+    private val repository: CapsRepository,
+) : ViewModel() {
 
-    var query: String = ""
+    // Fraza z trasy, a nie publiczne pole ustawiane przez ekran w trakcie kompozycji. Tamten
+    // wariant działał wyłącznie dzięki temu, że fabryka czyta pole leniwie przy pierwszym
+    // ładowaniu — zmiana wartości po utworzeniu ViewModelu nie odświeżałaby cachedIn-owanego
+    // strumienia. Tak samo robią już AdvancedSearchViewModel i CountryOwnedCapsViewModel.
+    private val query: String = savedStateHandle.get<String>("query").orEmpty()
     private var pagingSource: PagingSource<Int, Cap>? = null
 
     // API /api/v1/caps?query= ignores perPage — always returns 20 items per page

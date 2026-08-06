@@ -41,13 +41,6 @@ interface CapApiService {
         @Query("perPage") perPage: Int
     ): Page<Cap>
 
-    @GET("api/v1/categories/caps")
-    suspend fun getByCategoryIds(
-        @Query("category[]") categoryIds: List<Int>,
-        @Query("page") page: Int,
-        @Query("perPage") perPage: Int
-    ): Page<Cap>
-
     @GET("api/v1/caps")
     suspend fun advancedSearch(
         @Query("query") query: String? = null,

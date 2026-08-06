@@ -28,9 +28,6 @@ class CapsRepository @Inject constructor(
     fun countryCapsPagingSource(id: Int) = CountryCapsPagingSource(id, this)
     fun latestCapsPagingSource() = LatestCapsPagingSource(this)
     fun quickSearchCapsPagingSource(query: String) = QuickSearchCapsPagingSource(query, this)
-    fun pictureSearchCapsPagingSource(categoryIds: List<Int>) =
-        PictureSearchCapsPagingSource(categoryIds, this)
-
     fun similarCapsPagingSource(imageBytes: ByteArray, mimeType: String) =
         SimilarCapsPagingSource(imageBytes, mimeType, this)
 
@@ -62,14 +59,6 @@ class CapsRepository @Inject constructor(
 
     suspend fun getByCountryId(id: Int, page: Int = 1): Page<Cap> {
         return capApiService.getByCountryId(countryId = id, page = page, perPage = perPage)
-    }
-
-    suspend fun getByCategoryIds(categoryIds: List<Int>, page: Int = 1): Page<Cap> {
-        return capApiService.getByCategoryIds(
-            categoryIds = categoryIds,
-            page = page,
-            perPage = perPage
-        )
     }
 
     suspend fun getLatest(page: Int = 1): Page<Cap> {
