@@ -23,6 +23,7 @@ import pl.sroki.cci.android.data.datasource.remote.firestore.CapPositionDocument
 import pl.sroki.cci.android.data.datasource.remote.firestore.CapPositionFirestoreService
 import pl.sroki.cci.android.data.datasource.remote.firestore.ProducerSelection
 import pl.sroki.cci.android.data.datasource.remote.firestore.PurchasedCapsFirestoreService
+import pl.sroki.cci.android.data.model.BinderCapCount
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -79,13 +80,49 @@ class FirestoreRestoreUseCase @Inject constructor(
         const val KEY_PRODUCER_BACKFILL = "producer_backfill_version"
         // Podbij, gdy backfill ma się wykonać ponownie u wszystkich użytkowników.
         const val PRODUCER_BACKFILL_VERSION = 1
+        const val KEY_BINDER_DEDUP = "binder_dedup_version"
+        // Podbij, gdy sprzątanie duplikatów ma się wykonać ponownie.
+        const val BINDER_DEDUP_VERSION = 1
     }
 
     private val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     private val restoreIfEmptyMutex = Mutex()
 
+    /**
+     * Sprząta klasery zdublowane przez wcześniejsze wersje odtwarzania, które wstawiały do Roomu
+     * każdy dokument z Firestore — także kilka o tej samej nazwie. Dziś odsiewa je [chooseBinders],
+     * więc nowych duplikatów nie przybywa i sprzątanie wykonuje się jednorazowo.
+     *
+     * Dwa świadome ograniczenia, bo poprzednia wersja (`DELETE ... WHERE id NOT IN (SELECT MAX(id)
+     * ... GROUP BY name)`) kasowała **dane użytkownika**: leciała przy każdym starcie, więc
+     * zabierała też klasery utworzone ręcznie o powtórzonej nazwie, i zostawiała najnowszy wiersz
+     * zamiast najpełniejszego, więc razem z duplikatem znikały kapsle (kaskada FK na binder_page
+     * i cap_position).
+     *
+     * Dlatego: usuwamy wyłącznie duplikaty **bez ani jednego kapsla** (przepadają co najwyżej puste
+     * strony), a na nazwę zostaje klaser z największą liczbą kapsli — przy remisie najstarszy.
+     * Gdy kapsle ma więcej niż jedna kopia, nie ruszamy żadnej i zgłaszamy to do rozstrzygnięcia
+     * ręcznego — scalanie zawartości zgadywałoby, gdzie kapsel ma stać.
+     */
     suspend fun deduplicateRoomData() {
-        binderDao.deduplicateByName()
+        if (prefs.getInt(KEY_BINDER_DEDUP, 0) >= BINDER_DEDUP_VERSION) return
+        val duplikaty = binderDao.getCapCounts().groupBy { it.name }.values.filter { it.size > 1 }
+        for (grupa in duplikaty) {
+            val zawartosc = grupa.sortedWith(compareByDescending<BinderCapCount> { it.capCount }.thenBy { it.id })
+            val zachowany = zawartosc.first()
+            val doUsuniecia = zawartosc.drop(1).filter { it.capCount == 0 }
+            doUsuniecia.forEach { binderDao.deleteById(it.id) }
+            val niepuste = zawartosc.drop(1).size - doUsuniecia.size
+            if (niepuste > 0) {
+                val opis = "klaser \"${zachowany.name}\": $niepuste zduplikowanych kopii z kapslami"
+                Log.w("CCI_SYNC", "$opis — pozostawione bez zmian")
+                Sentry.captureMessage(opis)
+            }
+            if (doUsuniecia.isNotEmpty()) {
+                Log.i("CCI_SYNC", "usunięto ${doUsuniecia.size} pustych duplikatów klasera \"${zachowany.name}\"")
+            }
+        }
+        prefs.edit().putInt(KEY_BINDER_DEDUP, BINDER_DEDUP_VERSION).apply()
     }
 
     /**

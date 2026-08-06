@@ -5,6 +5,7 @@ import androidx.room.Insert
 import androidx.room.Query
 import kotlinx.coroutines.flow.Flow
 import pl.sroki.cci.android.data.datasource.local.entity.Binder
+import pl.sroki.cci.android.data.model.BinderCapCount
 
 @Dao
 interface BinderDao {
@@ -28,6 +29,16 @@ interface BinderDao {
     @Query("SELECT COUNT(*) FROM binder")
     suspend fun countAll(): Int
 
-    @Query("DELETE FROM binder WHERE id NOT IN (SELECT MAX(id) FROM binder GROUP BY name)")
-    suspend fun deduplicateByName()
+    // Liczba kapsli per klaser. Deduplikacja decyduje na tej podstawie, co wolno usunąć —
+    // wcześniej kasowała wszystko poza MAX(id) i zabierała pełne klasery razem z kapslami.
+    @Query(
+        """
+        SELECT b.id AS id, b.name AS name,
+               (SELECT COUNT(*) FROM cap_position cp
+                  JOIN binder_page bp ON cp.binder_page_id = bp.id
+                 WHERE bp.binder_id = b.id) AS capCount
+        FROM binder b
+        """
+    )
+    suspend fun getCapCounts(): List<BinderCapCount>
 }
