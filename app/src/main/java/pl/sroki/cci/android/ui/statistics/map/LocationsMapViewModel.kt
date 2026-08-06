@@ -68,11 +68,15 @@ class LocationsMapViewModel @Inject constructor(
                     )
                 }
 
+                // Liczniki idą z KOLEKCJI, nie z mapy. Sumowanie po `countries` pomijało kraje
+                // o pseudo-kodach flag (MI, UN, CS, SU), bo te nie mają regionu na mapie i nie
+                // wchodzą do isoByName — a kapsle z nich są w kolekcji tak samo jak wszystkie inne.
+                // Licznik na mapie rozjeżdżał się przez to z licznikiem w Statystykach.
                 _uiState.value = LocationsMapUiState.Success(
                     map = map,
                     countries = countries,
-                    totalCaps = countries.values.sumOf { it.count },
-                    ownedCountriesCount = countries.values.count { it.count > 0 },
+                    totalCaps = countByName.values.sum(),
+                    ownedCountriesCount = countByName.count { it.value > 0 },
                 )
             } catch (e: CancellationException) {
                 throw e
