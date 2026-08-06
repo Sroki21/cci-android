@@ -37,7 +37,9 @@ class CollectionVerificationViewModel @Inject constructor(
 ) : ViewModel() {
 
     val flaggedCaps: StateFlow<List<CachedCap>> = capCacheRepository.flaggedCapsFlow()
-        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+        // WhileSubscribed: Flow chodzi po dwóch tabelach i przelicza się po każdej zmianie,
+        // więc nie ma powodu trzymać go przy życiu, gdy ekranu nie widać.
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     private val _scan = MutableStateFlow(ScanState())
     val scan: StateFlow<ScanState> = _scan.asStateFlow()

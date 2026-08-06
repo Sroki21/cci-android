@@ -33,6 +33,7 @@ class BinderRepositoryTest {
             .build()
         val firestore = FirebaseFirestore.getInstance()
         repo = BinderRepository(
+            db = db,
             binderDao = db.binderDao(),
             binderPageDao = db.binderPageDao(),
             capPositionDao = db.capPositionDao(),

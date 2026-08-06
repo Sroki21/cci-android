@@ -38,6 +38,7 @@ class FirestoreWriteThroughTest {
         val binderPageFs = BinderPageFirestoreService(firestore)
         val capPositionFs = CapPositionFirestoreService(firestore)
         binderRepository = BinderRepository(
+            db = db,
             binderDao = db.binderDao(),
             binderPageDao = db.binderPageDao(),
             capPositionDao = db.capPositionDao(),

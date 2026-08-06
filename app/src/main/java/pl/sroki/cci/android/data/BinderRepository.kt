@@ -1,6 +1,8 @@
 package pl.sroki.cci.android.data
 
+import androidx.room.withTransaction
 import kotlinx.coroutines.flow.Flow
+import pl.sroki.cci.android.data.datasource.local.CciDatabase
 import kotlinx.coroutines.flow.first
 import pl.sroki.cci.android.data.datasource.local.dao.BinderDao
 import pl.sroki.cci.android.data.datasource.local.dao.BinderPageDao
@@ -15,6 +17,7 @@ import pl.sroki.cci.android.model.binder.BinderView
 
 @Singleton
 class BinderRepository @Inject constructor(
+    private val db: CciDatabase,
     private val binderDao: BinderDao,
     private val binderPageDao: BinderPageDao,
     private val capPositionDao: CapPositionDao,
@@ -37,17 +40,26 @@ class BinderRepository @Inject constructor(
     }
 
     suspend fun delete(binderId: Long) {
-        val occupied = capPositionDao.countByBinderId(binderId)
-        check(occupied == 0) { "Klaser zawiera kapsle i nie może być usunięty" }
         val uid = authManager.uid.value
+        val binder = if (uid != null) binderDao.getById(binderId) else null
+        val pages = if (uid != null) binderPageDao.getByBinderId(binderId).first() else emptyList()
+
+        // Warunek „pusty klaser" i usunięcie w jednej transakcji — sprawdzany osobno mógł się
+        // zdezaktualizować, zanim doszło do DELETE (kaskada FK zabrałaby wtedy kapsle).
+        db.withTransaction {
+            check(capPositionDao.countByBinderId(binderId) == 0) {
+                "Klaser zawiera kapsle i nie może być usunięty"
+            }
+            binderDao.deleteById(binderId)
+        }
+
+        // Chmura dopiero po udanym usunięciu lokalnym: przerwany check nie może zostawić
+        // skasowanych dokumentów klasera, którego nadal widać na liście.
         if (uid != null) {
-            val binder = binderDao.getById(binderId)
-            val pages = binderPageDao.getByBinderId(binderId).first()
             pages.forEach { page ->
                 page.firestoreId?.let { binderPageFirestoreService.scheduleDelete(uid, it) }
             }
             binder?.firestoreId?.let { binderFirestoreService.scheduleDelete(uid, it) }
         }
-        binderDao.deleteById(binderId)
     }
 }

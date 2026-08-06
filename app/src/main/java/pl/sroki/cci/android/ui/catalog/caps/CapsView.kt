@@ -1,6 +1,8 @@
 package pl.sroki.cci.android.ui.catalog.caps
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -22,7 +24,6 @@ import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.paging.compose.itemContentType
 import androidx.paging.compose.itemKey
-import kotlinx.coroutines.delay
 import pl.sroki.cci.android.model.Cap
 import pl.sroki.cci.android.ui.components.FullSizeLoader
 import pl.sroki.cci.android.ui.theme.CCITheme
@@ -31,8 +32,14 @@ import java.io.IOException
 
 private const val NUMBER_OF_COLUMNS = 2
 
+/**
+ * Siatka kapsli ze stanami ładowania/błędu/pustki. Renderuje dwoje rodzeństwa (komunikat + siatkę),
+ * więc opakowuje je we własny [Box] — wcześniej zakładała, że robi to każdy z sześciu ekranów
+ * wołających. Wszystkie faktycznie to robiły, ale kontrakt był niejawny: w Column loader
+ * wypchnąłby siatkę w dół.
+ */
 @Composable
-fun CapsView(caps: LazyPagingItems<Cap>, onCapClick: (Cap) -> Unit = {}) {
+fun CapsView(caps: LazyPagingItems<Cap>, onCapClick: (Cap) -> Unit = {}) = Box(Modifier.fillMaxSize()) {
     when (val state = caps.loadState.refresh) {
         is LoadState.NotLoading ->
             // Bez tego wyszukiwanie bez trafień renderowało pustą siatkę bez słowa wyjaśnienia,
@@ -143,14 +150,13 @@ private fun LazyGridScope.errorItem(error: Throwable, onRetry: () -> Unit) {
     }
 }
 
-private class FakePagingSource(private val success: Boolean = false) : PagingSource<Int, Cap>() {
+private class FakePagingSource(private val success: Boolean = true) : PagingSource<Int, Cap>() {
     override fun getRefreshKey(state: PagingState<Int, Cap>): Int? {
         return state.anchorPosition
     }
 
     override suspend fun load(params: LoadParams<Int>): LoadResult<Int, Cap> {
         return if (success) {
-            delay(2000L)
             LoadResult.Page(
                 data = listOf(previewCaps.first()),
                 prevKey = null,
@@ -168,6 +174,18 @@ private class FakePagingSource(private val success: Boolean = false) : PagingSou
 fun CapsViewPreview() {
     val caps = Pager(
         pagingSourceFactory = { FakePagingSource() },
+        config = PagingConfig(pageSize = 20)
+    ).flow.collectAsLazyPagingItems()
+    CCITheme {
+        CapsView(caps = caps)
+    }
+}
+
+@Preview(widthDp = 320, heightDp = 480)
+@Composable
+fun CapsViewErrorPreview() {
+    val caps = Pager(
+        pagingSourceFactory = { FakePagingSource(success = false) },
         config = PagingConfig(pageSize = 20)
     ).flow.collectAsLazyPagingItems()
     CCITheme {

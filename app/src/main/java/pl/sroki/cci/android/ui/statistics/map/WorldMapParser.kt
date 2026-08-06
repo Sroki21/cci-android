@@ -1,6 +1,7 @@
 package pl.sroki.cci.android.ui.statistics.map
 
 import android.content.Context
+import android.util.Log
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
@@ -163,7 +164,13 @@ class WorldMapParser @Inject constructor(
         Color.argb(0xFF, (index shr 16) and 0xFF, (index shr 8) and 0xFF, index and 0xFF)
 
     private fun addPath(into: LinkedHashMap<String, Path>, iso: String, pathData: String) {
-        val sub = runCatching { PathParser.createPathFromPathData(pathData) }.getOrNull() ?: return
+        val sub = try {
+            PathParser.createPathFromPathData(pathData)
+        } catch (e: Exception) {
+            // Bez tego kraj z uszkodzoną ścieżką po prostu znikał z mapy — bez śladu w logu.
+            Log.w("CCI_MAP", "nie udało się sparsować ścieżki kraju $iso: ${e.message}")
+            return
+        }
         into.getOrPut(iso) { Path() }.addPath(sub)
     }
 

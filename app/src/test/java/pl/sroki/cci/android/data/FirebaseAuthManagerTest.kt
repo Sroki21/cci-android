@@ -7,7 +7,9 @@ import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
 import com.google.firebase.auth.FirebaseAuthInvalidUserException
 import com.google.firebase.auth.FirebaseAuthUserCollisionException
 import com.google.firebase.auth.FirebaseUser
+import io.mockk.Runs
 import io.mockk.every
+import io.mockk.just
 import io.mockk.mockk
 import io.mockk.verify
 import kotlinx.coroutines.test.runTest
@@ -50,6 +52,8 @@ class FirebaseAuthManagerTest {
 
         auth = mockk()
         every { auth.currentUser } answers { zalogowany }
+        // FirebaseAuthManager rejestruje AuthStateListener w init — patrz H4.
+        every { auth.addAuthStateListener(any()) } just Runs
         manager = FirebaseAuthManager(auth)
     }
 

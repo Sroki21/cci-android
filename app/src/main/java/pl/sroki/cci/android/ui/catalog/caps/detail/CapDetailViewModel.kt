@@ -137,6 +137,12 @@ class CapDetailViewModel @Inject constructor(
         val capId = current.cap.id.toLong()
         viewModelScope.launch {
             val s = current.cap.toSnapshot()
+            // Akceptacja stanu katalogu przy PRODUCER_REMOVED musi PORZUCIĆ ręczny wybór:
+            // inaczej selected_producer_id nadal wskazuje producenta, którego katalog nie zna,
+            // i następna weryfikacja stawia ten sam baner od nowa.
+            if (catalogStatus == CatalogStatus.PRODUCER_REMOVED) {
+                capCacheRepository.clearProducerSelection(capId, s.country)
+            }
             capCacheRepository.upsertSnapshot(
                 capId, s.name, s.country, s.imageUrl, s.createdAt, s.createdById, s.updatedAt
             )

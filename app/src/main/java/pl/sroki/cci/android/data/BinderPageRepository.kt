@@ -1,6 +1,8 @@
 package pl.sroki.cci.android.data
 
 import android.database.sqlite.SQLiteConstraintException
+import android.util.Log
+import io.sentry.Sentry
 import androidx.room.withTransaction
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -79,19 +81,31 @@ class BinderPageRepository @Inject constructor(
     suspend fun moveToBinder(pageId: Long, newBinderId: Long) {
         val page = dao.getById(pageId) ?: return
         if (page.binderId == newBinderId) return
-        check(dao.countByBinderId(newBinderId) < 15) { "Docelowy klaser może mieć maksymalnie 15 stron" }
-        try {
-            dao.updateBinderId(pageId, newBinderId)
-        } catch (e: SQLiteConstraintException) {
-            throw IllegalStateException(
-                "Strona o numerze ${page.pageNumber} już istnieje w docelowym klaserze — zmień najpierw numer strony"
-            )
+        // Sprawdzenie limitu i zapis w jednej transakcji — inaczej równoległe odtwarzanie
+        // z chmury mogło dołożyć stronę między jednym a drugim (TOCTOU).
+        db.withTransaction {
+            check(dao.countByBinderId(newBinderId) < 15) { "Docelowy klaser może mieć maksymalnie 15 stron" }
+            try {
+                dao.updateBinderId(pageId, newBinderId)
+            } catch (e: SQLiteConstraintException) {
+                throw IllegalStateException(
+                    "Strona o numerze ${page.pageNumber} już istnieje w docelowym klaserze — zmień najpierw numer strony"
+                )
+            }
         }
         val uid = authManager.uid.value
         if (uid != null) {
             val targetFirestoreId = binderDao.getById(newBinderId)?.firestoreId
             if (page.firestoreId != null && targetFirestoreId != null) {
                 binderPageFirestoreService.scheduleMove(uid, page.firestoreId, targetFirestoreId)
+            } else {
+                // Strona albo klaser powstały offline (brak firestoreId): lokalnie przeniesienie
+                // się udaje, a chmura dalej wiąże stronę ze starym klaserem — po odtworzeniu
+                // wróciłaby w złe miejsce. Cicho przejść obok tego nie wolno.
+                val opis = "przeniesienie strony $pageId poza synchronizacją " +
+                    "(page.firestoreId=${page.firestoreId}, docelowy=$targetFirestoreId)"
+                Log.w("CCI_SYNC", opis)
+                Sentry.captureMessage(opis)
             }
         }
     }

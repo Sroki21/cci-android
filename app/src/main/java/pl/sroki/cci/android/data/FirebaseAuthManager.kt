@@ -19,6 +19,13 @@ class FirebaseAuthManager @Inject constructor(private val auth: FirebaseAuth) {
     private val _uid = MutableStateFlow(auth.currentUser?.uid)
     val uid: StateFlow<String?> = _uid.asStateFlow()
 
+    init {
+        // Bez tego _uid zmieniało się WYŁĄCZNIE przy ręcznych wywołaniach, więc unieważnienie
+        // sesji Firebase (wylogowanie z innego urządzenia, usunięcie konta, wygasłe poświadczenia)
+        // zostawiało nieaktualny uid — a pod niego szły dalsze zapisy do Firestore.
+        auth.addAuthStateListener { _uid.value = it.currentUser?.uid }
+    }
+
     suspend fun ensureSignedIn() {
         if (auth.currentUser != null) {
             _uid.value = auth.currentUser?.uid
