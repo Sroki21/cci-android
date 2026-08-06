@@ -1,6 +1,5 @@
 package pl.sroki.cci.android.ui
 
-import android.content.res.Configuration
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -13,7 +12,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import pl.sroki.cci.android.R
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -22,7 +20,6 @@ import pl.sroki.cci.android.NavigationItem
 import pl.sroki.cci.android.navigation.Screen
 import pl.sroki.cci.android.ui.home.HomeEvent
 import pl.sroki.cci.android.ui.home.HomeViewModel
-import pl.sroki.cci.android.ui.theme.CCITheme
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -36,7 +33,11 @@ fun HomeScreen(
     val flaggedCount by vm.flaggedCount.collectAsStateWithLifecycle()
 
     var query by remember { mutableStateOf("") }
+    var logoutDialogOpen by remember { mutableStateOf(false) }
     val snackbarState = remember { SnackbarHostState() }
+
+    // Puste/białe zapytanie nawigowało do wyników bez frazy — ignorujemy je.
+    val doSearch = { if (query.isNotBlank()) onSearch(query) }
 
     LaunchedEffect(Unit) {
         vm.events.collect { event ->
@@ -96,7 +97,7 @@ fun HomeScreen(
                                 text = { Text("Wyloguj") },
                                 onClick = {
                                     menuExpanded = false
-                                    vm.logout()
+                                    logoutDialogOpen = true
                                 }
                             )
                         }
@@ -116,12 +117,12 @@ fun HomeScreen(
                 label = { Text("Szukaj") },
                 singleLine = true,
                 trailingIcon = {
-                    IconButton(onClick = { onSearch(query) }) {
+                    IconButton(onClick = doSearch) {
                         Icon(imageVector = Icons.Default.Search, contentDescription = "Szukaj")
                     }
                 },
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                keyboardActions = KeyboardActions(onSearch = { onSearch(query) }),
+                keyboardActions = KeyboardActions(onSearch = { doSearch() }),
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 8.dp)
@@ -136,13 +137,9 @@ fun HomeScreen(
                 NavigationItem(text = "Zakupione", icon = Icons.Filled.ShoppingCart) {
                     onClick(Screen.Purchased)
                 }
-            }
-            if (uiState.isLoggedIn) {
                 NavigationItem(text = "Statystyki", icon = Icons.Filled.BarChart) {
                     onClick(Screen.Statistics)
                 }
-            }
-            if (uiState.isLoggedIn) {
                 NavigationItem(text = "Klasery", icon = Icons.Filled.LibraryBooks) {
                     onClick(Screen.Binders)
                 }
@@ -178,15 +175,20 @@ fun HomeScreen(
             }
         )
     }
-}
 
-@Preview
-@Preview("dark theme", uiMode = Configuration.UI_MODE_NIGHT_YES)
-@Composable
-fun HomeScreenPreview() {
-    CCITheme {
-        Surface {
-            HomeScreen()
-        }
+    if (logoutDialogOpen) {
+        AlertDialog(
+            onDismissRequest = { logoutDialogOpen = false },
+            title = { Text("Wylogować?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    logoutDialogOpen = false
+                    vm.logout()
+                }) { Text("Wyloguj") }
+            },
+            dismissButton = {
+                TextButton(onClick = { logoutDialogOpen = false }) { Text("Anuluj") }
+            }
+        )
     }
 }

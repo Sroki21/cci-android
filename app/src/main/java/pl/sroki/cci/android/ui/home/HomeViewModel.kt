@@ -62,8 +62,15 @@ class HomeViewModel @Inject constructor(
         // Jednorazowy backfill snapshotu/fingerprintu po aktualizacji (ustanawia baseline 4126 kapsli).
         if (verificationPrefs.backfilledVersion < BuildConfig.VERSION_CODE) {
             viewModelScope.launch {
-                runCatching { collectionVerifier.runFullScan() }
-                verificationPrefs.backfilledVersion = BuildConfig.VERSION_CODE
+                val outcome = runCatching { collectionVerifier.runFullScan() }.getOrNull()
+                // Wersję oznaczamy jako zbackfillowaną TYLKO po skanie, który dotarł do katalogu.
+                // Gdy sieć leży albo Cloudflare blokuje, wszystkie verify() padają, runFullScan
+                // kończy się „normalnie", a wcześniej i tak zapisywaliśmy wersję — baseline nigdy
+                // się nie ustanawiał i nie było ponowienia. Teraz nieudany skan zostawia wersję
+                // niezaznaczoną, więc backfill dokończy się przy następnym wejściu na ekran.
+                if (outcome?.healthy == true) {
+                    verificationPrefs.backfilledVersion = BuildConfig.VERSION_CODE
+                }
             }
         }
     }

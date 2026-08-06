@@ -5,10 +5,13 @@ import android.content.SharedPreferences
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
+import pl.sroki.cci.android.BuildConfig
 import pl.sroki.cci.android.data.AuthRepository
 import pl.sroki.cci.android.data.CapCacheRepository
 import pl.sroki.cci.android.data.CollectionVerifier
 import pl.sroki.cci.android.data.FirestoreRestoreUseCase
+import pl.sroki.cci.android.data.ScanOutcome
 import pl.sroki.cci.android.data.VerificationPrefs
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.flowOf
@@ -95,5 +98,37 @@ class HomeViewModelTest {
 
         assertFalse(viewModel.uiState.value.isLoggedIn)
         assertNull(viewModel.uiState.value.userName)
+    }
+
+    /** Buduje VM z backfilledVersion < aktualnej, żeby init odpalił skan, i danym wynikiem skanu. */
+    private fun buildWithScan(outcome: ScanOutcome, prefs: VerificationPrefs) {
+        val verifier = mockk<CollectionVerifier>()
+        coEvery { verifier.runFullScan(any(), any()) } returns outcome
+        every { prefs.backfilledVersion } returns 0
+        val cache = mockk<CapCacheRepository>(relaxed = true)
+        every { cache.flaggedCountFlow() } returns flowOf(0)
+        HomeViewModel(
+            sessionRepository, authRepository, firestoreRestoreUseCase,
+            verifier, prefs, cache
+        )
+    }
+
+    @Test
+    fun `nieudany backfill nie oznacza wersji jako zbackfillowanej`() = runTest {
+        val prefs = mockk<VerificationPrefs>(relaxed = true)
+
+        // Skan ze wszystkimi kapslami, ale zero dotarło do katalogu (offline/403) — niezdrowy.
+        buildWithScan(ScanOutcome(total = 10, reachedCatalog = 0), prefs)
+
+        verify(exactly = 0) { prefs.backfilledVersion = any() }
+    }
+
+    @Test
+    fun `udany backfill oznacza wersje jako zbackfillowana`() = runTest {
+        val prefs = mockk<VerificationPrefs>(relaxed = true)
+
+        buildWithScan(ScanOutcome(total = 10, reachedCatalog = 7), prefs)
+
+        verify(exactly = 1) { prefs.backfilledVersion = BuildConfig.VERSION_CODE }
     }
 }

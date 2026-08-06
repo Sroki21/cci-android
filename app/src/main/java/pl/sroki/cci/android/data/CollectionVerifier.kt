@@ -16,6 +16,16 @@ import javax.inject.Singleton
 import pl.sroki.cci.android.model.binder.CatalogStatus
 
 /**
+ * Wynik skanu kolekcji. [reachedCatalog] to liczba kapsli, dla których pobranie z katalogu
+ * naprawdę się powiodło — zero przy skanie ze wszystkimi kapslami znaczy, że katalog był
+ * nieosiągalny (offline/403), a nie że kolekcja jest czysta.
+ */
+data class ScanOutcome(val total: Int, val reachedCatalog: Int) {
+    // Przy pustej kolekcji nie ma czego skanować — traktujemy to jako skan „udany".
+    val healthy: Boolean get() = total == 0 || reachedCatalog > 0
+}
+
+/**
  * Rdzeń weryfikacji kolekcji: porównuje zapisany snapshot z aktualnym stanem katalogu crowncaps
  * przez fingerprint (createdAt + createdById niezmienne; updatedAt/imageUrl/kraj/nazwa = zmiana).
  *
@@ -33,7 +43,13 @@ class CollectionVerifier @Inject constructor(
 ) {
     private val semaphore = Semaphore(4)
 
-    suspend fun verify(capId: Long): CatalogStatus {
+    /**
+     * @param onCatalogReached wołane, gdy pobranie kapsla z katalogu się powiodło (fetch doszedł
+     *   do skutku). Pozwala [runBatch] odróżnić skan, który realnie dotknął serwera, od takiego,
+     *   w którym wszystkie pobrania padły (offline/403) — bez zmiany zwracanego statusu, na którym
+     *   opierają się testy i pojedyncze wywołania.
+     */
+    suspend fun verify(capId: Long, onCatalogReached: () -> Unit = {}): CatalogStatus {
         val stored = capCacheRepository.getOne(capId)
         val cap = try {
             capsRepository.getById(capId.toInt())
@@ -46,6 +62,7 @@ class CollectionVerifier @Inject constructor(
         } catch (e: IOException) {
             return stored?.catalogStatus ?: CatalogStatus.UNKNOWN // sieć — spróbuj później
         }
+        onCatalogReached()
 
         val fresh = cap.toSnapshot()
 
@@ -104,17 +121,17 @@ class CollectionVerifier @Inject constructor(
     suspend fun runFullScan(
         onProgress: (done: Int, total: Int) -> Unit = { _, _ -> },
         isCancelled: () -> Boolean = { false },
-    ) {
+    ): ScanOutcome =
         runBatch(capPositionRepository.getAllCapIds().distinct(), onProgress, isCancelled)
-    }
 
     private suspend fun runBatch(
         ids: List<Long>,
         onProgress: (Int, Int) -> Unit = { _, _ -> },
         isCancelled: () -> Boolean = { false },
-    ) {
+    ): ScanOutcome {
         val total = ids.size
         val done = AtomicInteger(0)
+        val reached = AtomicInteger(0)
         onProgress(0, total)
         coroutineScope {
             ids.map { id ->
@@ -126,13 +143,14 @@ class CollectionVerifier @Inject constructor(
                     // gdy faktycznie przychodzi jej kolej.
                     semaphore.withPermit {
                         if (isCancelled()) return@withPermit
-                        runCatching { verify(id) }
+                        runCatching { verify(id) { reached.incrementAndGet() } }
                         delay(THROTTLE_MS) // grzecznościowe tempo wobec crowncaps
                     }
                     if (!isCancelled()) onProgress(done.incrementAndGet(), total)
                 }
             }.awaitAll()
         }
+        return ScanOutcome(total = total, reachedCatalog = reached.get())
     }
 
     private suspend fun writeSnapshot(capId: Long, s: pl.sroki.cci.android.data.model.CapSnapshot) =
