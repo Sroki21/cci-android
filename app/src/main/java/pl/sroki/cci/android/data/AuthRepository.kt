@@ -46,6 +46,12 @@ class AuthRepository @Inject constructor(
                     // CookieJar zapisał już uwierzytelnioną sesję z tej odpowiedzi.
                     sessionRepository.setLoggedIn(true)
                     sessionRepository.setUserName(email)
+                    // Odczyt PRZED zapisem: po zmianie hasła na crowncaps to jedyny moment,
+                    // w którym poprzednie hasło jest jeszcze dostępne — Firebase potrzebuje go,
+                    // żeby wpuścić nas na konto i pozwolić podnieść hasło.
+                    val poprzednieHaslo = credentialsStore.load()
+                        ?.takeIf { it.email == email }
+                        ?.password
                     // Sesja webowa (data/*) wygasa po kilkudziesięciu minutach. Zapisane
                     // poświadczenia pozwalają ReauthInterceptorowi odtworzyć ją po cichu,
                     // zamiast wyrzucać użytkownika na ekran logowania.
@@ -55,8 +61,14 @@ class AuthRepository @Inject constructor(
                             Sentry.captureException(it)
                             Log.w("CCI_AUTH", "api token fetch failed: ${it.message}")
                         }
-                    runCatching { firebaseAuthManager.signInWithEmail(email, password) }
-                        .onFailure { Log.w("CCI_AUTH", "Firebase signInWithEmail failed: ${it.message}") }
+                    // Porażka zostawia uid == null, czyli wyłącza całą synchronizację z Firestore
+                    // (wszystkie zapisy stoją pod `if (uid != null)`). Sam Log.w to za mało —
+                    // użytkownik nie ma jak zauważyć, że chmura przestała dostawać zmiany.
+                    runCatching { firebaseAuthManager.signInWithEmail(email, password, poprzednieHaslo) }
+                        .onFailure {
+                            Log.w("CCI_AUTH", "Firebase signInWithEmail failed: ${it.message}")
+                            Sentry.captureException(it)
+                        }
                     try {
                         firestoreRestoreUseCase.restoreIfEmpty()
                     } catch (e: Exception) {
