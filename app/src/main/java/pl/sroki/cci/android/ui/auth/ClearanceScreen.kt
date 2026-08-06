@@ -3,9 +3,12 @@ package pl.sroki.cci.android.ui.auth
 import android.annotation.SuppressLint
 import android.graphics.Bitmap
 import android.webkit.CookieManager
+import android.webkit.WebResourceError
+import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -13,6 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -28,6 +32,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import pl.sroki.cci.android.ui.components.ErrorWithRetry
 
 /**
  * Pełnoekranowa strona serwisu w [WebView], na której użytkownik ręcznie przechodzi bramkę
@@ -45,6 +50,8 @@ fun ClearanceScreen(
     var loading by remember { mutableStateOf(true) }
     // Gdy tylko cf_clearance trafi do OkHttpa, zamykamy ekran — ale tylko raz.
     var settled by remember { mutableStateOf(false) }
+    var blad by remember { mutableStateOf<String?>(null) }
+    var webView by remember { mutableStateOf<WebView?>(null) }
 
     fun trySettle(webView: WebView) {
         if (settled) return
@@ -99,10 +106,32 @@ fun ClearanceScreen(
                                 // zakończonym ładowaniu sprawdzamy, czy jest już clearance.
                                 trySettle(view)
                             }
+
+                            // Managed challenge potrafi ustawić cf_clearance bez pełnej nawigacji
+                            // (kończy się XHR-em), a wtedy onPageFinished już nie przyjdzie
+                            // i ekran wisiałby mimo posiadanego clearance.
+                            override fun doUpdateVisitedHistory(view: WebView, url: String?, isReload: Boolean) {
+                                trySettle(view)
+                            }
+
+                            override fun onReceivedError(
+                                view: WebView,
+                                request: WebResourceRequest,
+                                error: WebResourceError,
+                            ) {
+                                // Bez tego brak sieci dawał białą stronę bez słowa wyjaśnienia.
+                                if (request.isForMainFrame) {
+                                    loading = false
+                                    blad = "Nie udało się otworzyć strony. Sprawdź połączenie i spróbuj ponownie."
+                                }
+                            }
                         }
                         loadUrl(viewModel.baseUrl)
-                    }
+                    }.also { webView = it }
                 },
+                // WebView z włączonym JS i DOM storage trzymał kontekst aktywności po opuszczeniu
+                // ekranu, a bramka Cloudflare wraca regularnie — wyciek narastał z każdym wejściem.
+                onRelease = { it.destroy() },
             )
 
             if (loading) {
@@ -110,6 +139,18 @@ fun ClearanceScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .align(Alignment.TopCenter),
+                )
+            }
+
+            blad?.let { komunikat ->
+                ErrorWithRetry(
+                    message = komunikat,
+                    onRetry = {
+                        blad = null
+                        loading = true
+                        webView?.loadUrl(viewModel.baseUrl)
+                    },
+                    modifier = Modifier.background(MaterialTheme.colorScheme.surface),
                 )
             }
         }
