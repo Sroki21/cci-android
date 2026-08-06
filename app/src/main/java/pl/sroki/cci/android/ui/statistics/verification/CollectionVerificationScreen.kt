@@ -32,6 +32,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import coil.compose.AsyncImage
@@ -60,10 +61,16 @@ fun CollectionVerificationScreen(
     }) { innerPadding ->
         Column(Modifier.padding(innerPadding).fillMaxSize()) {
             if (scan.running) {
-                LinearProgressIndicator(
-                    progress = { if (scan.total > 0) scan.done.toFloat() / scan.total else 0f },
-                    modifier = Modifier.fillMaxWidth()
-                )
+                // Dopóki nie znamy liczby kapsli, pasek ma być nieokreślony. Wyliczony postęp
+                // 0/0 stał nieruchomo na zerze i faza zbierania listy wyglądała jak zawieszenie.
+                if (scan.total > 0) {
+                    LinearProgressIndicator(
+                        progress = { scan.done.toFloat() / scan.total },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                } else {
+                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                }
                 Row(
                     Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically
@@ -78,9 +85,30 @@ fun CollectionVerificationScreen(
                 ) { Text("Zweryfikuj całość") }
             }
 
-            if (flagged.isEmpty()) {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("Brak rozjazdów")
+            if (scan.failed) {
+                // Skan nie dotknął katalogu ani razu — werdykt o kolekcji byłby zmyślony.
+                Box(Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            "Nie udało się połączyć z katalogiem",
+                            color = MaterialTheme.colorScheme.error,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            "Kolekcja nie została sprawdzona. Spróbuj ponownie, gdy wróci połączenie.",
+                            style = MaterialTheme.typography.bodySmall,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.padding(top = 8.dp)
+                        )
+                    }
+                }
+            } else if (flagged.isEmpty()) {
+                // Werdykt dopiero po skanie — wcześniej "Brak rozjazdów" wisiało pod paskiem
+                // postępu od pierwszej sekundy, zanim cokolwiek zostało sprawdzone.
+                if (!scan.running) {
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text("Brak rozjazdów")
+                    }
                 }
             } else {
                 LazyColumn {
