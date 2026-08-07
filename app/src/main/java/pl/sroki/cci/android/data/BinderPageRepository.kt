@@ -112,14 +112,19 @@ class BinderPageRepository @Inject constructor(
 
     suspend fun deletePage(pageId: Long) {
         val uid = authManager.uid.value
+        val page = if (uid != null) dao.getById(pageId) else null
+        val positions = if (uid != null) capPositionDao.getByPage(pageId).first() else emptyList()
+
+        // Chmura dopiero po udanym usunięciu lokalnym — tak jak w BinderRepository.delete()
+        // i addPage(). Wcześniej kolejność była odwrotna: nieudane lokalne usunięcie po udanym
+        // skasowaniu w Firestore zostawiało dokumenty żywe lokalnie, ale skasowane w chmurze.
+        dao.deleteById(pageId)
+
         if (uid != null) {
-            val page = dao.getById(pageId)
-            val positions = capPositionDao.getByPage(pageId).first()
             positions.forEach { pos ->
                 pos.firestoreId?.let { capPositionFirestoreService.scheduleDelete(uid, it) }
             }
             page?.firestoreId?.let { binderPageFirestoreService.scheduleDelete(uid, it) }
         }
-        dao.deleteById(pageId)
     }
 }

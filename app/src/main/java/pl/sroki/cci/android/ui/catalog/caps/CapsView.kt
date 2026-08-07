@@ -24,11 +24,10 @@ import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.paging.compose.itemContentType
 import androidx.paging.compose.itemKey
+import pl.sroki.cci.android.data.networkErrorMessage
 import pl.sroki.cci.android.model.Cap
 import pl.sroki.cci.android.ui.components.FullSizeLoader
 import pl.sroki.cci.android.ui.theme.CCITheme
-import retrofit2.HttpException
-import java.io.IOException
 
 private const val NUMBER_OF_COLUMNS = 2
 
@@ -103,7 +102,7 @@ fun ErrorMessage(error: Throwable, onRetry: (() -> Unit)? = null) {
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            text = opisBledu(error),
+            text = networkErrorMessage(error),
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.error,
             textAlign = TextAlign.Center
@@ -112,13 +111,6 @@ fun ErrorMessage(error: Throwable, onRetry: (() -> Unit)? = null) {
             Button(onClick = onRetry, modifier = Modifier.padding(top = 12.dp)) { Text("Ponów") }
         }
     }
-}
-
-private fun opisBledu(error: Throwable): String = when {
-    error is IOException -> "Brak połączenia z siecią"
-    error is HttpException -> "Katalog odpowiedział błędem ${error.code()}"
-    !error.message.isNullOrBlank() -> error.message!!
-    else -> "Nie udało się pobrać kapsli"
 }
 
 @Composable

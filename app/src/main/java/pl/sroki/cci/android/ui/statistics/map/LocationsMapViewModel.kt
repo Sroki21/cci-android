@@ -52,8 +52,10 @@ class LocationsMapViewModel @Inject constructor(
             _uiState.value = LocationsMapUiState.Loading
             try {
                 val map = worldMapParser.load()
-                val isoByName = countriesRepository.getIsoMap()          // apiName -> iso
-                val flagByName = countriesRepository.getFlagMap()        // apiName -> flagUrl
+                // iso/flagi to dodatek pobierany z sieci (z lokalnym cache) — ich brak nie może
+                // przesłonić liczników kolekcji, które liczą się w całości z lokalnego Roomu.
+                val isoByName = runCatching { countriesRepository.getIsoMap() }.getOrDefault(emptyMap())
+                val flagByName = runCatching { countriesRepository.getFlagMap() }.getOrDefault(emptyMap())
                 val countByName = capCacheRepository.getCountryStats()   // apiName -> count
                     .associate { it.country to it.count }
 

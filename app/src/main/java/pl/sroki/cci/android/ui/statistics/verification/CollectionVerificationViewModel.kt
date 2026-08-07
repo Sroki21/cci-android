@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.sentry.Sentry
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -56,12 +57,19 @@ class CollectionVerificationViewModel @Inject constructor(
         // depczące sobie stan, a pierwszy kończący oddawał przycisk w trakcie trwania drugiego.
         _scan.value = ScanState(running = true)
         viewModelScope.launch {
-            val outcome = runCatching {
+            // Zwykłe runCatching łapie Throwable, więc zjadało by CancellationException
+            // rzucone przez anulowaną korutynę — psując kooperatywne anulowanie skanu, tak jak
+            // w CollectionVerifier przed poprawką (patrz runCatchingCancellable tamże).
+            val outcome = try {
                 collectionVerifier.runFullScan(
                     onProgress = { done, total -> _scan.value = ScanState(true, done, total) },
                     isCancelled = { cancelRequested },
                 )
-            }.getOrNull()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                null
+            }
             // ScanOutcome.healthy odróżnia „katalog odpowiadał" od „wszystko padło" — wcześniej
             // wynik był wyrzucany, więc skan przy leżącej sieci kończył się dokładnie tak samo
             // jak udany i pokazywał „Brak rozjazdów". Ten sam błąd naprawiono już w HomeViewModel.

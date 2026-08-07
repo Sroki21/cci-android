@@ -47,11 +47,26 @@ class WorldMap(
      *   gdy pod samym punktem jest morze. Patrz [hitTestIndex].
      */
     fun countryAt(x: Float, y: Float, tolerance: Float = 0f): String? {
-        val index = hitTestIndex(x, y, viewBox, tolerance) { px, py ->
-            if (px !in 0 until hitTestBitmap.width || py !in 0 until hitTestBitmap.height) {
+        // Region tapnięcia pobrany JEDNYM getPixels() zamiast wywoływania getPixel() (JNI) osobno
+        // dla każdego piksela w pętli fallbacku hitTestIndex — przy domyślnym zoomie tolerancja
+        // dawała rząd 6000+ wywołań na jedno tapnięcie w ocean, realny jank na wątku UI.
+        val px = ((x - viewBox.minX) * HIT_TEST_SCALE).toInt()
+        val py = ((y - viewBox.minY) * HIT_TEST_SCALE).toInt()
+        val promien = (tolerance * HIT_TEST_SCALE).toInt()
+        val left = (px - promien).coerceIn(0, hitTestBitmap.width - 1)
+        val top = (py - promien).coerceIn(0, hitTestBitmap.height - 1)
+        val right = (px + promien).coerceIn(0, hitTestBitmap.width - 1)
+        val bottom = (py + promien).coerceIn(0, hitTestBitmap.height - 1)
+        val regionWidth = right - left + 1
+        val regionHeight = bottom - top + 1
+        val pixels = IntArray(regionWidth * regionHeight)
+        hitTestBitmap.getPixels(pixels, 0, regionWidth, left, top, regionWidth, regionHeight)
+
+        val index = hitTestIndex(x, y, viewBox, tolerance) { qx, qy ->
+            if (qx < left || qx > right || qy < top || qy > bottom) {
                 0
             } else {
-                hitTestBitmap.getPixel(px, py) and 0x00FFFFFF
+                pixels[(qy - top) * regionWidth + (qx - left)] and 0x00FFFFFF
             }
         }
         if (index == 0) return null

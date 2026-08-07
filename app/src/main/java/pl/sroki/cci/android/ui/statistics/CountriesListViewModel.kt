@@ -42,7 +42,9 @@ class CountriesListViewModel @Inject constructor(
             // Bez try/catch wyjątek zabijał korutynę, a isLoading zostawało true na zawsze —
             // ekran wisiał na spinnerze bez słowa o tym, co się stało.
             try {
-                val flags = countriesRepository.getFlagMap()
+                // Flagi to dodatek pobierany z sieci (z lokalnym cache) — ich brak nie może
+                // przesłonić listy krajów, która liczy się w całości z lokalnego Roomu.
+                val flags = runCatching { countriesRepository.getFlagMap() }.getOrDefault(emptyMap())
                 val list = capCacheRepository.getCountryStats()
                     .map { CountryStat(it.country, it.count, flags[it.country]) }
                     .sortedBy { it.name.lowercase() }

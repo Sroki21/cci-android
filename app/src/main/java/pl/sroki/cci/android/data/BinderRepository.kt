@@ -3,11 +3,11 @@ package pl.sroki.cci.android.data
 import androidx.room.withTransaction
 import kotlinx.coroutines.flow.Flow
 import pl.sroki.cci.android.data.datasource.local.CciDatabase
-import kotlinx.coroutines.flow.first
 import pl.sroki.cci.android.data.datasource.local.dao.BinderDao
 import pl.sroki.cci.android.data.datasource.local.dao.BinderPageDao
 import pl.sroki.cci.android.data.datasource.local.dao.CapPositionDao
 import pl.sroki.cci.android.data.datasource.local.entity.Binder
+import pl.sroki.cci.android.data.datasource.local.entity.BinderPage
 import pl.sroki.cci.android.data.datasource.remote.firestore.BinderFirestoreService
 import pl.sroki.cci.android.data.datasource.remote.firestore.BinderPageFirestoreService
 import javax.inject.Inject
@@ -42,14 +42,17 @@ class BinderRepository @Inject constructor(
     suspend fun delete(binderId: Long) {
         val uid = authManager.uid.value
         val binder = if (uid != null) binderDao.getById(binderId) else null
-        val pages = if (uid != null) binderPageDao.getByBinderId(binderId).first() else emptyList()
+        var pages = emptyList<BinderPage>()
 
-        // Warunek „pusty klaser" i usunięcie w jednej transakcji — sprawdzany osobno mógł się
-        // zdezaktualizować, zanim doszło do DELETE (kaskada FK zabrałaby wtedy kapsle).
+        // Warunek „pusty klaser", snapshot stron do skasowania w Firestore i samo usunięcie
+        // w jednej transakcji — strony pobrane PRZED transakcją mogły nie objąć strony dołożonej
+        // w oknie między odczytem a DELETE (kaskada FK i tak by ją zabrała lokalnie), co zostawiało
+        // jej dokument osierocony w Firestore.
         db.withTransaction {
             check(capPositionDao.countByBinderId(binderId) == 0) {
                 "Klaser zawiera kapsle i nie może być usunięty"
             }
+            if (uid != null) pages = binderPageDao.getByBinderIdOnce(binderId)
             binderDao.deleteById(binderId)
         }
 

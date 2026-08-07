@@ -105,17 +105,19 @@ class StatisticsViewModel @Inject constructor(
                         semaphore.withPermit {
                             withTimeoutOrNull(6_000L) {
                                 val cap = runCatching { capsRepository.getById(id.toInt()) }.getOrNull()
-                                val country = cap?.country?.name.orEmpty()
-                                if (country.isNotBlank()) {
-                                    // cache'uj kraj i zdjęcie (zakładka Kraje korzysta z image_url)
-                                    capCacheRepository.upsertFull(id, country, cap!!.imageUrl)
-                                } else if (cap != null) {
-                                    // Katalog zna kapsel, ale nie ma dla niego kraju. Bez znacznika
-                                    // taki wpis pasował do getMissingForPositioned NA ZAWSZE i przy
-                                    // każdym wejściu na Statystyki znów szedł do API — z timeoutem
-                                    // 6 s na sztukę. Klasery rozwiązały to samo znacznikiem
-                                    // image_unavailable; tutaj używamy go w tej samej roli.
-                                    capCacheRepository.markImageUnavailable(id)
+                                if (cap != null) {
+                                    val country = cap.country.name
+                                    if (country.isNotBlank()) {
+                                        // cache'uj kraj i zdjęcie (zakładka Kraje korzysta z image_url)
+                                        capCacheRepository.upsertFull(id, country, cap.imageUrl)
+                                    } else {
+                                        // Katalog zna kapsel, ale nie ma dla niego kraju. Bez znacznika
+                                        // taki wpis pasował do getMissingForPositioned NA ZAWSZE i przy
+                                        // każdym wejściu na Statystyki znów szedł do API — z timeoutem
+                                        // 6 s na sztukę. Klasery rozwiązały to samo znacznikiem
+                                        // image_unavailable; tutaj używamy go w tej samej roli.
+                                        capCacheRepository.markImageUnavailable(id)
+                                    }
                                 }
                             }
                         }

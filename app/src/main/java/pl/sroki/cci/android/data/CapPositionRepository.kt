@@ -1,6 +1,8 @@
 package pl.sroki.cci.android.data
 
 import android.database.sqlite.SQLiteConstraintException
+import android.util.Log
+import io.sentry.Sentry
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import pl.sroki.cci.android.data.datasource.local.dao.BinderPageDao
@@ -97,6 +99,14 @@ class CapPositionRepository @Inject constructor(
                 capPositionFirestoreService.scheduleCreate(
                     uid, newFirestoreId, newPageFirestoreId, newPosition, capId, snapshot, producerSelectionOf(capId)
                 )
+            } else {
+                // Strona docelowa powstała offline (brak firestoreId): lokalne przeniesienie się
+                // udaje, a chmura dalej wiąże kapsel ze starą pozycją — po odtworzeniu wróciłby
+                // w złe miejsce. Analogiczny przypadek w moveToBinder nie może przejść cicho.
+                val opis = "przeniesienie kapsla $capId poza synchronizacją " +
+                    "(newPageFirestoreId=$newPageFirestoreId, newFirestoreId=$newFirestoreId)"
+                Log.w("CCI_SYNC", opis)
+                Sentry.captureMessage(opis)
             }
         }
         purchasedCapsLocalStore.remove(capId)
@@ -118,6 +128,13 @@ class CapPositionRepository @Inject constructor(
         val uid = authManager.uid.value ?: return
         val fsId = dao.getByCapId(capId)?.firestoreId ?: return
         capPositionFirestoreService.scheduleUpdateProducer(uid, fsId, selection)
+    }
+
+    /** Odwrotność [updateProducerSelection] — porzucenie ręcznego wyboru musi też zniknąć z Firestore. */
+    suspend fun clearProducerSelection(capId: Long) {
+        val uid = authManager.uid.value ?: return
+        val fsId = dao.getByCapId(capId)?.firestoreId ?: return
+        capPositionFirestoreService.scheduleClearProducer(uid, fsId)
     }
 
     suspend fun getTotalCount(): Int = dao.countAll()

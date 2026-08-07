@@ -84,6 +84,21 @@ class CapPositionFirestoreService @Inject constructor(private val firestore: Fir
         ).zglosBladZapisu("zapis wyboru producenta")
     }
 
+    /**
+     * Kasuje ręczny wybór producenta z dokumentu pozycji (akceptacja stanu katalogu przy
+     * PRODUCER_REMOVED). Bez tego pola capSelectedProducerId/capProducer zostawały w Firestore
+     * i po odtworzeniu na nowym urządzeniu wskrzeszały usuniętego producenta — baner
+     * PRODUCER_REMOVED wracał w nieskończonej pętli.
+     */
+    fun scheduleClearProducer(uid: String, firestoreId: String) {
+        col(uid).document(firestoreId).update(
+            mapOf(
+                "capSelectedProducerId" to FieldValue.delete(),
+                "capProducer" to FieldValue.delete()
+            )
+        ).zglosBladZapisu("czyszczenie wyboru producenta")
+    }
+
     fun scheduleDeleteByPage(uid: String, pageFirestoreId: String) {
         col(uid).whereEqualTo("binderPageFirestoreId", pageFirestoreId).get()
             .addOnSuccessListener { snap ->

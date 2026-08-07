@@ -24,6 +24,10 @@ import java.io.IOException
  * Ani CountriesListViewModel.load(), ani CountryOwnedCapsViewModel.load() nie miały try/catch —
  * wyjątek zabijał korutynę, isLoading zostawało true i ekran wisiał na spinnerze bez końca
  * i bez słowa wyjaśnienia.
+ *
+ * getFlagMap() jest osobno objęty runCatching: flagi to dodatek z sieci, a lista krajów liczy
+ * się w całości z lokalnego Roomu (capCacheRepository.getCountryStats()) — jego błąd nie może
+ * przesłonić realnych danych o kolekcji.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class CountriesListViewModelTest {
@@ -44,8 +48,9 @@ class CountriesListViewModelTest {
     private fun viewModel() = CountriesListViewModel(capCacheRepository, countriesRepository)
 
     @Test
-    fun `blad wczytywania konczy ladowanie i zglasza komunikat`() = runTest {
-        coEvery { countriesRepository.getFlagMap() } throws IOException("Brak połączenia")
+    fun `blad lokalnych statystyk konczy ladowanie i zglasza komunikat`() = runTest {
+        coEvery { countriesRepository.getFlagMap() } returns emptyMap()
+        coEvery { capCacheRepository.getCountryStats() } throws IOException("Brak połączenia")
 
         val vm = viewModel()
 
@@ -55,11 +60,26 @@ class CountriesListViewModelTest {
 
     @Test
     fun `blad bez komunikatu tez daje czytelny tekst`() = runTest {
-        coEvery { countriesRepository.getFlagMap() } throws IOException()
+        coEvery { countriesRepository.getFlagMap() } returns emptyMap()
+        coEvery { capCacheRepository.getCountryStats() } throws IOException()
 
         val vm = viewModel()
 
         assertEquals("Nie udało się wczytać krajów", vm.uiState.value.error)
+    }
+
+    @Test
+    fun `blad getFlagMap nie przeslania listy z lokalnego Roomu`() = runTest {
+        coEvery { countriesRepository.getFlagMap() } throws IOException("Brak połączenia")
+        coEvery { capCacheRepository.getCountryStats() } returns
+            listOf(CountryStatRow(country = "Polska", count = 120))
+
+        val vm = viewModel()
+
+        assertNull("flagi to dodatek — ich brak nie może dać ekranu błędu", vm.uiState.value.error)
+        assertFalse(vm.uiState.value.isLoading)
+        assertEquals(1, vm.uiState.value.countries.size)
+        assertNull("brak flagi przy nieudanym pobraniu", vm.uiState.value.countries.first().flagUrl)
     }
 
     @Test
@@ -77,11 +97,11 @@ class CountriesListViewModelTest {
 
     @Test
     fun `ponowienie po bledzie wczytuje liste`() = runTest {
-        coEvery { countriesRepository.getFlagMap() } throws IOException("Brak połączenia")
+        coEvery { countriesRepository.getFlagMap() } returns emptyMap()
+        coEvery { capCacheRepository.getCountryStats() } throws IOException("Brak połączenia")
         val vm = viewModel()
         assertNotNull(vm.uiState.value.error)
 
-        coEvery { countriesRepository.getFlagMap() } returns emptyMap()
         coEvery { capCacheRepository.getCountryStats() } returns
             listOf(CountryStatRow(country = "Belgia", count = 12))
         vm.retry()

@@ -142,6 +142,13 @@ class CapDetailViewModel @Inject constructor(
             // i następna weryfikacja stawia ten sam baner od nowa.
             if (catalogStatus == CatalogStatus.PRODUCER_REMOVED) {
                 capCacheRepository.clearProducerSelection(capId, s.country)
+                // Bez tego pole capSelectedProducerId zostawało w Firestore i po odtworzeniu
+                // na nowym urządzeniu wskrzeszało usuniętego producenta — baner PRODUCER_REMOVED
+                // wracał w nieskończonej pętli.
+                runCatching { capPositionRepository.clearProducerSelection(capId) }.onFailure {
+                    Log.w("CCI_SYNC", "czyszczenie wyboru producenta dla kapsla $capId nie trafiło do Firestore", it)
+                    Sentry.captureException(it)
+                }
             }
             capCacheRepository.upsertSnapshot(
                 capId, s.name, s.country, s.imageUrl, s.createdAt, s.createdById, s.updatedAt
