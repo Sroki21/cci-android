@@ -37,3 +37,6 @@ jobs:
 
       - name: Run ktlint
         run: ./gradlew ktlintCheck
+
+      - name: Run Android Lint
+        run: ./gradlew lintDebug

@@ -81,6 +81,11 @@ android {
             assets.srcDirs += files("$projectDir/schemas")
         }
     }
+    lint {
+        // Zamraża 23 istniejące ostrzeżenia na dzień wprowadzenia lintu do CI (2026-08-07) —
+        // CI ma łapać NOWE problemy, nie wymuszać jednorazowego posprzątania całej historii.
+        baseline = file("lint-baseline.xml")
+    }
 }
 
 ksp {

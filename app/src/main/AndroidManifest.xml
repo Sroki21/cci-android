@@ -4,6 +4,9 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.CAMERA" />
+    <!-- Kamera to opcja (szukanie po zdjęciu) — bez tego Play Store zakładał wymaganą kamerę
+         i wykluczał urządzenia bez niej (np. część Chrome OS). -->
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
 
     <application
         android:name=".CCIApplication"
