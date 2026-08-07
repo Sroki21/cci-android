@@ -4,14 +4,19 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.draw.alpha
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
+import kotlinx.coroutines.delay
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -34,7 +39,7 @@ import pl.sroki.cci.android.ui.catalog.countries.Countries
 import pl.sroki.cci.android.ui.catalog.countries.CountriesViewModel
 import pl.sroki.cci.android.ui.catalog.country.CountryCapsScreen
 import pl.sroki.cci.android.ui.catalog.latest.LatestCapsScreen
-import pl.sroki.cci.android.ui.auth.ClearanceScreen
+import pl.sroki.cci.android.ui.auth.ClearanceGate
 import pl.sroki.cci.android.ui.auth.ClearanceViewModel
 import pl.sroki.cci.android.ui.auth.LoginScreen
 import pl.sroki.cci.android.ui.binders.BindersScreen
@@ -80,16 +85,24 @@ fun Navigation(
     val navController = rememberNavController()
     val assignedCapIds by assignedCapsViewModel.assignedCapIds.collectAsStateWithLifecycle()
 
-    // Gdy interceptor napotka bramkę Cloudflare, otwieramy ekran WebView z rozwiązaniem challengu.
-    // launchSingleTop, żeby seria zablokowanych żądań nie ustawiła kilku kopii ekranu na stosie.
+    // Gdy interceptor napotka bramkę Cloudflare, montujemy nakładkę z WebView rozwiązującym
+    // challenge. Nakładka startuje poza ekranem: managed challenge przechodzi sam w ułamku
+    // sekundy, a wcześniej użytkownik dostawał w tym miejscu pełnoekranowy ekran, który zaraz
+    // znikał — mignięcie, w którym i tak nie było w co kliknąć.
     val clearanceViewModel = hiltViewModel<ClearanceViewModel>()
     val challengeRequired by clearanceViewModel.challengeRequired.collectAsStateWithLifecycle()
+    var bramkaWidoczna by remember { mutableStateOf(false) }
     LaunchedEffect(challengeRequired) {
+        bramkaWidoczna = false
         if (challengeRequired) {
-            navController.navigate(Screen.Clearance.route) { launchSingleTop = true }
+            // Nie rozwiązał się w tle w tym czasie — to znaczy, że czeka na człowieka
+            // (interaktywny Turnstile) albo się zaciął. Dopiero teraz pokazujemy bramkę.
+            delay(PROG_POKAZANIA_BRAMKI_MS)
+            bramkaWidoczna = true
         }
     }
 
+    Box(modifier = Modifier.fillMaxSize()) {
     CompositionLocalProvider(LocalAssignedCapIds provides assignedCapIds) {
     NavHost(
         navController = navController,
@@ -226,15 +239,6 @@ fun Navigation(
         composable(route = Screen.Login.route) {
             LoginScreen(onLoginSuccess = { navController.popBackStack() })
         }
-        composable(route = Screen.Clearance.route) {
-            ClearanceScreen(
-                onDone = {
-                    if (!navController.popBackStack(Screen.Clearance.route, inclusive = true)) {
-                        navController.popBackStack()
-                    }
-                }
-            )
-        }
         composable(route = Screen.Purchased.route) {
             PurchasedScreen(
                 onBack = { navController.popBackStack() },
@@ -293,7 +297,22 @@ fun Navigation(
         }
     }
     } // CompositionLocalProvider
+
+        // Na wierzchu, żeby po pokazaniu przykryła aplikację; dopóki niewidoczna, sama odsuwa
+        // się poza ekran i nie łapie dotknięć.
+        if (challengeRequired) {
+            ClearanceGate(
+                visible = bramkaWidoczna,
+                onClose = { bramkaWidoczna = false },
+                onNeedsUser = { bramkaWidoczna = true },
+            )
+        }
+    } // Box
 }
+
+// Ile czekamy, aż challenge rozwiąże się sam w tle, zanim pokażemy bramkę użytkownikowi.
+// Managed challenge mieści się zwykle w 1–3 s; dłuższe czekanie znaczy, że ktoś musi kliknąć.
+private const val PROG_POKAZANIA_BRAMKI_MS = 6_000L
 
 @Composable
 fun NavigationItem(
