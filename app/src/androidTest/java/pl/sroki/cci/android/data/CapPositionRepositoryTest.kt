@@ -4,8 +4,9 @@ import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.firestore.FirebaseFirestore
+import io.mockk.every
+import io.mockk.mockk
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -19,11 +20,19 @@ import org.junit.runner.RunWith
 import pl.sroki.cci.android.data.datasource.local.CciDatabase
 import pl.sroki.cci.android.data.datasource.local.entity.Binder
 import pl.sroki.cci.android.data.datasource.local.entity.BinderPage
-import pl.sroki.cci.android.data.datasource.remote.firestore.CapPositionFirestoreService
-import io.mockk.mockk
 
+/**
+ * authManager i capPositionFirestoreService są mockk — bezpieczne dziś tylko przez przypadek
+ * (strony wstawiane wprost przez DAO nie mają firestoreId, więc zapis do chmury i tak by się nie
+ * odpalił), ale kruche: zmiana fixture'u na realny BinderPageRepository zaczęłaby cicho pisać do
+ * produkcyjnego Firestore na urządzeniu z aktywną sesją. Mock zamiast polegania na przypadku.
+ */
 @RunWith(AndroidJUnit4::class)
 class CapPositionRepositoryTest {
+
+    private companion object {
+        const val TEST_UID = "test-uid-cap-position-repo"
+    }
 
     private lateinit var db: CciDatabase
     private lateinit var repo: CapPositionRepository
@@ -35,13 +44,15 @@ class CapPositionRepositoryTest {
         db = Room.inMemoryDatabaseBuilder(ctx, CciDatabase::class.java)
             .allowMainThreadQueries()
             .build()
+        val authManager = mockk<FirebaseAuthManager>()
+        every { authManager.uid } returns MutableStateFlow(TEST_UID)
         repo = CapPositionRepository(
             dao = db.capPositionDao(),
             binderPageDao = db.binderPageDao(),
             capCacheRepository = CapCacheRepository(db.capCacheDao()),
-            capPositionFirestoreService = CapPositionFirestoreService(FirebaseFirestore.getInstance()),
+            capPositionFirestoreService = mockk(relaxed = true),
             purchasedCapsLocalStore = mockk(relaxed = true),
-            authManager = FirebaseAuthManager(FirebaseAuth.getInstance())
+            authManager = authManager
         )
         val binderId = db.binderDao().insert(Binder(name = "Test"))
         binderPageId = db.binderPageDao().insert(BinderPage(binderId = binderId, pageNumber = 1))

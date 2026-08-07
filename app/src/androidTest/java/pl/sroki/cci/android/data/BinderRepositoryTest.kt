@@ -4,8 +4,9 @@ import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.firestore.FirebaseFirestore
+import io.mockk.every
+import io.mockk.mockk
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -16,9 +17,14 @@ import org.junit.runner.RunWith
 import pl.sroki.cci.android.data.datasource.local.CciDatabase
 import pl.sroki.cci.android.data.datasource.local.entity.BinderPage
 import pl.sroki.cci.android.data.datasource.local.entity.CapPosition
-import pl.sroki.cci.android.data.datasource.remote.firestore.BinderFirestoreService
-import pl.sroki.cci.android.data.datasource.remote.firestore.BinderPageFirestoreService
 
+/**
+ * authManager i oba serwisy Firestore są mockk — ten plik kiedyś budował je z prawdziwych
+ * FirebaseAuth.getInstance()/FirebaseFirestore.getInstance(). Na urządzeniu z aktywną sesją
+ * (np. telefon dewelopera) writałoby to naprawdę do produkcyjnej kolekcji Firestore ("Europa 1"
+ * i inne fałszywe klasery), bez żadnego sprzątania w tearDown(). Te testy sprawdzają wyłącznie
+ * lokalne zachowanie Room — mock UID=null trzyma się identycznej ścieżki co wcześniej.
+ */
 @RunWith(AndroidJUnit4::class)
 class BinderRepositoryTest {
 
@@ -31,15 +37,16 @@ class BinderRepositoryTest {
         db = Room.inMemoryDatabaseBuilder(ctx, CciDatabase::class.java)
             .allowMainThreadQueries()
             .build()
-        val firestore = FirebaseFirestore.getInstance()
+        val authManager = mockk<FirebaseAuthManager>()
+        every { authManager.uid } returns MutableStateFlow(null)
         repo = BinderRepository(
             db = db,
             binderDao = db.binderDao(),
             binderPageDao = db.binderPageDao(),
             capPositionDao = db.capPositionDao(),
-            binderFirestoreService = BinderFirestoreService(firestore),
-            binderPageFirestoreService = BinderPageFirestoreService(firestore),
-            authManager = FirebaseAuthManager(FirebaseAuth.getInstance())
+            binderFirestoreService = mockk(relaxed = true),
+            binderPageFirestoreService = mockk(relaxed = true),
+            authManager = authManager
         )
     }
 

@@ -3,8 +3,10 @@ package pl.sroki.cci.android.data
 import androidx.room.Room
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.firestore.FirebaseFirestore
+import io.mockk.coEvery
+import io.mockk.every
+import io.mockk.mockk
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -14,36 +16,43 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import pl.sroki.cci.android.data.datasource.local.CciDatabase
+import pl.sroki.cci.android.data.datasource.local.entity.Binder
+import pl.sroki.cci.android.data.datasource.remote.firestore.BinderDocument
 import pl.sroki.cci.android.data.datasource.remote.firestore.BinderFirestoreService
+import pl.sroki.cci.android.data.datasource.remote.firestore.BinderPageDocument
 import pl.sroki.cci.android.data.datasource.remote.firestore.BinderPageFirestoreService
+import pl.sroki.cci.android.data.datasource.remote.firestore.CapPositionDocument
 import pl.sroki.cci.android.data.datasource.remote.firestore.CapPositionFirestoreService
-import io.mockk.mockk
+import pl.sroki.cci.android.data.model.CapSnapshot
 
+/**
+ * authManager i wszystkie trzy serwisy Firestore są mockk — ten plik kiedyś naprawdę logował się
+ * do Firebase (FirebaseAuth.getInstance()/FirebaseFirestore.getInstance()) i zapisywał fałszywy
+ * kapsel ("Test Cap"/Poland) do żywej kolekcji, bez sprzątania w tearDown(). Na urządzeniu
+ * z aktywną sesją (telefon dewelopera) trafiałby wprost do produkcji. "Seed" jest teraz
+ * stubowaniem fetchAll() zamiast realnego zapisu do Firestore i odczytu z powrotem.
+ */
 @RunWith(AndroidJUnit4::class)
 class FirestoreRestoreTest {
 
+    private companion object {
+        const val TEST_UID = "test-uid-firestore-restore"
+    }
+
     private lateinit var db: CciDatabase
-    private lateinit var authManager: FirebaseAuthManager
-    private lateinit var binderFs: BinderFirestoreService
-    private lateinit var binderPageFs: BinderPageFirestoreService
-    private lateinit var capPositionFs: CapPositionFirestoreService
+    private val binderFs = mockk<BinderFirestoreService>(relaxed = true)
+    private val binderPageFs = mockk<BinderPageFirestoreService>(relaxed = true)
+    private val capPositionFs = mockk<CapPositionFirestoreService>(relaxed = true)
     private lateinit var restoreUseCase: FirestoreRestoreUseCase
-    private lateinit var uid: String
 
     @Before
-    fun setUp() = runBlocking {
+    fun setUp() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         db = Room.inMemoryDatabaseBuilder(context, CciDatabase::class.java).build()
-        val auth = FirebaseAuth.getInstance()
-        authManager = FirebaseAuthManager(auth)
-        authManager.ensureSignedIn()
-        uid = authManager.uid.value ?: error("Brak uid po logowaniu")
-        val firestore = FirebaseFirestore.getInstance()
-        binderFs = BinderFirestoreService(firestore)
-        binderPageFs = BinderPageFirestoreService(firestore)
-        capPositionFs = CapPositionFirestoreService(firestore)
+        val authManager = mockk<FirebaseAuthManager>()
+        every { authManager.uid } returns MutableStateFlow(TEST_UID)
         restoreUseCase = FirestoreRestoreUseCase(
-            context = InstrumentationRegistry.getInstrumentation().targetContext,
+            context = context,
             authManager = authManager,
             database = db,
             binderDao = db.binderDao(),
@@ -56,24 +65,27 @@ class FirestoreRestoreTest {
             purchasedCapsService = mockk(relaxed = true),
             purchasedCapsLocalStore = mockk(relaxed = true)
         )
-        // Seed Firestore: 1 Binder → 1 BinderPage → 1 CapPosition (ze snapshotem)
-        val binderFsId = binderFs.newDocumentId(uid)
-        binderFs.scheduleCreate(uid, binderFsId, "Restore Test Klaser")
-        val pageFsId = binderPageFs.newDocumentId(uid)
-        binderPageFs.scheduleCreate(uid, pageFsId, binderFsId, 1)
-        capPositionFs.scheduleCreate(
-            uid, capPositionFs.newDocumentId(uid), pageFsId, 3, 77L,
-            pl.sroki.cci.android.data.model.CapSnapshot(
-                name = "Test Cap",
-                country = "Poland",
-                imageUrl = "https://example.test/caps/77.deadbeef.jpeg",
-                createdAt = "2011-04-30T15:20:54Z",
-                createdById = 2,
-                updatedAt = "2023-06-02T22:35:21Z"
+        // Odpowiednik dawnego seeda: Firestore "ma" jeden Binder -> jedną BinderPage -> jedną
+        // CapPosition ze snapshotem, bez faktycznego zapisu do chmury.
+        coEvery { binderFs.fetchAll(TEST_UID) } returns listOf(
+            BinderDocument("fsB1", "Restore Test Klaser")
+        )
+        coEvery { binderPageFs.fetchAll(TEST_UID) } returns listOf(
+            BinderPageDocument("fsP1", "fsB1", 1)
+        )
+        coEvery { capPositionFs.fetchAll(TEST_UID) } returns listOf(
+            CapPositionDocument(
+                "fsCap1", "fsP1", 3, 77L,
+                CapSnapshot(
+                    name = "Test Cap",
+                    country = "Poland",
+                    imageUrl = "https://example.test/caps/77.deadbeef.jpeg",
+                    createdAt = "2011-04-30T15:20:54Z",
+                    createdById = 2,
+                    updatedAt = "2023-06-02T22:35:21Z"
+                )
             )
         )
-        // Krótkie oczekiwanie — operacje schedule są fire-and-forget, Firestore SDK buforuje lokalnie
-        Thread.sleep(500)
     }
 
     @After
@@ -110,7 +122,7 @@ class FirestoreRestoreTest {
     @Test
     fun restoreIfEmpty_skipsWhenRoomNotEmpty() = runBlocking {
         // Preloaduj Room z innym rekordem
-        db.binderDao().insert(pl.sroki.cci.android.data.datasource.local.entity.Binder(name = "Istniejący"))
+        db.binderDao().insert(Binder(name = "Istniejący"))
         restoreUseCase.restoreIfEmpty()
         // Dane z Firestore nie powinny być dopisane
         val binders = db.binderDao().getAll().first()

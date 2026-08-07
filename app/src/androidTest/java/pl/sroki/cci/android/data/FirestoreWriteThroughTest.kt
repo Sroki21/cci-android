@@ -3,8 +3,9 @@ package pl.sroki.cci.android.data
 import androidx.room.Room
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.firestore.FirebaseFirestore
+import io.mockk.every
+import io.mockk.mockk
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import org.junit.After
@@ -16,10 +17,20 @@ import pl.sroki.cci.android.data.datasource.local.CciDatabase
 import pl.sroki.cci.android.data.datasource.remote.firestore.BinderFirestoreService
 import pl.sroki.cci.android.data.datasource.remote.firestore.BinderPageFirestoreService
 import pl.sroki.cci.android.data.datasource.remote.firestore.CapPositionFirestoreService
-import io.mockk.mockk
 
+/**
+ * authManager i wszystkie trzy serwisy Firestore są mockk — ten plik kiedyś naprawdę logował się
+ * do Firebase (FirebaseAuth.getInstance()/FirebaseFirestore.getInstance()) i, na urządzeniu
+ * z aktywną sesją (telefon dewelopera), zapisywałby fałszywy klaser/stronę/pozycję wprost do
+ * produkcyjnej kolekcji, bez sprzątania w tearDown(). Test wymaga niepustego UID (inaczej
+ * firestoreId nigdy się nie ustawia), więc mock dostaje stałe testowe UID zamiast realnej sesji.
+ */
 @RunWith(AndroidJUnit4::class)
 class FirestoreWriteThroughTest {
+
+    private companion object {
+        const val TEST_UID = "test-uid-write-through"
+    }
 
     private lateinit var db: CciDatabase
     private lateinit var binderRepository: BinderRepository
@@ -30,13 +41,11 @@ class FirestoreWriteThroughTest {
     fun setUp() = runBlocking {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         db = Room.inMemoryDatabaseBuilder(context, CciDatabase::class.java).build()
-        val auth = FirebaseAuth.getInstance()
-        val authManager = FirebaseAuthManager(auth)
-        authManager.ensureSignedIn()
-        val firestore = FirebaseFirestore.getInstance()
-        val binderFs = BinderFirestoreService(firestore)
-        val binderPageFs = BinderPageFirestoreService(firestore)
-        val capPositionFs = CapPositionFirestoreService(firestore)
+        val authManager = mockk<FirebaseAuthManager>()
+        every { authManager.uid } returns MutableStateFlow(TEST_UID)
+        val binderFs = mockk<BinderFirestoreService>(relaxed = true)
+        val binderPageFs = mockk<BinderPageFirestoreService>(relaxed = true)
+        val capPositionFs = mockk<CapPositionFirestoreService>(relaxed = true)
         binderRepository = BinderRepository(
             db = db,
             binderDao = db.binderDao(),
