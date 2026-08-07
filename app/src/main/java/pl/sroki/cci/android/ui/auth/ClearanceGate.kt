@@ -26,11 +26,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -50,9 +48,15 @@ import pl.sroki.cci.android.ui.components.ErrorWithRetry
  * Dlatego bramka startuje **poza ekranem**: WebView jest w kompozycji, ładuje stronę i wykonuje
  * skrypt challengu, ale nic nie zasłania i nie łapie dotknięć. Na wierzch wjeżdża dopiero, gdy
  * [visible] zrobi się `true` — czyli gdy rozwiązywanie przeciąga się ponad próg (interaktywny
- * Turnstile do kliknięcia) albo gdy [onNeedsUser] zgłosi błąd ładowania. Instancja WebView jest
+ * Turnstile do kliknięcia, albo błąd ładowania, który się nie naprawi sam). Instancja WebView jest
  * przez cały czas ta sama, więc pokazanie nakładki nie przeładowuje strony i nie zaczyna
  * challengu od zera.
+ *
+ * Błąd ładowania (`blad`) NIE pokazuje nakładki od razu — czeka na ten sam próg co powolne
+ * rozwiązywanie. Managed challenge Cloudflare to zwykle kilka szybkich przekierowań pod rząd;
+ * pojedyncze z nich potrafi się przejściowo potknąć, mimo że całość i tak kończy się sukcesem
+ * w 2-3 sekundy. Natychmiastowe pokazanie bramki na taki błąd dawało mignięcie: nakładka
+ * wyskakiwała na ułamek sekundy, po czym [visible] i tak gasło razem z rozwiązanym challengem.
  *
  * Po zdobyciu clearance flaga w `ClearanceStore` gaśnie, a nakładka znika razem z nią — stąd brak
  * osobnego `onDone`. Za zgodą administratora serwisu.
@@ -62,7 +66,6 @@ import pl.sroki.cci.android.ui.components.ErrorWithRetry
 fun ClearanceGate(
     visible: Boolean,
     onClose: () -> Unit,
-    onNeedsUser: () -> Unit,
     viewModel: ClearanceViewModel = hiltViewModel(),
 ) {
     var loading by remember { mutableStateOf(true) }
@@ -70,15 +73,6 @@ fun ClearanceGate(
     var settled by remember { mutableStateOf(false) }
     var blad by remember { mutableStateOf<String?>(null) }
     var webView by remember { mutableStateOf<WebView?>(null) }
-
-    // WebViewClient powstaje raz, w factory, więc musi sięgać po aktualną wersję callbacku.
-    val zglosPotrzebeUzytkownika by rememberUpdatedState(onNeedsUser)
-
-    // Błąd ładowania w tle nie może czekać na timeout interceptora (2 minuty ciszy) — jak nie ma
-    // sieci, użytkownik ma to zobaczyć od razu.
-    LaunchedEffect(blad) {
-        if (blad != null) zglosPotrzebeUzytkownika()
-    }
 
     fun trySettle(view: WebView) {
         if (settled) return

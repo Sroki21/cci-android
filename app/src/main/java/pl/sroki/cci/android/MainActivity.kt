@@ -316,7 +316,6 @@ fun Navigation(
             ClearanceGate(
                 visible = bramkaWidoczna,
                 onClose = { bramkaWidoczna = false },
-                onNeedsUser = { bramkaWidoczna = true },
             )
         }
     } // Box
