@@ -67,8 +67,14 @@ class SessionRepository @Inject constructor(
         }
         val resp = authApiService.get().apiToken(TokenRequest(email, password, "android"))
         Log.d("CCI_AUTH", "api token code=${resp.code()}")
+        // Bez tego treść odpowiedzi błędu (np. HTML/tekst 401/422/500 z bramki Cloudflare) mogła
+        // zostać potraktowana jak surowy token i zapisana jako Bearer — "udane" nadpisanie
+        // poprawnego tokenu śmieciowym łańcuchem zamiast naprawy sesji.
+        if (!resp.isSuccessful) {
+            Log.w("CCI_AUTH", "api token: HTTP ${resp.code()}")
+            return false
+        }
         val raw = resp.body()?.string()
-            ?: resp.errorBody()?.string()
             ?: run { Log.d("CCI_AUTH", "api token: empty body"); return false }
         val token = when {
             raw.trimStart().startsWith('"') -> raw.trim().removeSurrounding("\"")

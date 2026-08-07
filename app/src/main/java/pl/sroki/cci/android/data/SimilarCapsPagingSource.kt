@@ -2,6 +2,7 @@ package pl.sroki.cci.android.data
 
 import androidx.paging.PagingSource
 import androidx.paging.PagingState
+import kotlinx.coroutines.CancellationException
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -33,6 +34,8 @@ class SimilarCapsPagingSource(
             val part = MultipartBody.Part.createFormData("image", "photo.jpg", requestBody)
             val response = capsRepository.searchSimilar(part)
             LoadResult.Page(data = dedup.odsiej(response.caps), prevKey = null, nextKey = null)
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             LoadResult.Error(e)
         }

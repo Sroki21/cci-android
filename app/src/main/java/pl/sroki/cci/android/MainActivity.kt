@@ -237,7 +237,19 @@ fun Navigation(
             )
         }
         composable(route = Screen.Login.route) {
-            LoginScreen(onLoginSuccess = { navController.popBackStack() })
+            LoginScreen(
+                onLoginSuccess = {
+                    // popBackStack() nie działa, gdy Login jest startDestination (świeża
+                    // instalacja/po wylogowaniu) — jedyny wpis na stosie, nie ma dokąd wrócić,
+                    // formularz zostawał na ekranie mimo udanego logowania. Nawigacja wprost
+                    // na Home z usunięciem Login ze stosu działa niezależnie od tego, czy Login
+                    // był korzeniem grafu, czy został otwarty z Home.
+                    navController.navigate(Screen.Home.route) {
+                        popUpTo(Screen.Login.route) { inclusive = true }
+                        launchSingleTop = true
+                    }
+                }
+            )
         }
         composable(route = Screen.Purchased.route) {
             PurchasedScreen(

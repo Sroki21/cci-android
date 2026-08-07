@@ -115,7 +115,12 @@ class CapPositionRepository @Inject constructor(
     suspend fun updateSnapshot(capId: Long, snapshot: CapSnapshot) {
         val uid = authManager.uid.value ?: return
         val fsId = dao.getByCapId(capId)?.firestoreId ?: return
-        capPositionFirestoreService.scheduleUpdateSnapshot(uid, fsId, snapshot)
+        // Room chroni country przy ręcznie wybranym producencie (CASE WHEN selected_producer_id
+        // IS NULL w upsertSnapshot, wołanym tuż przed tym) — Firestore nie ma warunkowego
+        // zapisu, więc bierzemy już ochronioną wartość z Rooma zamiast surowego kraju z katalogu,
+        // który nadpisałby wybór producenta w chmurze.
+        val protectedCountry = capCacheRepository.getCountry(capId) ?: snapshot.country
+        capPositionFirestoreService.scheduleUpdateSnapshot(uid, fsId, snapshot.copy(country = protectedCountry))
     }
 
     /**
@@ -140,11 +145,15 @@ class CapPositionRepository @Inject constructor(
 
     suspend fun unassign(capId: Long) {
         val uid = authManager.uid.value
-        if (uid != null) {
-            val pos = dao.getByCapId(capId)
-            pos?.firestoreId?.let { capPositionFirestoreService.scheduleDelete(uid, it) }
-        }
+        val firestoreId = if (uid != null) dao.getByCapId(capId)?.firestoreId else null
+        // Chmura dopiero po udanym usunięciu lokalnym — tak jak w assign/reassign i sąsiednich
+        // repozytoriach. Odwrotna kolejność zostawiała ducha: padnięcie procesu między krokami
+        // kasowało dokument w Firestore, a wiersz w Room zostawał — przy kolejnym wymuszonym
+        // odtworzeniu ta pozycja by nie wróciła.
         dao.deleteByCapId(capId)
+        if (uid != null && firestoreId != null) {
+            capPositionFirestoreService.scheduleDelete(uid, firestoreId)
+        }
     }
 
     /**

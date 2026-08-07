@@ -13,6 +13,7 @@ import androidx.paging.PagingData
 import androidx.paging.cachedIn
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -39,6 +40,10 @@ class PictureSearchViewModel @Inject constructor(
     var hasSearched by mutableStateOf(false)
         private set
 
+    /** Niepuste, gdy odczyt wybranego zdjęcia padnie — bez tego "Szukaj" wyglądało jak brak reakcji. */
+    var error by mutableStateOf<String?>(null)
+        private set
+
     private val searchTrigger = MutableStateFlow<ImageData?>(null)
 
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -55,15 +60,28 @@ class PictureSearchViewModel @Inject constructor(
     fun onImageSelected(uri: Uri) {
         selectedImageUri = uri
         hasSearched = false
+        error = null
     }
 
     fun search() {
         val uri = selectedImageUri ?: return
+        error = null
         viewModelScope.launch(Dispatchers.IO) {
-            val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
-                ?: return@launch
-            searchTrigger.value = ImageData(bytes, "image/jpeg")
-            withContext(Dispatchers.Main) { hasSearched = true }
+            // Bez try/catch: wygasłe URI z galerii (SecurityException), uszkodzony/skasowany
+            // plik (IOException) albo zbyt duże zdjęcie (OutOfMemoryError) zabijały aplikację
+            // albo, przy null z openInputStream, dawały ciche "nic się nie stało" po Szukaj.
+            try {
+                val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                    ?: throw java.io.IOException("openInputStream zwróciło null dla $uri")
+                searchTrigger.value = ImageData(bytes, "image/jpeg")
+                withContext(Dispatchers.Main) { hasSearched = true }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Throwable) {
+                // Throwable, nie Exception: pełne zdjęcie z aparatu w pamięci potrafi rzucić
+                // OutOfMemoryError, tak jak w CropScreen.decodeForCrop() dla tego samego pliku.
+                withContext(Dispatchers.Main) { error = "Nie udało się wczytać zdjęcia" }
+            }
         }
     }
 }

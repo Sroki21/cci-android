@@ -72,7 +72,11 @@ class ReauthInterceptor(
         // Krok 1 (tani): sesja może wciąż żyć, a rozjechał się tylko token CSRF.
         if (runBlocking { refresher.refreshCsrf() }) {
             val retried = chain.proceed(markRetry(request))
-            if (retried.code !in RECOVERABLE_CODES) {
+            // isRecoverableWebSession(), nie samo RECOVERABLE_CODES — inaczej wciąż-403
+            // (bez CSRF, ale z martwą sesją) był mylnie uznawany za "uratowany" samym CSRF
+            // i szedł prosto do UI, pomijając krok 2 (pełne ciche przelogowanie), mimo że
+            // sesja webowa faktycznie wygasła i zapisane poświadczenia by to naprawiły.
+            if (!retried.isRecoverableWebSession()) {
                 Log.d("CCI_AUTH", "reauth: uratowane samym CSRF, code=${retried.code}")
                 failed.close()
                 return retried

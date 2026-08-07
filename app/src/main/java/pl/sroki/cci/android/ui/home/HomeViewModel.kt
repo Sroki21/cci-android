@@ -6,6 +6,7 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
@@ -109,6 +110,8 @@ class HomeViewModel @Inject constructor(
                         "Nie zalogowano — zaloguj się ponownie"
                 }
                 _events.send(HomeEvent.ShowSnackbar(message))
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 _events.send(HomeEvent.ShowSnackbar("Błąd synchronizacji — lokalne dane bez zmian"))
             } finally {

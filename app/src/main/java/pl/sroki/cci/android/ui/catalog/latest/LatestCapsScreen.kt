@@ -28,7 +28,7 @@ fun LatestCapsScreen(
 
     Scaffold(topBar = {
         TopAppBar(
-            title = { Text(text = "Additions") },
+            title = { Text(text = "Nowości") },
             navigationIcon = {
                 IconButton(onClick = onBack) {
                     Icon(

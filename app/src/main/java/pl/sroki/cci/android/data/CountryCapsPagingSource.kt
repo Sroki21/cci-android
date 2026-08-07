@@ -2,6 +2,7 @@ package pl.sroki.cci.android.data
 
 import androidx.paging.PagingSource
 import androidx.paging.PagingState
+import kotlinx.coroutines.CancellationException
 import pl.sroki.cci.android.model.Cap
 import javax.inject.Inject
 
@@ -30,6 +31,8 @@ class CountryCapsPagingSource @Inject constructor(
                 prevKey = if (page == STARTING_KEY) null else page - 1,
                 nextKey = if (pagination.currentPage == pagination.lastPage) null else page + 1
             )
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             LoadResult.Error(e)
         }

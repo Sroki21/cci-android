@@ -13,7 +13,9 @@ data class Producer(
 ) {
     fun getLocation(): String {
         var location = country.name
-        city?.let { location = it + "\n" + location }
+        // API zwraca brak miasta jako pusty string, nie null — samo `city?.let` dawało pustą
+        // linię nad krajem dla każdego producenta bez podanego miasta.
+        city?.takeIf { it.isNotBlank() }?.let { location = it + "\n" + location }
         return location
     }
 }

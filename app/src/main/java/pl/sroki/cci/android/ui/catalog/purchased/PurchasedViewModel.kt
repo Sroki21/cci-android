@@ -3,6 +3,7 @@ package pl.sroki.cci.android.ui.catalog.purchased
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -55,6 +56,8 @@ class PurchasedViewModel @Inject constructor(
                 val purchasedIds = purchasedCapsLocalStore.getIds() - assignedIds
                 val caps = fetchCapsInParallel(purchasedIds)
                 _uiState.value = PurchasedUiState.Success(caps)
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 _uiState.value = PurchasedUiState.Error(e.message ?: "Błąd ładowania")
             }

@@ -3,6 +3,7 @@ package pl.sroki.cci.android.ui.binders
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -295,6 +296,8 @@ class BindersViewModel @Inject constructor(
                     _uiState.update { it.copy(isCreateDialogOpen = false) }
                 } catch (e: IllegalArgumentException) {
                     _events.send(BindersEvent.ShowSnackbar(e.message ?: "Błąd"))
+                } catch (e: CancellationException) {
+                    throw e
                 } catch (e: Exception) {
                     _events.send(BindersEvent.ShowSnackbar("Nie udało się utworzyć klasera"))
                 }
@@ -316,6 +319,8 @@ class BindersViewModel @Inject constructor(
                 binderRepository.delete(binderId)
             } catch (e: IllegalStateException) {
                 _events.send(BindersEvent.ShowSnackbar(e.message ?: "Błąd"))
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 _events.send(BindersEvent.ShowSnackbar("Nie udało się usunąć klasera"))
             }
@@ -331,6 +336,8 @@ class BindersViewModel @Inject constructor(
                     binderPageRepository.addPage(binderId)
                 } catch (e: IllegalStateException) {
                     _events.send(BindersEvent.ShowSnackbar(e.message ?: "Błąd"))
+                } catch (e: CancellationException) {
+                    throw e
                 } catch (e: Exception) {
                     _events.send(BindersEvent.ShowSnackbar("Nie udało się dodać strony"))
                 }
@@ -349,6 +356,8 @@ class BindersViewModel @Inject constructor(
                 binderPageRepository.deletePage(pageId)
             } catch (e: IllegalStateException) {
                 _events.send(BindersEvent.ShowSnackbar(e.message ?: "Błąd"))
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 _events.send(BindersEvent.ShowSnackbar("Nie udało się usunąć strony"))
             }
@@ -371,6 +380,8 @@ class BindersViewModel @Inject constructor(
                 _events.send(BindersEvent.ShowSnackbar(e.message ?: "Błąd"))
             } catch (e: IllegalArgumentException) {
                 _events.send(BindersEvent.ShowSnackbar(e.message ?: "Błąd"))
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 _events.send(BindersEvent.ShowSnackbar("Nie udało się zmienić numeru strony"))
             }
@@ -389,6 +400,8 @@ class BindersViewModel @Inject constructor(
                 binderPageRepository.moveToBinder(pageId, newBinderId)
             } catch (e: IllegalStateException) {
                 _events.send(BindersEvent.ShowSnackbar(e.message ?: "Błąd"))
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 _events.send(BindersEvent.ShowSnackbar("Nie udało się przenieść strony"))
             }

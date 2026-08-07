@@ -198,6 +198,14 @@ fun PictureSearch(
                         Text("Szukaj")
                     }
                 }
+                viewModel.error?.let { message ->
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        text = message,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
                 if (viewModel.hasSearched) {
                     Spacer(Modifier.height(8.dp))
                     HorizontalDivider()
