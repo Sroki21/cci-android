@@ -11,7 +11,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import pl.sroki.cci.android.data.datasource.local.dao.BinderPageDao
-import pl.sroki.cci.android.data.datasource.local.dao.CapCacheDao
 import pl.sroki.cci.android.data.datasource.local.dao.CapPositionDao
 import pl.sroki.cci.android.data.datasource.local.entity.BinderPage
 import pl.sroki.cci.android.data.datasource.local.entity.CapPosition
@@ -46,19 +45,19 @@ class CapPositionWriteOrderTest {
         firestore = mockk(relaxed = true)
         purchased = mockk(relaxed = true)
         val binderPageDao = mockk<BinderPageDao>(relaxed = true)
-        val capCacheDao = mockk<CapCacheDao>(relaxed = true)
+        val capCacheRepository = mockk<CapCacheRepository>(relaxed = true)
         val authManager = mockk<FirebaseAuthManager>()
 
         coEvery { authManager.uid } returns MutableStateFlow(UID)
         coEvery { binderPageDao.getById(PAGE_ID) } returns
             BinderPage(id = PAGE_ID, binderId = 1L, pageNumber = 1, firestoreId = PAGE_FS_ID)
-        coEvery { capCacheDao.getByIds(any()) } returns emptyList()
+        coEvery { capCacheRepository.getByIds(any()) } returns emptyList()
         coEvery { firestore.newDocumentId(UID) } returns NEW_DOC_ID
 
         repo = CapPositionRepository(
             dao = dao,
             binderPageDao = binderPageDao,
-            capCacheDao = capCacheDao,
+            capCacheRepository = capCacheRepository,
             capPositionFirestoreService = firestore,
             purchasedCapsLocalStore = purchased,
             authManager = authManager

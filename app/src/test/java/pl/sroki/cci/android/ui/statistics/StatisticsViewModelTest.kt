@@ -21,8 +21,8 @@ import pl.sroki.cci.android.data.CapCacheRepository
 import pl.sroki.cci.android.data.CapPositionRepository
 import pl.sroki.cci.android.data.CapsRepository
 import pl.sroki.cci.android.data.CountriesRepository
-import pl.sroki.cci.android.data.model.CountryStatRow
 import pl.sroki.cci.android.model.CapExtended
+import pl.sroki.cci.android.model.binder.CountryCapCount
 import java.io.IOException
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -43,7 +43,7 @@ class StatisticsViewModelTest {
         countriesRepository = mockk(relaxed = true)
         coEvery { capPositionRepository.getTotalCount() } returns 42
         coEvery { capCacheRepository.getCountryStats() } returns
-            listOf(CountryStatRow("Polska", 30), CountryStatRow("Belgia", 12))
+            listOf(CountryCapCount("Polska", 30), CountryCapCount("Belgia", 12))
         coEvery { capCacheRepository.getMissingForPositioned() } returns emptyList()
         coEvery { countriesRepository.getFlagMap() } returns mapOf("Polska" to "https://flag/pl.png")
     }

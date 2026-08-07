@@ -65,8 +65,11 @@ class CapsRepository @Inject constructor(
         return capApiService.getLatest(page = page, perPage = perPage)
     }
 
-    suspend fun getById(id: Int): CapExtended {
-        return capApiService.getById(id = id)
+    // capId jest Long w całej reszcie modelu domenowego; API (Retrofit @Path) zostaje przy Int
+    // (przestrzeń id kapsli w katalogu mieści się w tym zakresie z dużym zapasem) — konwersja
+    // trzyma się jednego miejsca zamiast rozsypanego .toInt() w każdym wołającym.
+    suspend fun getById(id: Long): CapExtended {
+        return capApiService.getById(id = id.toInt())
     }
 
     suspend fun getByQuery(query: String, page: Int = 1): Page<Cap> {
@@ -100,7 +103,9 @@ class CapsRepository @Inject constructor(
         Log.d("CCI_COLLECTION", "addToCollection id=$id code=${resp.code()}")
         if (!resp.isSuccessful) throw java.io.IOException("HTTP ${resp.code()}")
         purchasedCapsLocalStore.add(id.toLong())
-        _collectionChanged.tryEmit(Unit)
+        // emit(), nie tryEmit(): przy buforze 1 dwie szybkie zmiany pod rząd (np. dodaj + usuń)
+        // mogły zgubić drugi sygnał po cichu, zanim kolektor zdążył go odebrać.
+        _collectionChanged.emit(Unit)
     }
 
     suspend fun removeFromCollection(id: Int) {
@@ -108,15 +113,15 @@ class CapsRepository @Inject constructor(
         Log.d("CCI_COLLECTION", "removeFromCollection id=$id code=${resp.code()}")
         if (!resp.isSuccessful) throw java.io.IOException("HTTP ${resp.code()}")
         purchasedCapsLocalStore.remove(id.toLong())
-        _collectionChanged.tryEmit(Unit)
+        _collectionChanged.emit(Unit)
     }
 
     // Zmiana statusu na "Zakupione" bez odpięcia z kolekcji (np. z W kolekcji) nie woła
     // addToCollection — kapsel już tam jest po stronie API. Trzeba jednak zaktualizować
     // lokalny magazyn "zakupionych", od którego zależy zakładka Zakupione.
-    fun markPurchasedLocally(id: Int) {
+    suspend fun markPurchasedLocally(id: Int) {
         purchasedCapsLocalStore.add(id.toLong())
-        _collectionChanged.tryEmit(Unit)
+        _collectionChanged.emit(Unit)
     }
 
 }

@@ -55,7 +55,7 @@ class CollectionVerifier @Inject constructor(
     suspend fun verify(capId: Long, onCatalogReached: () -> Unit = {}): CatalogStatus {
         val stored = capCacheRepository.getOne(capId)
         val cap = try {
-            capsRepository.getById(capId.toInt())
+            capsRepository.getById(capId)
         } catch (e: HttpException) {
             if (e.code() == 404) {
                 // 404 to też odpowiedź katalogu: serwer był osiągalny, kapsel z niego zniknął.

@@ -114,7 +114,7 @@ class CountryOwnedCapsViewModel @Inject constructor(
     /** Brak zdjęcia jednego kapsla nie może przerwać backfillu, ale anulowanie musi przejść dalej. */
     private suspend fun pobierzKapsel(id: Long): CapExtended? =
         try {
-            capsRepository.getById(id.toInt())
+            capsRepository.getById(id)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {

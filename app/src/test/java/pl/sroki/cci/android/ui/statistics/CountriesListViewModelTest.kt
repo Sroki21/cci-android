@@ -17,7 +17,7 @@ import org.junit.Before
 import org.junit.Test
 import pl.sroki.cci.android.data.CapCacheRepository
 import pl.sroki.cci.android.data.CountriesRepository
-import pl.sroki.cci.android.data.model.CountryStatRow
+import pl.sroki.cci.android.model.binder.CountryCapCount
 import java.io.IOException
 
 /**
@@ -72,7 +72,7 @@ class CountriesListViewModelTest {
     fun `blad getFlagMap nie przeslania listy z lokalnego Roomu`() = runTest {
         coEvery { countriesRepository.getFlagMap() } throws IOException("Brak połączenia")
         coEvery { capCacheRepository.getCountryStats() } returns
-            listOf(CountryStatRow(country = "Polska", count = 120))
+            listOf(CountryCapCount(country = "Polska", count = 120))
 
         val vm = viewModel()
 
@@ -86,7 +86,7 @@ class CountriesListViewModelTest {
     fun `udane wczytanie nie ustawia bledu`() = runTest {
         coEvery { countriesRepository.getFlagMap() } returns mapOf("Polska" to "flaga.png")
         coEvery { capCacheRepository.getCountryStats() } returns
-            listOf(CountryStatRow(country = "Polska", count = 120))
+            listOf(CountryCapCount(country = "Polska", count = 120))
 
         val vm = viewModel()
 
@@ -103,7 +103,7 @@ class CountriesListViewModelTest {
         assertNotNull(vm.uiState.value.error)
 
         coEvery { capCacheRepository.getCountryStats() } returns
-            listOf(CountryStatRow(country = "Belgia", count = 12))
+            listOf(CountryCapCount(country = "Belgia", count = 12))
         vm.retry()
 
         assertNull(vm.uiState.value.error)

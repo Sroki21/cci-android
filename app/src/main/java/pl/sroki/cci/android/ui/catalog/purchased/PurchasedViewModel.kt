@@ -74,7 +74,7 @@ class PurchasedViewModel @Inject constructor(
                 async {
                     withTimeoutOrNull(REQUEST_TIMEOUT_MS) {
                         semaphore.withPermit {
-                            runCatching { capsRepository.getById(id.toInt()).toCap() }.getOrNull()
+                            runCatching { capsRepository.getById(id).toCap() }.getOrNull()
                         }
                     }
                 }

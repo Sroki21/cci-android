@@ -36,10 +36,18 @@ data class ViewBox(val minX: Float, val minY: Float, val width: Float, val heigh
  */
 class WorldMap(
     val viewBox: ViewBox,
-    val countries: Map<String, Path>,
+    private val countryPaths: Map<String, Path>,
     private val hitTestBitmap: Bitmap,
     private val indexToIso: List<String>,
 ) {
+    /**
+     * Kopie ścieżek krajów, bezpieczne do mutacji przez wywołującego. [WorldMap] żyje jako
+     * cache w [WorldMapParser] przez cały czas życia procesu — wystawienie oryginalnych
+     * [Path] pozwoliłoby dowolnej transformacji in-place trwale zepsuć mapę dla wszystkich
+     * kolejnych ekranów, bez żadnego sygnału o tym, że kontrakt „tylko do odczytu" złamano.
+     */
+    val countries: Map<String, Path> get() = countryPaths.mapValues { Path(it.value) }
+
     /**
      * Kod ISO kraju zawierającego punkt (x, y) w przestrzeni viewBox, lub null.
      *

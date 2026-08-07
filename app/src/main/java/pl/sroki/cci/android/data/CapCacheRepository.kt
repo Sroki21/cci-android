@@ -3,12 +3,13 @@ package pl.sroki.cci.android.data
 import kotlinx.coroutines.flow.Flow
 import pl.sroki.cci.android.data.datasource.local.dao.CapCacheDao
 import pl.sroki.cci.android.data.datasource.local.entity.CapCache
-import pl.sroki.cci.android.data.model.CountryStatRow
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.flow.map
 import pl.sroki.cci.android.model.binder.CachedCap
 import pl.sroki.cci.android.model.binder.CatalogStatus
+import pl.sroki.cci.android.model.binder.CountryCapCount
+import pl.sroki.cci.android.model.binder.OwnedCapThumbnail
 
 @Singleton
 class CapCacheRepository @Inject constructor(private val dao: CapCacheDao) {
@@ -57,7 +58,12 @@ class CapCacheRepository @Inject constructor(private val dao: CapCacheDao) {
 
     suspend fun getMissingForPositioned(): List<Long> = dao.getMissingForPositioned()
 
-    suspend fun getCountryStats(): List<CountryStatRow> = dao.getCountryStats()
+    // Mapowanie na granicy repozytorium: CountryStatRow/OwnedCapRow to wewnętrzne modele
+    // zapytań Room (@ColumnInfo), nie powinny wyciekać do ViewModeli — patrz CLAUDE.md
+    // (data/model/ = ściśle wewnętrzne dla warstwy danych).
+    suspend fun getCountryStats(): List<CountryCapCount> =
+        dao.getCountryStats().map { CountryCapCount(it.country, it.count) }
 
-    suspend fun getOwnedCapsByCountry(country: String) = dao.getOwnedCapsByCountry(country)
+    suspend fun getOwnedCapsByCountry(country: String): List<OwnedCapThumbnail> =
+        dao.getOwnedCapsByCountry(country).map { OwnedCapThumbnail(it.capId, it.imageUrl) }
 }

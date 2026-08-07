@@ -167,7 +167,7 @@ class CapDetailViewModelTest {
         viewModel.setStatus(CapStatus.MISSING)
 
         coVerify(exactly = 0) { capPositionRepository.unassign(any()) }
-        verify(exactly = 0) { capsRepository.markPurchasedLocally(any()) }
+        coVerify(exactly = 0) { capsRepository.markPurchasedLocally(any()) }
         assertEquals(CapStatus.IN_COLLECTION, (viewModel.capDetailUiState as CapDetailUiState.Success).status)
         assertNotNull(viewModel.assignmentError)
     }
@@ -178,7 +178,7 @@ class CapDetailViewModelTest {
 
         viewModel.setStatus(CapStatus.PURCHASED)
 
-        verify(exactly = 1) { capsRepository.markPurchasedLocally(1) }
+        coVerify(exactly = 1) { capsRepository.markPurchasedLocally(1) }
         coVerify(exactly = 1) { capPositionRepository.unassign(1L) }
         coVerify(exactly = 0) { capsRepository.addToCollection(any()) }
         assertEquals(CapStatus.PURCHASED, (viewModel.capDetailUiState as CapDetailUiState.Success).status)
@@ -195,7 +195,7 @@ class CapDetailViewModelTest {
 
         viewModel.setStatus(CapStatus.PURCHASED)
 
-        verify(exactly = 0) { capsRepository.markPurchasedLocally(any()) }
+        coVerify(exactly = 0) { capsRepository.markPurchasedLocally(any()) }
         assertEquals(CapStatus.MISSING, (viewModel.capDetailUiState as CapDetailUiState.Success).status)
     }
 
@@ -210,7 +210,7 @@ class CapDetailViewModelTest {
         viewModel.setStatus(CapStatus.PURCHASED)
 
         coVerify(exactly = 1) { capsRepository.addToCollection(1) }
-        verify(exactly = 0) { capsRepository.markPurchasedLocally(any()) }
+        coVerify(exactly = 0) { capsRepository.markPurchasedLocally(any()) }
         assertEquals(CapStatus.PURCHASED, (viewModel.capDetailUiState as CapDetailUiState.Success).status)
     }
 

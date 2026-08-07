@@ -43,7 +43,7 @@ class AdvancedSearchPagingSource(
         val page = params.key ?: STARTING_KEY
 
         // ID — pobierz CapExtended, pozostałe filtry client-side
-        filter.idValue.trim().toIntOrNull()?.let { return loadById(it, page) }
+        filter.idValue.trim().toLongOrNull()?.let { return loadById(it, page) }
 
         return try {
             var lastFetched = page
@@ -125,7 +125,7 @@ class AdvancedSearchPagingSource(
         }
     }
 
-    private suspend fun loadById(id: Int, page: Int): LoadResult<Int, Cap> {
+    private suspend fun loadById(id: Long, page: Int): LoadResult<Int, Cap> {
         if (page != STARTING_KEY) return LoadResult.Page(emptyList(), null, null)
 
         val cap = try {

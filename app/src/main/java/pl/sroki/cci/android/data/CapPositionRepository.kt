@@ -6,7 +6,6 @@ import io.sentry.Sentry
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import pl.sroki.cci.android.data.datasource.local.dao.BinderPageDao
-import pl.sroki.cci.android.data.datasource.local.dao.CapCacheDao
 import pl.sroki.cci.android.data.datasource.local.dao.CapPositionDao
 import pl.sroki.cci.android.data.datasource.local.entity.CapPosition
 import pl.sroki.cci.android.data.model.CapBinderInfo
@@ -22,7 +21,7 @@ import pl.sroki.cci.android.model.binder.POSITIONS_PER_PAGE
 class CapPositionRepository @Inject constructor(
     private val dao: CapPositionDao,
     private val binderPageDao: BinderPageDao,
-    private val capCacheDao: CapCacheDao,
+    private val capCacheRepository: CapCacheRepository,
     private val capPositionFirestoreService: CapPositionFirestoreService,
     private val purchasedCapsLocalStore: PurchasedCapsLocalStore,
     private val authManager: FirebaseAuthManager
@@ -30,7 +29,7 @@ class CapPositionRepository @Inject constructor(
     // Wybór producenta zapisany lokalnie musi trafić do każdego nowo tworzonego dokumentu
     // pozycji — inaczej kapsel wybrany PRZED przypięciem do klasera nadal gubiłby wybór.
     private suspend fun producerSelectionOf(capId: Long): ProducerSelection? =
-        capCacheDao.getByIds(listOf(capId)).firstOrNull()?.let { cached ->
+        capCacheRepository.getByIds(listOf(capId)).firstOrNull()?.let { cached ->
             cached.selectedProducerId?.let {
                 ProducerSelection(it, cached.producer, cached.country)
             }

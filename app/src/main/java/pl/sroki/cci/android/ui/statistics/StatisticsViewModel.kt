@@ -104,7 +104,7 @@ class StatisticsViewModel @Inject constructor(
                         // wygasnąć, zanim w ogóle wystartowała — kraje gubiły się bez śladu.
                         semaphore.withPermit {
                             withTimeoutOrNull(6_000L) {
-                                val cap = runCatching { capsRepository.getById(id.toInt()) }.getOrNull()
+                                val cap = runCatching { capsRepository.getById(id) }.getOrNull()
                                 if (cap != null) {
                                     val country = cap.country.name
                                     if (country.isNotBlank()) {

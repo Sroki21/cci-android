@@ -338,7 +338,7 @@ class CapDetailViewModel @Inject constructor(
     fun getCap(id: Int) {
         viewModelScope.launch {
             capDetailUiState = try {
-                var cap = repository.getById(id)
+                var cap = repository.getById(id.toLong())
                 val binderInfo = capPositionRepository.getBinderInfoByCapId(id.toLong())
                 val status = when {
                     binderInfo != null -> CapStatus.IN_COLLECTION
@@ -402,7 +402,7 @@ class CapDetailViewModel @Inject constructor(
             if (uncached.isNotEmpty()) {
                 coroutineScope {
                     uncached.map { id ->
-                        async { id to runCatching { repository.getById(id.toInt()).country.name }.getOrNull() }
+                        async { id to runCatching { repository.getById(id).country.name }.getOrNull() }
                     }.awaitAll()
                 }.forEach { (id, c) ->
                     countryForId[id] = c
@@ -454,7 +454,7 @@ class CapDetailViewModel @Inject constructor(
         if (uncachedRepIds.isNotEmpty()) {
             coroutineScope {
                 uncachedRepIds.map { id ->
-                    async { id to runCatching { repository.getById(id.toInt()).country.name }.getOrNull() }
+                    async { id to runCatching { repository.getById(id).country.name }.getOrNull() }
                 }.awaitAll()
             }.forEach { (id, c) ->
                 countryForId[id] = c
