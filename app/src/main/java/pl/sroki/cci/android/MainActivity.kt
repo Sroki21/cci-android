@@ -91,14 +91,18 @@ fun Navigation(
     // znikał — mignięcie, w którym i tak nie było w co kliknąć.
     val clearanceViewModel = hiltViewModel<ClearanceViewModel>()
     val challengeRequired by clearanceViewModel.challengeRequired.collectAsStateWithLifecycle()
-    var bramkaWidoczna by remember { mutableStateOf(false) }
+    // Bramka zostaje zamontowana jeszcze chwilę po rozwiązaniu challengu. Cloudflare wystawia je
+    // seriami (interceptor ponawia żądanie do trzech razy), a odmontowanie niszczyło WebView —
+    // kolejny challenge z tej samej serii zaczynał od pustej strony i ładował wszystko od zera,
+    // przez co seria trwała wielokrotnie dłużej niż pojedynczy challenge. Trzymana instancja ma
+    // już cookies i cache, więc następny challenge schodzi od razu, w ciszy, poza ekranem.
+    var bramkaZamontowana by remember { mutableStateOf(false) }
     LaunchedEffect(challengeRequired) {
-        bramkaWidoczna = false
         if (challengeRequired) {
-            // Nie rozwiązał się w tle w tym czasie — to znaczy, że czeka na człowieka
-            // (interaktywny Turnstile) albo się zaciął. Dopiero teraz pokazujemy bramkę.
-            delay(PROG_POKAZANIA_BRAMKI_MS)
-            bramkaWidoczna = true
+            bramkaZamontowana = true
+        } else if (bramkaZamontowana) {
+            delay(KARENCJA_BRAMKI_MS)
+            bramkaZamontowana = false
         }
     }
 
@@ -311,19 +315,18 @@ fun Navigation(
     } // CompositionLocalProvider
 
         // Na wierzchu, żeby po pokazaniu przykryła aplikację; dopóki niewidoczna, sama odsuwa
-        // się poza ekran i nie łapie dotknięć.
-        if (challengeRequired) {
-            ClearanceGate(
-                visible = bramkaWidoczna,
-                onClose = { bramkaWidoczna = false },
-            )
+        // się poza ekran i nie łapie dotknięć. O tym, czy w ogóle się pokaże, decyduje sama
+        // bramka — widzi zdarzenia WebView, więc wie, czy challenge idzie do przodu.
+        if (bramkaZamontowana) {
+            ClearanceGate(challengeRequired = challengeRequired)
         }
     } // Box
 }
 
-// Ile czekamy, aż challenge rozwiąże się sam w tle, zanim pokażemy bramkę użytkownikowi.
-// Managed challenge mieści się zwykle w 1–3 s; dłuższe czekanie znaczy, że ktoś musi kliknąć.
-private const val PROG_POKAZANIA_BRAMKI_MS = 6_000L
+// Jak długo po rozwiązaniu challengu trzymamy bramkę zamontowaną (poza ekranem) na wypadek
+// kolejnego z tej samej serii. Po tym czasie WebView jest niszczony, żeby nie trzymać pamięci
+// i kontekstu w nieskończoność.
+private const val KARENCJA_BRAMKI_MS = 60_000L
 
 @Composable
 fun NavigationItem(

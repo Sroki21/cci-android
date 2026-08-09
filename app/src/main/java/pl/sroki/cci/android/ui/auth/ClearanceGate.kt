@@ -2,6 +2,7 @@ package pl.sroki.cci.android.ui.auth
 
 import android.annotation.SuppressLint
 import android.graphics.Bitmap
+import android.util.Log
 import android.webkit.CookieManager
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
@@ -26,7 +27,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -35,6 +38,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.delay
 import pl.sroki.cci.android.ui.components.ErrorWithRetry
 
 /**
@@ -47,59 +52,101 @@ import pl.sroki.cci.android.ui.components.ErrorWithRetry
  *
  * Dlatego bramka startuje **poza ekranem**: WebView jest w kompozycji, ładuje stronę i wykonuje
  * skrypt challengu, ale nic nie zasłania i nie łapie dotknięć. Na wierzch wjeżdża dopiero, gdy
- * [visible] zrobi się `true` — czyli gdy rozwiązywanie przeciąga się ponad próg (interaktywny
- * Turnstile do kliknięcia, albo błąd ładowania, który się nie naprawi sam). Instancja WebView jest
- * przez cały czas ta sama, więc pokazanie nakładki nie przeładowuje strony i nie zaczyna
- * challengu od zera.
+ * rozwiązywanie **stoi w miejscu** — patrz [PROG_BEZCZYNNOSCI_MS]. Instancja WebView jest przez
+ * cały czas ta sama, więc pokazanie nakładki nie przeładowuje strony i nie zaczyna challengu
+ * od zera.
  *
- * Błąd ładowania (`blad`) NIE pokazuje nakładki od razu — czeka na ten sam próg co powolne
- * rozwiązywanie. Managed challenge Cloudflare to zwykle kilka szybkich przekierowań pod rząd;
- * pojedyncze z nich potrafi się przejściowo potknąć, mimo że całość i tak kończy się sukcesem
- * w 2-3 sekundy. Natychmiastowe pokazanie bramki na taki błąd dawało mignięcie: nakładka
- * wyskakiwała na ułamek sekundy, po czym [visible] i tak gasło razem z rozwiązanym challengem.
+ * Próg mierzy ciszę, a nie łączny czas rozwiązywania. Cloudflare wystawia challenge **seriami**:
+ * po rozwiązaniu jednego interceptor ponawia żądanie i dostaje kolejny, a każdy z nich sam w sobie
+ * schodzi w 2–3 sekundy. Poprzednia wersja odmierzała sztywne 6 s od pierwszego wykrycia, więc
+ * seria trzech szybkich challengów i tak przekraczała próg — bramka wyskakiwała na sekundę tuż
+ * przed sukcesem, dokładnie w chwili, w której użytkownik nie miał już nic do zrobienia. Dopóki
+ * strona się rusza (przekierowania challengu, [aktywnosc]) albo dopóki idzie kolejna generacja
+ * challengu, odliczanie startuje od nowa. Cisza dłuższa niż próg oznacza już realne czekanie na
+ * człowieka — interaktywny Turnstile do kliknięcia.
+ *
+ * Błąd ładowania nie pokazuje nakładki od razu — liczy się jako aktywność jak każde inne zdarzenie.
+ * Managed challenge to kilka szybkich przekierowań pod rząd; pojedyncze z nich potrafi się
+ * przejściowo potknąć, mimo że całość kończy się sukcesem.
  *
  * Po zdobyciu clearance flaga w `ClearanceStore` gaśnie, a nakładka znika razem z nią — stąd brak
  * osobnego `onDone`. Za zgodą administratora serwisu.
+ *
+ * @param challengeRequired czy bramka ma cokolwiek do roboty. `false` oznacza, że WebView wisi
+ *   zamontowany na zapas (karencja w `MainActivity`) — nie pokazujemy go i nie ruszamy strony.
  */
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
 fun ClearanceGate(
-    visible: Boolean,
-    onClose: () -> Unit,
+    challengeRequired: Boolean,
     viewModel: ClearanceViewModel = hiltViewModel(),
 ) {
+    val generacja by viewModel.challengeGeneration.collectAsStateWithLifecycle()
+
     var loading by remember { mutableStateOf(true) }
-    // Gdy tylko cf_clearance trafi do OkHttpa, gasimy flagę — ale tylko raz.
-    var settled by remember { mutableStateOf(false) }
     var blad by remember { mutableStateOf<String?>(null) }
     var webView by remember { mutableStateOf<WebView?>(null) }
+    // Rośnie przy każdym zdarzeniu nawigacji WebView. Każdy przyrost odracza pokazanie bramki:
+    // dopóki strona się rusza, challenge rozwiązuje się sam i nie ma czego pokazywać.
+    var aktywnosc by remember { mutableIntStateOf(0) }
+    var widoczna by remember { mutableStateOf(false) }
 
     fun trySettle(view: WebView) {
-        if (settled) return
+        // Po rozwiązaniu challengu WebView zostaje zamontowany na zapas — wtedy nie ma czego
+        // synchronizować, a jego cookies mogłyby tylko nadpisać to, co OkHttp już ma.
+        if (!viewModel.challengeRequired.value) return
         val cookies = CookieManager.getInstance().getCookie(viewModel.baseUrl) ?: return
         if (!cookies.contains("cf_clearance")) return
         // Sync gasi flagę challengu, a wraz z nią znika cała nakładka.
-        if (viewModel.onWebViewSettled(view.settings.userAgentString)) {
-            settled = true
-        }
+        viewModel.onWebViewSettled(view.settings.userAgentString)
     }
 
     // Zamknięcie bez rozwiązania — gasimy flagę ręcznie, żeby kolejny challenge znów otworzył bramkę.
-    val zamknij = {
-        viewModel.dismiss()
-        onClose()
-    }
+    val zamknij = { viewModel.dismiss() }
 
     // Wstecz obsługujemy tylko wtedy, gdy nakładka jest na wierzchu. Niewidoczna bramka nie może
     // przejmować przycisku Wstecz aplikacji.
-    BackHandler(enabled = visible, onBack = zamknij)
+    BackHandler(enabled = widoczna, onBack = zamknij)
+
+    // Każda nowa generacja to nowy challenge do rozwiązania. Przy pierwszej ładujemy stronę po
+    // utworzeniu WebView, przy kolejnych przeładowujemy tę samą instancję — inaczej strona zostałaby
+    // na rozwiązanym już challengu i nikt by nie wykonał skryptu następnego.
+    LaunchedEffect(webView, generacja) {
+        val view = webView ?: return@LaunchedEffect
+        blad = null
+        loading = true
+        view.loadUrl(viewModel.baseUrl)
+    }
+
+    // Odliczanie ciszy: restartuje się przy każdej aktywności WebView i przy każdej nowej generacji.
+    LaunchedEffect(challengeRequired, generacja, aktywnosc) {
+        if (!challengeRequired) {
+            if (widoczna) Log.d("CCI_CF", "bramka schowana — challenge nr $generacja rozwiazany")
+            widoczna = false
+            return@LaunchedEffect
+        }
+        delay(PROG_BEZCZYNNOSCI_MS)
+        // Jedyne dwa miejsca, w których użytkownik w ogóle widzi bramkę — jeśli kiedyś znów mignie,
+        // ten wpis mówi wprost, który próg ją wypuścił i po ilu zdarzeniach WebView.
+        Log.d("CCI_CF", "pokazuje bramke: cisza ${PROG_BEZCZYNNOSCI_MS}ms, challenge nr $generacja, zdarzen WebView=$aktywnosc")
+        widoczna = true
+    }
+
+    // Sufit na wypadek strony, która kręci przekierowania w kółko i nigdy nie milknie — wtedy sama
+    // cisza nigdy by bramki nie pokazała, a użytkownik nie zobaczyłby, na czym stoi.
+    LaunchedEffect(challengeRequired, generacja) {
+        if (!challengeRequired) return@LaunchedEffect
+        delay(SUFIT_POKAZANIA_MS)
+        Log.d("CCI_CF", "pokazuje bramke: sufit ${SUFIT_POKAZANIA_MS}ms, challenge nr $generacja")
+        widoczna = true
+    }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             // Niewidoczna bramka stoi poza ekranem: layout ma pełny rozmiar (strona renderuje się
             // tak samo jak na wierzchu), ale nie zasłania UI i nie trafia w nią żadne dotknięcie.
-            .offset(x = if (visible) 0.dp else POZA_EKRANEM),
+            .offset(x = if (widoczna) 0.dp else POZA_EKRANEM),
     ) {
         AndroidView(
             modifier = Modifier
@@ -119,10 +166,13 @@ fun ClearanceGate(
                     webViewClient = object : WebViewClient() {
                         override fun onPageStarted(view: WebView, url: String?, favicon: Bitmap?) {
                             loading = true
+                            blad = null
+                            aktywnosc++
                         }
 
                         override fun onPageFinished(view: WebView, url: String?) {
                             loading = false
+                            aktywnosc++
                             // Challenge kończy się przeładowaniem strony — po każdym
                             // zakończonym ładowaniu sprawdzamy, czy jest już clearance.
                             trySettle(view)
@@ -132,6 +182,7 @@ fun ClearanceGate(
                         // (kończy się XHR-em), a wtedy onPageFinished już nie przyjdzie
                         // i bramka wisiałaby mimo posiadanego clearance.
                         override fun doUpdateVisitedHistory(view: WebView, url: String?, isReload: Boolean) {
+                            aktywnosc++
                             trySettle(view)
                         }
 
@@ -140,14 +191,16 @@ fun ClearanceGate(
                             request: WebResourceRequest,
                             error: WebResourceError,
                         ) {
-                            // Bez tego brak sieci dawał białą stronę bez słowa wyjaśnienia.
+                            // Bez tego brak sieci dawał białą stronę bez słowa wyjaśnienia. Komunikat
+                            // czeka jednak w stanie — zobaczy go tylko ten, komu bramka i tak się
+                            // pokaże, bo cisza po błędzie przekroczy próg.
                             if (request.isForMainFrame) {
                                 loading = false
                                 blad = "Nie udało się otworzyć strony. Sprawdź połączenie i spróbuj ponownie."
+                                aktywnosc++
                             }
                         }
                     }
-                    loadUrl(viewModel.baseUrl)
                 }.also { webView = it }
             },
             // WebView z włączonym JS i DOM storage trzymał kontekst aktywności po opuszczeniu
@@ -155,7 +208,7 @@ fun ClearanceGate(
             onRelease = { it.destroy() },
         )
 
-        if (visible) {
+        if (widoczna) {
             Column(Modifier.fillMaxWidth().safeDrawingPadding()) {
                 Surface(color = MaterialTheme.colorScheme.surfaceVariant) {
                     Row(
@@ -197,3 +250,13 @@ private val POZA_EKRANEM = 4000.dp
 
 // Wysokość paska nakładki (przycisk zamknięcia + tytuł) — tyle miejsca zostawiamy na górze.
 private val WYSOKOSC_PASKA = 56.dp
+
+// Ile ciszy w WebView (żadnego przekierowania, żadnego zakończonego ładowania) uznajemy za znak,
+// że challenge czeka na człowieka. Managed challenge milknie najwyżej na ~3 s między krokami —
+// log z urządzenia pokazywał całe rozwiązanie w 3,3 s — więc 8 s daje mu spory zapas i przy
+// samodzielnym rozwiązaniu bramka nie pokazuje się ani na moment.
+private const val PROG_BEZCZYNNOSCI_MS = 8_000L
+
+// Twardy sufit dla jednej generacji challengu: strona, która bez końca się przekierowuje, nigdy
+// nie zamilknie, a mimo to nic z tego nie wychodzi.
+private const val SUFIT_POKAZANIA_MS = 40_000L

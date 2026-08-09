@@ -133,4 +133,36 @@ class ClearanceStoreTest {
 
         assertFalse(store.isFreshClearance(cookies, rejected = null))
     }
+
+    @Test
+    fun `zgloszenia w trakcie jednego challengu nie zwiekszaja generacji`() {
+        // Kilka żądań naraz odbija się od bramki — to wciąż ten sam challenge i ta sama strona
+        // w WebView. Podbicie generacji przeładowałoby ją w połowie rozwiązywania.
+        store.requireChallenge()
+        val generacja = store.challengeGeneration.value
+
+        store.requireChallenge()
+        store.requireChallenge()
+
+        assertEquals(generacja, store.challengeGeneration.value)
+    }
+
+    @Test
+    fun `kolejny challenge po rozwiazaniu podbija generacje mimo nieprzerwanej flagi`() {
+        // Cloudflare wystawia challenge seriami: interceptor ponawia żądanie i od razu dostaje
+        // następny. Przejście flagi `true → false → true` potrafi się skonflatować w StateFlow,
+        // więc tylko licznik mówi UI, że to nowy challenge i próg trzeba liczyć od zera.
+        val pierwszy = store.requireChallenge()
+        pierwszy.complete(true)
+
+        store.requireChallenge()
+
+        assertEquals(2, store.challengeGeneration.value)
+        assertTrue(store.challengeRequired.value)
+    }
+
+    @Test
+    fun `generacja startuje od zera przed pierwszym challengem`() {
+        assertEquals(0, store.challengeGeneration.value)
+    }
 }

@@ -54,6 +54,20 @@ class ClearanceStore @Inject constructor(
     /** true, gdy interceptor napotkał challenge i trzeba pokazać ekran WebView. */
     val challengeRequired: StateFlow<Boolean> = _challengeRequired.asStateFlow()
 
+    private val _challengeGeneration = MutableStateFlow(0)
+
+    /**
+     * Numer kolejnego challengu, rosnący przy każdym **nowym** (nie współbieżnym) wykryciu bramki.
+     *
+     * Samo [challengeRequired] nie wystarcza warstwie UI: Cloudflare wystawia challenge seriami,
+     * a interceptor ponawia żądanie od razu po rozwiązaniu. Przejście `true → false → true` potrafi
+     * zmieścić się w jednej klatce, a `StateFlow` konflatuje — obserwator widzi wtedy nieprzerwane
+     * `true` i nie ma jak odróżnić drugiego challengu od pierwszego. Licznik zawsze dostaje nową
+     * wartość, więc UI wie, że trzeba zacząć od nowa: przeładować stronę w WebView i odmierzyć próg
+     * pokazania bramki od zera zamiast sumować całą serię.
+     */
+    val challengeGeneration: StateFlow<Int> = _challengeGeneration.asStateFlow()
+
     // Na tym czeka zablokowane żądanie, aż użytkownik rozwiąże challenge w WebView. Współdzielone
     // przez wszystkie żądania, które trafiły na bramkę naraz: WebView otwiera się raz, a po
     // zdobyciu clearance wszystkie wstrzymane żądania budzą się i ponawiają. true = jest clearance.
@@ -75,7 +89,8 @@ class ClearanceStore @Inject constructor(
         } else {
             // Nowy challenge: zapamiętaj clearance, z którym żądanie właśnie odbiło się od bramki.
             rejectedClearance = currentClearance()
-            Log.d("CCI_CF", "challenge wykryty — otwieram WebView")
+            _challengeGeneration.value += 1
+            Log.d("CCI_CF", "challenge wykryty (nr ${_challengeGeneration.value}) — WebView rozwiazuje w tle")
             CompletableDeferred<Boolean>().also { pending = it }
         }
         _challengeRequired.value = true
