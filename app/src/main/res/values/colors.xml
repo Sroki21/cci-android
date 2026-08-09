@@ -1,4 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="brand_darker">#FFA81C29</color>
+
+    <!--
+      Tło okna aktywności — to, co widać, zanim Compose narysuje pierwszą klatkę (zimny start,
+      odtworzenie okna po powrocie z tła). Musi się zgadzać z `MaterialTheme.colorScheme.background`,
+      bo inaczej przy każdym starcie widać błysk w innym kolorze niż reszta aplikacji. Wartość
+      pilnuje test `WindowBackgroundColorTest`.
+    -->
+    <color name="window_background">#FFFEF7FF</color>
 </resources>

@@ -1,6 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.CCI" parent="android:Theme.Material.Light.NoActionBar">
+    <style name="Base.Theme.CCI" parent="android:Theme.Material.Light.NoActionBar">
         <item name="android:statusBarColor">@color/brand_darker</item>
+        <!--
+          Motyw aktywności jest jasny na sztywno, a o kolorystyce UI decyduje Compose
+          (`isSystemInDarkTheme()`). Samo tło okna musi więc chodzić za trybem systemu osobno —
+          inaczej użytkownik w trybie ciemnym dostaje biały błysk przed pierwszą klatką Compose.
+        -->
+        <item name="android:windowBackground">@color/window_background</item>
     </style>
+
+    <!--
+      Wariant bez dodatków — całość siedzi w bazie. Ekran startowy (API 31+) dokłada swoje
+      w res/values-v31/themes.xml, bo `windowSplashScreenBackground` nie istnieje niżej.
+    -->
+    <style name="Theme.CCI" parent="Base.Theme.CCI" />
 </resources>

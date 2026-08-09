@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.CCI" parent="Base.Theme.CCI">
+        <!--
+          Ekran startowy Androida 12+ rysuje się sam, zanim aplikacja cokolwiek zrobi. Bez tego
+          atrybutu jego tło zależy od motywu aktywności, a ten jest u nas jasny na sztywno — czyli
+          dokładnie ten sam mechanizm, który malował białe okno w trybie ciemnym. Ustawiamy go
+          jawnie na ten sam kolor co `windowBackground`, żeby start był gładki niezależnie od tego,
+          który z dwóch atrybutów system akurat weźmie pod uwagę.
+        -->
+        <item name="android:windowSplashScreenBackground">@color/window_background</item>
+    </style>
+</resources>

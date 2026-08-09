@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      Ciemny odpowiednik tła okna. Bez tego wariantu motyw aktywności (jasny, na sztywno) malował
+      okno na biało także przy systemowym trybie ciemnym — i to właśnie ten biały prostokąt migał
+      na sekundę przy starcie aplikacji i przy jej wznowieniu, zanim Compose zdążył narysować
+      swoje ciemne UI. Wartość musi odpowiadać `darkColorScheme().background`.
+    -->
+    <color name="window_background">#FF141218</color>
+</resources>
