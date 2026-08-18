@@ -55,7 +55,15 @@ class PurchasedViewModel @Inject constructor(
                 val assignedIds = capPositionRepository.getAllCapIds().toSet()
                 val purchasedIds = purchasedCapsLocalStore.getIds() - assignedIds
                 val caps = fetchCapsInParallel(purchasedIds)
-                _uiState.value = PurchasedUiState.Success(caps)
+                // „Nic nie mam" i „nic się nie pobrało" dawały wcześniej ten sam pusty ekran:
+                // porażki poszczególnych żądań kończą się nullem, a filterNotNull() je zjada.
+                // Przy wygasłym cf_clearance potrafiły paść wszystkie naraz i wyglądało to jak
+                // pusta zakładka — bez komunikatu i bez czegokolwiek do kliknięcia.
+                _uiState.value = when {
+                    purchasedIds.isEmpty() -> PurchasedUiState.Success(emptyList())
+                    caps.isEmpty() -> PurchasedUiState.Error("Nie udało się pobrać zakupionych kapsli")
+                    else -> PurchasedUiState.Success(caps)
+                }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -87,6 +95,14 @@ class PurchasedViewModel @Inject constructor(
 
     private companion object {
         const val PARALLELISM = 15
-        const val REQUEST_TIMEOUT_MS = 6_000L
+
+        /**
+         * Budżet na jedno żądanie. Musi zmieścić bramkę Cloudflare: `ChallengeInterceptor`
+         * blokuje wątek na czas rozwiązywania challengu, a te przychodzą seriami po ~3-4 s
+         * (do trzech prób). Poprzednie 6 s odmierzało czas razem z tym oczekiwaniem, więc
+         * dłuższa seria ubijała wszystkie żądania naraz i zakładka wychodziła pusta.
+         * Realna awaria sieci wraca wcześniej — na własnych timeoutach OkHttpa.
+         */
+        const val REQUEST_TIMEOUT_MS = 30_000L
     }
 }
