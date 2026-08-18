@@ -83,6 +83,9 @@ class FirestoreRestoreUseCase @Inject constructor(
         const val KEY_BINDER_DEDUP = "binder_dedup_version"
         // Podbij, gdy sprzątanie duplikatów ma się wykonać ponownie.
         const val BINDER_DEDUP_VERSION = 1
+        const val KEY_PURCHASED_BACKFILL = "purchased_backfill_version"
+        // Podbij, gdy backfill listy zakupionych ma się wykonać ponownie u wszystkich.
+        const val PURCHASED_BACKFILL_VERSION = 1
     }
 
     private val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -154,6 +157,19 @@ class FirestoreRestoreUseCase @Inject constructor(
      * Uzgadnia listę "zakupionych" z chmurą. Rozmyślnie bez scalania zbiorów: przy pustym
      * zbiorze po jednej stronie kopiujemy w tę stronę, w pozostałych przypadkach nie ruszamy
      * niczego. Scalanie wskrzeszałoby kapsle świadomie usunięte z kolekcji na innym urządzeniu.
+     *
+     * Wypchnięcie lokalnej listy do chmury jest **jednorazowe** — chroni je flaga, tak samo jak
+     * [backfillProducerSelections]. Bez niej ta gałąź odpalała przy każdym starcie, ilekroć chmura
+     * była pusta, i sama robiła to, przed czym broni akapit wyżej: wyczyszczenie całej listy na
+     * urządzeniu B opróżniało chmurę (`remove()` pisze dwutorowo), po czym urządzenie A przy
+     * najbliższym starcie wypychało swoją nieaktualną kopię z powrotem, a B odtwarzało ją z chmury.
+     * Świadome usunięcie wracało po dwóch uruchomieniach.
+     *
+     * Flagę stawiamy po **każdym** udanym uzgodnieniu, nie tylko po faktycznym wypchnięciu — inaczej
+     * zostawałaby uzbrojona i pierwsze opróżnienie chmury w przyszłości wyzwoliłoby dokładnie ten
+     * sam scenariusz. Jedyne, co ma prawo wypchnąć listę do chmury, to pierwsze uruchomienie po
+     * aktualizacji z wersji sprzed synchronizacji; potem chmura jest źródłem prawdy dla usunięć,
+     * a bieżące zmiany trafiają tam na bieżąco przez [PurchasedCapsLocalStore].
      */
     suspend fun syncPurchasedCaps() {
         val uid = authManager.uid.value ?: return
@@ -161,6 +177,7 @@ class FirestoreRestoreUseCase @Inject constructor(
             Log.w("CCI_SYNC", "nie udało się pobrać listy zakupionych: ${it.message}")
             return
         }
+        val backfillWykonany = prefs.getInt(KEY_PURCHASED_BACKFILL, 0) >= PURCHASED_BACKFILL_VERSION
         when {
             // Świeża instalacja: lokalnie pusto, w chmurze jest komplet.
             purchasedCapsLocalStore.isEmpty() && zdalne.isNotEmpty() -> {
@@ -168,11 +185,16 @@ class FirestoreRestoreUseCase @Inject constructor(
                 Log.i("CCI_SYNC", "odtworzono ${zdalne.size} zakupionych kapsli z Firestore")
             }
             // Instalacja sprzed synchronizacji: lokalnie jest lista, w chmurze jeszcze nic.
-            zdalne.isEmpty() && !purchasedCapsLocalStore.isEmpty() -> {
+            // Tylko raz — pusta chmura przy kolejnych startach znaczy już "skasowane", nie "jeszcze
+            // nie wypchnięte", i wypchnięcie cofnęłoby usunięcie zrobione na innym urządzeniu.
+            zdalne.isEmpty() && !purchasedCapsLocalStore.isEmpty() && !backfillWykonany -> {
                 val lokalne = purchasedCapsLocalStore.getIds()
                 purchasedCapsService.scheduleReplaceAll(uid, lokalne)
                 Log.i("CCI_SYNC", "backfill: wypchnięto ${lokalne.size} zakupionych kapsli")
             }
+        }
+        if (!backfillWykonany) {
+            prefs.edit().putInt(KEY_PURCHASED_BACKFILL, PURCHASED_BACKFILL_VERSION).apply()
         }
         prunePurchasedAlreadyInBinders()
     }
