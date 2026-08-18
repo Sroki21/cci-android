@@ -16,6 +16,19 @@ import okhttp3.HttpUrl.Companion.toHttpUrl
 import javax.inject.Inject
 import javax.inject.Singleton
 
+/** Cookie, którym serwis identyfikuje sesję webową Sanctum. */
+internal const val SESSION_COOKIE_NAME = "crowncapsinfo-session"
+
+/**
+ * Komplet cookies niosących tożsamość sesji webowej.
+ *
+ * Nie wolno ich nadpisać gościnnymi z WebView, gdy aplikacja ma już zalogowaną sesję
+ * ([ClearanceStore.selectTransferable]), i trzeba je porzucić przed cichym przelogowaniem
+ * ([pl.sroki.cci.android.data.SessionRefresher]). `XSRF-TOKEN` idzie w parze z sesją: token
+ * z innej sesji dałby 419 przy pierwszym POST.
+ */
+internal val SESSION_COOKIE_NAMES = setOf(SESSION_COOKIE_NAME, "XSRF-TOKEN")
+
 /**
  * Most między Cloudflare Managed Challenge a klientem OkHttp.
  *
@@ -191,12 +204,9 @@ class ClearanceStore @Inject constructor(
 
     private companion object {
         const val CLEARANCE_COOKIE = "cf_clearance"
-        const val SESSION_COOKIE = "crowncapsinfo-session"
+        const val SESSION_COOKIE = SESSION_COOKIE_NAME
 
-        // Cookies, którymi serwis identyfikuje sesję webową — nie wolno ich nadpisać gościnnymi
-        // z WebView, gdy aplikacja ma już zalogowaną sesję. XSRF-TOKEN idzie w parze z sesją:
-        // token z innej sesji dałby 419 przy pierwszym POST.
-        val SESSION_COOKIES = setOf(SESSION_COOKIE, "XSRF-TOKEN")
+        val SESSION_COOKIES = SESSION_COOKIE_NAMES
 
         // Trzymamy przeniesione cookies jak najdłużej po stronie klienta. O realnym czasie życia
         // cf_clearance decyduje i tak Cloudflare (ustawienie „Challenge Passage" serwisu), a
