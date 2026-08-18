@@ -145,7 +145,9 @@ fun ClearanceGate(
         modifier = Modifier
             .fillMaxSize()
             // Niewidoczna bramka stoi poza ekranem: layout ma pełny rozmiar (strona renderuje się
-            // tak samo jak na wierzchu), ale nie zasłania UI i nie trafia w nią żadne dotknięcie.
+            // tak samo jak na wierzchu), ale nie łapie dotknięć. Samo przesunięcie NIE wystarcza,
+            // by jej nie było widać — WebView się nim nie przejmuje i maluje po całym ekranie,
+            // dlatego niewidoczność załatwia `view.alpha` w `update` poniżej.
             .offset(x = if (widoczna) 0.dp else POZA_EKRANEM),
     ) {
         AndroidView(
@@ -155,6 +157,22 @@ fun ClearanceGate(
                 // Stały odstęp na pasek nakładki — dzięki temu pokazanie bramki nie zmienia
                 // rozmiaru WebView i nie wywołuje przeładowania układu strony w połowie challengu.
                 .padding(top = WYSOKOSC_PASKA),
+            // Przezroczystość ustawiamy na samym View, a nie modyfikatorem Compose.
+            //
+            // Zmierzone na urządzeniu 2026-08-18 (Pixel 8, seria zrzutów wokół challengu):
+            // WebView **ignoruje przesunięcie nadane przez Compose**. Mimo `offset(x = 4000.dp)`
+            // malował się na pełnym ekranie — biały, jeszcze przed załadowaniem strony — i to
+            // przykrywając nawet pasek statusu, którego `safeDrawingPadding()` miało pilnować.
+            // To jest ten „biały ekran migający przy wyszukiwaniu": nie tło okna i nie pokazana
+            // bramka (`widoczna` było przez cały czas false, w logu ani jednego `pokazuje bramke:`),
+            // tylko pusty WebView rysowany tam, gdzie go rzekomo nie ma.
+            //
+            // `View.alpha` to natywna właściwość Androida — WebView renderuje się do warstwy
+            // i respektuje ją niezależnie od tego, co Compose myśli o jego pozycji. Rozmiar
+            // zostaje pełny, więc strona challengu układa się tak samo i JS wykonuje się dalej;
+            // zmienia się wyłącznie to, czy widać wynik. Za odcięcie dotknięć nadal odpowiada
+            // `offset` na rodzicu — hit-testing idzie przez layout Compose, a ten działa.
+            update = { view -> view.alpha = if (widoczna) 1f else 0f },
             factory = { context ->
                 // Cookies WebView muszą być na tyle trwałe, by dało się je odczytać po
                 // rozwiązaniu challengu i przenieść do OkHttpa.
