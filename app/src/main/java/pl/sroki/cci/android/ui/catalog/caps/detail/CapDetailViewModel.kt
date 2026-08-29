@@ -8,6 +8,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.sentry.Sentry
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -27,6 +28,7 @@ import pl.sroki.cci.android.model.binder.BinderPageView
 import pl.sroki.cci.android.model.binder.CachedCap
 import pl.sroki.cci.android.data.datasource.remote.firestore.ProducerSelection
 import pl.sroki.cci.android.data.model.CapBinderInfo
+import pl.sroki.cci.android.di.ApplicationScope
 import pl.sroki.cci.android.model.BinderSuggestion
 import pl.sroki.cci.android.model.CapExtended
 import pl.sroki.cci.android.model.Producer
@@ -56,7 +58,9 @@ class CapDetailViewModel @Inject constructor(
     private val sessionRepository: SessionRepository,
     private val binderRepository: BinderRepository,
     private val binderPageRepository: BinderPageRepository,
-    private val purchasedCapsLocalStore: PurchasedCapsLocalStore
+    private val purchasedCapsLocalStore: PurchasedCapsLocalStore,
+    // Zapisy kolekcji idą tędy, a nie przez viewModelScope — patrz komentarz w setStatus.
+    @ApplicationScope private val externalScope: CoroutineScope
 ) : ViewModel() {
 
     var capDetailUiState: CapDetailUiState by mutableStateOf(CapDetailUiState.Loading)
@@ -251,19 +255,25 @@ class CapDetailViewModel @Inject constructor(
             isSaving = true
             assignmentError = null
             try {
-                val snapshot = current.cap.toSnapshot()
-                capCacheRepository.upsertSnapshot(
-                    capId, snapshot.name, snapshot.country, snapshot.imageUrl,
-                    snapshot.createdAt, snapshot.createdById, snapshot.updatedAt
-                )
-                if (current.status == CapStatus.IN_COLLECTION) {
-                    capPositionRepository.reassign(capId, pageId, position, snapshot)
-                } else {
-                    if (!current.cap.isInCollection) {
-                        repository.addToCollection(current.cap.id)
+                // externalScope z tego samego powodu co w setStatus: przypisanie zaczyna się od
+                // dopisania kapsla do kolekcji, więc przy wygasłej sesji czeka na całą ścieżkę
+                // odzyskiwania. Wyjście z ekranu w tym oknie zostawiłoby snapshot w Roomie bez
+                // pozycji w klaserze — albo pozycję bez kapsla po stronie serwera.
+                externalScope.async {
+                    val snapshot = current.cap.toSnapshot()
+                    capCacheRepository.upsertSnapshot(
+                        capId, snapshot.name, snapshot.country, snapshot.imageUrl,
+                        snapshot.createdAt, snapshot.createdById, snapshot.updatedAt
+                    )
+                    if (current.status == CapStatus.IN_COLLECTION) {
+                        capPositionRepository.reassign(capId, pageId, position, snapshot)
+                    } else {
+                        if (!current.cap.isInCollection) {
+                            repository.addToCollection(current.cap.id)
+                        }
+                        capPositionRepository.assign(pageId, position, capId, snapshot)
                     }
-                    capPositionRepository.assign(pageId, position, capId, snapshot)
-                }
+                }.await()
                 val newBinderInfo = capPositionRepository.getBinderInfoByCapId(capId)
                 capDetailUiState = current.copy(
                     status = CapStatus.IN_COLLECTION,
@@ -271,6 +281,9 @@ class CapDetailViewModel @Inject constructor(
                     cap = current.cap.copy(isInCollection = true)
                 )
                 binderSuggestion = null
+            } catch (e: CancellationException) {
+                // Ekran zniknął w trakcie — zapis leci dalej w externalScope, nie ma czego cofać.
+                throw e
             } catch (e: IllegalStateException) {
                 assignmentError = e.message ?: "Nie udało się przypisać kapsla"
                 selectedPosition = null
@@ -306,25 +319,40 @@ class CapDetailViewModel @Inject constructor(
         }
         viewModelScope.launch {
             try {
-                if (status == CapStatus.MISSING) {
-                    repository.removeFromCollection(current.cap.id)
-                } else if (!current.cap.isInCollection) {
-                    repository.addToCollection(current.cap.id)
-                }
-                // Magazyn zakupionych dopiero po potwierdzeniu przez API — razem z zapisem
-                // idzie wpis do Firestore, a nikt go nie cofał, gdy wywołanie sieciowe padło.
-                // Zakładka Zakupione rozjeżdżała się wtedy z kolekcją po stronie serwera.
-                // Tylko dla kapsla już będącego w kolekcji: pozostałe ścieżki załatwiają
-                // magazyn same — addToCollection dopisuje, removeFromCollection usuwa.
-                if (status == CapStatus.PURCHASED && current.cap.isInCollection) {
-                    repository.markPurchasedLocally(current.cap.id)
-                }
-                // Odpięcie na końcu. Przed wywołaniem API kasowało pozycję w klaserze także
-                // wtedy, gdy zmiana statusu nie przechodziła, a UI wracało do stanu
-                // „w klaserze" — do pozycji, której już nie było.
-                if (leavingCollection) {
-                    capPositionRepository.unassign(current.cap.id.toLong())
-                }
+                // externalScope, nie viewModelScope: sekwencja musi dobiec do końca nawet po
+                // wyjściu z ekranu. Przy wygasłej sesji webowej ReauthInterceptor przechodzi
+                // całą ścieżkę odzyskiwania (401 → CSRF → 401 → ciche logowanie → ponowienie)
+                // i trwa to około dwóch sekund. Cofnięcie się w tym oknie — a robi się to
+                // odruchowo, bo status w UI zmienia się od razu — niszczyło ViewModel, Retrofit
+                // anulował Call i ponowienie po udanym logowaniu NIE szło już wcale. Zmierzone
+                // na urządzeniu: `reauth: … -> SUCCESS`, a po nim ani POST-a, ani wpisu
+                // `addToCollection code=`; serwer nie zapisywał, kapsel wracał na „Brak".
+                // `await()` zostawia obsługę błędu tam, gdzie była — dopóki ekran żyje.
+                externalScope.async {
+                    if (status == CapStatus.MISSING) {
+                        repository.removeFromCollection(current.cap.id)
+                    } else if (!current.cap.isInCollection) {
+                        repository.addToCollection(current.cap.id)
+                    }
+                    // Magazyn zakupionych dopiero po potwierdzeniu przez API — razem z zapisem
+                    // idzie wpis do Firestore, a nikt go nie cofał, gdy wywołanie sieciowe padło.
+                    // Zakładka Zakupione rozjeżdżała się wtedy z kolekcją po stronie serwera.
+                    // Tylko dla kapsla już będącego w kolekcji: pozostałe ścieżki załatwiają
+                    // magazyn same — addToCollection dopisuje, removeFromCollection usuwa.
+                    if (status == CapStatus.PURCHASED && current.cap.isInCollection) {
+                        repository.markPurchasedLocally(current.cap.id)
+                    }
+                    // Odpięcie na końcu. Przed wywołaniem API kasowało pozycję w klaserze także
+                    // wtedy, gdy zmiana statusu nie przechodziła, a UI wracało do stanu
+                    // „w klaserze" — do pozycji, której już nie było.
+                    if (leavingCollection) {
+                        capPositionRepository.unassign(current.cap.id.toLong())
+                    }
+                }.await()
+            } catch (e: CancellationException) {
+                // Ekran zniknął, gdy zapis był jeszcze w drodze. Sama operacja leci dalej
+                // w externalScope — nie ma tu czego cofać ani czym straszyć użytkownika.
+                throw e
             } catch (e: Exception) {
                 capDetailUiState = current
                 assignmentError = (e as? IllegalStateException)?.message ?: "Nie udało się zmienić statusu"

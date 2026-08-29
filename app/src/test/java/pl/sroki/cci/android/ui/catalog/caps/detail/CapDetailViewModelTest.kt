@@ -1,15 +1,23 @@
 package pl.sroki.cci.android.ui.catalog.caps.detail
 
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.ViewModelStore
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
@@ -49,6 +57,10 @@ import kotlin.time.Instant
 class CapDetailViewModelTest {
 
     private val testDispatcher = UnconfinedTestDispatcher()
+
+    // Odpowiednik @ApplicationScope z produkcji: przeżywa zniszczenie ViewModelu, więc zapis
+    // rozpoczęty na ekranie dobiega końca także wtedy, gdy użytkownik z niego wyjdzie.
+    private val externalScope = CoroutineScope(SupervisorJob() + testDispatcher)
     private lateinit var capsRepository: CapsRepository
     private lateinit var capPositionRepository: CapPositionRepository
     private lateinit var capCacheRepository: CapCacheRepository
@@ -77,7 +89,10 @@ class CapDetailViewModelTest {
     }
 
     @After
-    fun tearDown() = Dispatchers.resetMain()
+    fun tearDown() {
+        externalScope.cancel()
+        Dispatchers.resetMain()
+    }
 
     private fun viewModel() = CapDetailViewModel(
         capsRepository,
@@ -87,7 +102,23 @@ class CapDetailViewModelTest {
         binderRepository,
         binderPageRepository,
         purchasedCapsLocalStore,
+        externalScope,
     )
+
+    /**
+     * Odpowiednik opuszczenia ekranu: `ViewModelStore.clear()` woła `onCleared()` i anuluje
+     * `viewModelScope`. Samo `ViewModel.clear()` jest w androidx `internal`, więc idziemy przez
+     * store — to ta sama ścieżka, którą wykonuje nawigacja przy zdjęciu ekranu ze stosu.
+     */
+    private fun zniszczEkran(viewModel: CapDetailViewModel) {
+        val store = ViewModelStore()
+        val factory = object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>): T = viewModel as T
+        }
+        ViewModelProvider(store, factory)[CapDetailViewModel::class.java]
+        store.clear()
+    }
 
     // --- ładowanie szczegółów -------------------------------------------------------------
 
@@ -197,6 +228,48 @@ class CapDetailViewModelTest {
 
         coVerify(exactly = 0) { capsRepository.markPurchasedLocally(any()) }
         assertEquals(CapStatus.MISSING, (viewModel.capDetailUiState as CapDetailUiState.Success).status)
+    }
+
+    @Test
+    fun `zapis dobiega konca, gdy uzytkownik wyjdzie z ekranu w jego trakcie`() = runTest {
+        // Odtworzone na urządzeniu 2026-08-29: przy wygasłej sesji webowej ReauthInterceptor
+        // przechodzi 401 → CSRF → 401 → ciche logowanie → ponowienie, co zajmuje ~2 s. Cofnięcie
+        // się w tym oknie niszczyło ViewModel, a Retrofit anulował Call — logowanie kończyło się
+        // sukcesem, POST-a już nie było i serwer nie zapisywał zmiany statusu.
+        val zapisWToku = CompletableDeferred<Unit>()
+        coEvery { capsRepository.markPurchasedLocally(1) } coAnswers { zapisWToku.await() }
+        val viewModel = loadedInCollection()
+
+        viewModel.setStatus(CapStatus.PURCHASED)
+        zniszczEkran(viewModel) // użytkownik cofa się do wyników, zanim zapis dobiegł końca
+        zapisWToku.complete(Unit)
+        advanceUntilIdle()
+
+        // Sekwencja idzie dalej mimo zniszczenia ekranu — inaczej urwałaby się w połowie.
+        coVerify(exactly = 1) { capPositionRepository.unassign(1L) }
+    }
+
+    @Test
+    fun `przypisanie do klasera dobiega konca, gdy uzytkownik wyjdzie z ekranu`() = runTest {
+        // Ta sama klasa błędu co przy zmianie statusu: przypisanie zaczyna się od dopisania
+        // kapsla do kolekcji, więc przy wygasłej sesji czeka na całą ścieżkę odzyskiwania.
+        coEvery { capsRepository.getById(1) } returns cap(id = 1, isInCollection = false)
+        coEvery { capPositionRepository.getBinderInfoByCapId(1L) } returns null
+        coEvery { capCacheRepository.getOne(1L) } returns null
+        val zapisWToku = CompletableDeferred<Unit>()
+        coEvery { capsRepository.addToCollection(1) } coAnswers { zapisWToku.await() }
+        val viewModel = viewModel()
+        viewModel.getCap(1)
+        viewModel.onBinderSelected(7L)
+        viewModel.onPageSelected(70L)
+
+        viewModel.onPositionSelected(3)
+        zniszczEkran(viewModel)
+        zapisWToku.complete(Unit)
+        advanceUntilIdle()
+
+        // Bez tego kapsel trafiłby do kolekcji, ale bez pozycji w klaserze.
+        coVerify(exactly = 1) { capPositionRepository.assign(70L, 3, 1L, any()) }
     }
 
     @Test
