@@ -2,7 +2,6 @@ package pl.sroki.cci.android.data
 
 import kotlinx.coroutines.flow.Flow
 import pl.sroki.cci.android.data.datasource.local.dao.CapCacheDao
-import pl.sroki.cci.android.data.datasource.local.entity.CapCache
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.flow.map
