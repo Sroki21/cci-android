@@ -46,6 +46,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import androidx.core.graphics.scale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -178,7 +179,7 @@ private fun writeCrop(context: Context, source: Bitmap, window: CropWindow): Uri
     val out = if (cropped.width == target) {
         cropped
     } else {
-        Bitmap.createScaledBitmap(cropped, target, target, true)
+        cropped.scale(target, target)
     }
 
     val file = newCropFile(context.cacheDir)

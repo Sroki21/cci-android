@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<issues format="6" by="lint 9.3.0" type="baseline" client="gradle" dependencies="false" name="AGP (9.3.0)" variant="all" version="9.3.0">
+<issues format="6" by="lint 9.3.2" type="baseline" client="gradle" dependencies="false" name="AGP (9.3.2)" variant="all" version="9.3.2">
 
     <issue
         id="ExifInterface"
@@ -19,19 +19,8 @@
         errorLine2="        ^">
         <location
             file="src/main/java/pl/sroki/cci/android/ui/catalog/picturesearch/CropScreen.kt"
-            line="149"
+            line="150"
             column="9"/>
-    </issue>
-
-    <issue
-        id="AndroidGradlePluginVersion"
-        message="A newer version of Gradle than 9.6.1 is available: 9.7.0"
-        errorLine1="distributionUrl=https\://services.gradle.org/distributions/gradle-9.6.1-bin.zip"
-        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="$HOME/Projects/cci-android/gradle/wrapper/gradle-wrapper.properties"
-            line="3"
-            column="17"/>
     </issue>
 
     <issue
@@ -108,6 +97,17 @@
     </issue>
 
     <issue
+        id="UseOfNonLambdaOffsetOverload"
+        message="State backed values should use the lambda overload of Modifier.offset"
+        errorLine1="            .offset(x = if (widoczna) 0.dp else POZA_EKRANEM),"
+        errorLine2="             ~~~~~~">
+        <location
+            file="src/main/java/pl/sroki/cci/android/ui/auth/ClearanceGate.kt"
+            line="157"
+            column="14"/>
+    </issue>
+
+    <issue
         id="MonochromeLauncherIcon"
         message="The application adaptive icon is missing a monochrome tag"
         errorLine1="&lt;adaptive-icon xmlns:android=&quot;http://schemas.android.com/apk/res/android&quot;>"
@@ -116,138 +116,6 @@
             file="src/main/res/mipmap-anydpi-v26/ic_launcher.xml"
             line="2"
             column="1"/>
-    </issue>
-
-    <issue
-        id="UseKtx"
-        message="Use the KTX extension function `SharedPreferences.edit` instead?"
-        errorLine1="            prefs.edit().putString(&quot;user_agent&quot;, webViewUserAgent).apply()"
-        errorLine2="            ~~~~~~~~~~~~">
-        <location
-            file="src/main/java/pl/sroki/cci/android/data/datasource/remote/auth/ClearanceStore.kt"
-            line="127"
-            column="13"/>
-    </issue>
-
-    <issue
-        id="UseKtx"
-        message="Use the KTX extension function `SharedPreferences.edit` instead?"
-        errorLine1="        prefs.edit().putLong(KEY_FLAGS_FETCHED_AT, System.currentTimeMillis()).apply()"
-        errorLine2="        ~~~~~~~~~~~~">
-        <location
-            file="src/main/java/pl/sroki/cci/android/data/CountriesRepository.kt"
-            line="54"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="UseKtx"
-        message="Use the KTX extension function `SharedPreferences.edit` instead?"
-        errorLine1="            prefs.edit()"
-        errorLine2="            ~~~~~~~~~~~~">
-        <location
-            file="src/main/java/pl/sroki/cci/android/data/datasource/local/CredentialsStore.kt"
-            line="44"
-            column="13"/>
-    </issue>
-
-    <issue
-        id="UseKtx"
-        message="Use the KTX extension function `SharedPreferences.edit` instead?"
-        errorLine1="        prefs.edit().clear().apply()"
-        errorLine2="        ~~~~~~~~~~~~">
-        <location
-            file="src/main/java/pl/sroki/cci/android/data/datasource/local/CredentialsStore.kt"
-            line="69"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="UseKtx"
-        message="Use the KTX extension function `Bitmap.scale` instead?"
-        errorLine1="        Bitmap.createScaledBitmap(cropped, target, target, true)"
-        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/java/pl/sroki/cci/android/ui/catalog/picturesearch/CropScreen.kt"
-            line="181"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="UseKtx"
-        message="Use the KTX extension function `SharedPreferences.edit` instead?"
-        errorLine1="        prefs.edit().putInt(KEY_BINDER_DEDUP, BINDER_DEDUP_VERSION).apply()"
-        errorLine2="        ~~~~~~~~~~~~">
-        <location
-            file="src/main/java/pl/sroki/cci/android/data/FirestoreRestoreUseCase.kt"
-            line="125"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="UseKtx"
-        message="Use the KTX extension function `SharedPreferences.edit` instead?"
-        errorLine1="        prefs.edit().putInt(KEY_PRODUCER_BACKFILL, PRODUCER_BACKFILL_VERSION).apply()"
-        errorLine2="        ~~~~~~~~~~~~">
-        <location
-            file="src/main/java/pl/sroki/cci/android/data/FirestoreRestoreUseCase.kt"
-            line="148"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="UseKtx"
-        message="Use the KTX extension function `SharedPreferences.edit` instead?"
-        errorLine1="        prefs.edit().putStringSet(KEY, ids).apply()"
-        errorLine2="        ~~~~~~~~~~~~">
-        <location
-            file="src/main/java/pl/sroki/cci/android/data/PurchasedCapsLocalStore.kt"
-            line="27"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="UseKtx"
-        message="Use the KTX extension function `SharedPreferences.edit` instead?"
-        errorLine1="        prefs.edit().putStringSet(KEY, ids).apply()"
-        errorLine2="        ~~~~~~~~~~~~">
-        <location
-            file="src/main/java/pl/sroki/cci/android/data/PurchasedCapsLocalStore.kt"
-            line="34"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="UseKtx"
-        message="Use the KTX extension function `SharedPreferences.edit` instead?"
-        errorLine1="        prefs.edit().putStringSet(KEY, capIds.map { it.toString() }.toSet()).apply()"
-        errorLine2="        ~~~~~~~~~~~~">
-        <location
-            file="src/main/java/pl/sroki/cci/android/data/PurchasedCapsLocalStore.kt"
-            line="44"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="UseKtx"
-        message="Use the KTX extension function `SharedPreferences.edit` instead?"
-        errorLine1="        set(value) = prefs.edit().putInt(KEY_BACKFILLED_VERSION, value).apply()"
-        errorLine2="                     ~~~~~~~~~~~~">
-        <location
-            file="src/main/java/pl/sroki/cci/android/data/VerificationPrefs.kt"
-            line="17"
-            column="22"/>
-    </issue>
-
-    <issue
-        id="UseKtx"
-        message="Use the KTX function `createBitmap` instead?"
-        errorLine1="        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)"
-        errorLine2="                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/java/pl/sroki/cci/android/ui/statistics/map/WorldMapParser.kt"
-            line="158"
-            column="22"/>
     </issue>
 
 </issues>

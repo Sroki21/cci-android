@@ -2,6 +2,7 @@ package pl.sroki.cci.android.data
 
 import android.content.Context
 import android.util.Log
+import androidx.core.content.edit
 import androidx.room.withTransaction
 import dagger.hilt.android.qualifiers.ApplicationContext
 import io.sentry.Sentry
@@ -125,7 +126,7 @@ class FirestoreRestoreUseCase @Inject constructor(
                 Log.i("CCI_SYNC", "usunięto ${doUsuniecia.size} pustych duplikatów klasera \"${zachowany.name}\"")
             }
         }
-        prefs.edit().putInt(KEY_BINDER_DEDUP, BINDER_DEDUP_VERSION).apply()
+        prefs.edit { putInt(KEY_BINDER_DEDUP, BINDER_DEDUP_VERSION) }
     }
 
     /**
@@ -148,7 +149,7 @@ class FirestoreRestoreUseCase @Inject constructor(
             )
             pushed++
         }
-        prefs.edit().putInt(KEY_PRODUCER_BACKFILL, PRODUCER_BACKFILL_VERSION).apply()
+        prefs.edit { putInt(KEY_PRODUCER_BACKFILL, PRODUCER_BACKFILL_VERSION) }
         Log.i("CCI_SYNC", "backfill wyborów producenta: wypchnięto $pushed")
         return pushed
     }
@@ -194,7 +195,7 @@ class FirestoreRestoreUseCase @Inject constructor(
             }
         }
         if (!backfillWykonany) {
-            prefs.edit().putInt(KEY_PURCHASED_BACKFILL, PURCHASED_BACKFILL_VERSION).apply()
+            prefs.edit { putInt(KEY_PURCHASED_BACKFILL, PURCHASED_BACKFILL_VERSION) }
         }
         prunePurchasedAlreadyInBinders()
     }

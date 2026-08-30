@@ -2,6 +2,7 @@ package pl.sroki.cci.android.data
 
 import android.content.Context
 import android.util.Log
+import androidx.core.content.edit
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import pl.sroki.cci.android.data.datasource.local.dao.CountryFlagDao
@@ -51,7 +52,7 @@ class CountriesRepository @Inject constructor(
             throw e
         }
         countryFlagDao.upsertAll(fetched.map { CountryFlag(it.name, it.imageUrl) })
-        prefs.edit().putLong(KEY_FLAGS_FETCHED_AT, System.currentTimeMillis()).apply()
+        prefs.edit { putLong(KEY_FLAGS_FETCHED_AT, System.currentTimeMillis()) }
         return fetched.associate { it.name to it.imageUrl }
     }
 

@@ -5,6 +5,7 @@ import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.util.Base64
 import android.util.Log
+import androidx.core.content.edit
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.security.KeyStore
 import javax.crypto.Cipher
@@ -41,10 +42,10 @@ class CredentialsStore @Inject constructor(@ApplicationContext context: Context)
 
     fun save(email: String, password: String) {
         runCatching {
-            prefs.edit()
-                .putString(PREF_EMAIL, encrypt(email))
-                .putString(PREF_PASSWORD, encrypt(password))
-                .apply()
+            prefs.edit {
+                putString(PREF_EMAIL, encrypt(email))
+                putString(PREF_PASSWORD, encrypt(password))
+            }
         }.onFailure {
             Log.w("CCI_AUTH", "credentials store: zapis nieudany: ${it.message}")
             clear()
@@ -66,7 +67,7 @@ class CredentialsStore @Inject constructor(@ApplicationContext context: Context)
     fun hasCredentials(): Boolean = prefs.contains(PREF_PASSWORD)
 
     fun clear() {
-        prefs.edit().clear().apply()
+        prefs.edit { clear() }
     }
 
     private fun secretKey(): SecretKey {

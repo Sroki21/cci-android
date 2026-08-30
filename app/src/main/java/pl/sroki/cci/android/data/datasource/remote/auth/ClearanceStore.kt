@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.Log
 import android.webkit.CookieManager
 import android.webkit.WebSettings
+import androidx.core.content.edit
 import com.franmontiel.persistentcookiejar.PersistentCookieJar
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CompletableDeferred
@@ -150,7 +151,7 @@ class ClearanceStore @Inject constructor(
     fun syncFromWebView(webViewUserAgent: String): Boolean {
         if (userAgent != webViewUserAgent) {
             userAgent = webViewUserAgent
-            prefs.edit().putString("user_agent", webViewUserAgent).apply()
+            prefs.edit { putString("user_agent", webViewUserAgent) }
         }
 
         val url = baseUrl.toHttpUrl()

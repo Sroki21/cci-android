@@ -148,6 +148,12 @@ fun ClearanceGate(
             // tak samo jak na wierzchu), ale nie łapie dotknięć. Samo przesunięcie NIE wystarcza,
             // by jej nie było widać — WebView się nim nie przejmuje i maluje po całym ekranie,
             // dlatego niewidoczność załatwia `view.alpha` w `update` poniżej.
+            //
+            // Wariant lambdowy `offset { }`, którego chce lint (UseOfNonLambdaOffsetOverload),
+            // opłaca się przy offsecie zmiennym co klatkę (animacja, przewijanie) — tutaj wartość
+            // zmienia się raz na challenge, a przeliczanie dp na piksele wciągałoby gęstość ekranu
+            // do miejsca, które trzy razy okazało się wrażliwe na drobne zmiany (historia
+            // migotania bramki). Ostrzeżenie świadomie zamrożone w lint-baseline.xml.
             .offset(x = if (widoczna) 0.dp else POZA_EKRANEM),
     ) {
         AndroidView(

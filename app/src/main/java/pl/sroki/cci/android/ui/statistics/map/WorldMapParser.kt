@@ -9,6 +9,7 @@ import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.RectF
 import androidx.core.graphics.PathParser
+import androidx.core.graphics.createBitmap
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
@@ -155,7 +156,7 @@ class WorldMapParser @Inject constructor(
     ): Pair<Bitmap, List<String>> {
         val width = (viewBox.width * HIT_TEST_SCALE).toInt().coerceAtLeast(1)
         val height = (viewBox.height * HIT_TEST_SCALE).toInt().coerceAtLeast(1)
-        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        val bitmap = createBitmap(width, height)
         val canvas = Canvas(bitmap)
         // Kolejność ma znaczenie: scale, potem translate daje px = (v − min) · HIT_TEST_SCALE.
         canvas.scale(HIT_TEST_SCALE.toFloat(), HIT_TEST_SCALE.toFloat())
