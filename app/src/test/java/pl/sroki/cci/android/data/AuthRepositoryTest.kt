@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import com.franmontiel.persistentcookiejar.PersistentCookieJar
 import io.mockk.coEvery
+import io.mockk.coVerifyOrder
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
@@ -17,6 +18,7 @@ import org.junit.Before
 import org.junit.Test
 import pl.sroki.cci.android.data.datasource.local.CredentialsStore
 import pl.sroki.cci.android.data.datasource.remote.auth.AuthApiService
+import pl.sroki.cci.android.data.datasource.remote.auth.WebSessionCookies
 import pl.sroki.cci.android.model.LoginRequest
 import retrofit2.Response
 
@@ -28,6 +30,7 @@ class AuthRepositoryTest {
     private lateinit var credentialsStore: CredentialsStore
     private lateinit var firebaseAuthManager: FirebaseAuthManager
     private lateinit var firestoreRestoreUseCase: FirestoreRestoreUseCase
+    private lateinit var webSessionCookies: WebSessionCookies
 
     @Before
     fun setUp() {
@@ -38,6 +41,7 @@ class AuthRepositoryTest {
         every { credentialsStore.hasCredentials() } returns false
         firebaseAuthManager = mockk(relaxed = true)
         firestoreRestoreUseCase = mockk(relaxed = true)
+        webSessionCookies = mockk(relaxed = true)
         coEvery { authApiService.apiToken(any()) } returns mockk(relaxed = true)
         coEvery { firebaseAuthManager.signInWithEmail(any(), any()) } returns Unit
         coEvery { firestoreRestoreUseCase.restoreIfEmpty() } returns Unit
@@ -71,7 +75,7 @@ class AuthRepositoryTest {
 
     private fun buildRepo() = AuthRepository(
         authApiService, sessionRepository, cookieJar, credentialsStore,
-        firebaseAuthManager, firestoreRestoreUseCase
+        firebaseAuthManager, firestoreRestoreUseCase, webSessionCookies
     )
 
     @Test
@@ -119,6 +123,26 @@ class AuthRepositoryTest {
 
         assertTrue(result.isSuccess)
         assertTrue(sessionRepository.isLoggedIn.value)
+    }
+
+    @Test
+    fun `login porzuca cookies sesji zanim zacznie`() = runTest {
+        // Ręczne logowanie nie przechodzi przez logout(), więc nikt inny tego jara nie czyści.
+        // Stara sesja zostawiona w jarze potrafi przeżyć logowanie jako drugi wpis i przykryć
+        // nową — wtedy serwer bierze ten martwy i odmawia (`f963c6f`).
+        every { cookieJar.loadForRequest(any()) } returns emptyList()
+        val repo = buildRepo()
+        coEvery { authApiService.initCsrf() } returns Response.success(Unit)
+        coEvery { authApiService.login(any()) } returns Response.success("{}".toResponseBody("application/json".toMediaType()))
+
+        repo.login("user@example.com", "password")
+
+        // Kolejność jest istotna: czyszczenie po initCsrf() wyrzuciłoby świeży XSRF-TOKEN.
+        coVerifyOrder {
+            webSessionCookies.drop()
+            authApiService.initCsrf()
+            authApiService.login(any())
+        }
     }
 
     @Test

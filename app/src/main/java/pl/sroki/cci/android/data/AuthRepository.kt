@@ -6,6 +6,7 @@ import com.franmontiel.persistentcookiejar.PersistentCookieJar
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import pl.sroki.cci.android.data.datasource.local.CredentialsStore
 import pl.sroki.cci.android.data.datasource.remote.auth.AuthApiService
+import pl.sroki.cci.android.data.datasource.remote.auth.WebSessionCookies
 import pl.sroki.cci.android.model.LoginErrorResponse
 import pl.sroki.cci.android.model.LoginRequest
 import javax.inject.Inject
@@ -18,7 +19,8 @@ class AuthRepository @Inject constructor(
     private val cookieJar: PersistentCookieJar,
     private val credentialsStore: CredentialsStore,
     private val firebaseAuthManager: FirebaseAuthManager,
-    private val firestoreRestoreUseCase: FirestoreRestoreUseCase
+    private val firestoreRestoreUseCase: FirestoreRestoreUseCase,
+    private val webSessionCookies: WebSessionCookies
 ) {
     init {
         val hasSession = cookieJar
@@ -35,6 +37,11 @@ class AuthRepository @Inject constructor(
 
     suspend fun login(email: String, password: String): Result<Unit> {
         return try {
+            // Ta sama higiena co przy cichym logowaniu w SessionRefresher: stara sesja jest tu i
+            // tak bez wartości, a zostawiona potrafi przeżyć logowanie jako drugi wpis w jarze
+            // i przykryć nową — wtedy serwer bierze ten martwy i odmawia (`f963c6f`). Samo
+            // logowanie z ekranu nie przechodzi przez logout(), więc nikt tego jara nie czyści.
+            webSessionCookies.drop()
             authApiService.initCsrf()
             val response = authApiService.login(LoginRequest(email, password))
             Log.d("CCI_AUTH", "login code=${response.code()}")

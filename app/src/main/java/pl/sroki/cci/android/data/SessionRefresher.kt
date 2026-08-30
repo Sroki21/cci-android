@@ -1,14 +1,11 @@
 package pl.sroki.cci.android.data
 
 import android.util.Log
-import com.franmontiel.persistentcookiejar.PersistentCookieJar
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import okhttp3.Cookie
-import okhttp3.HttpUrl.Companion.toHttpUrl
 import pl.sroki.cci.android.data.datasource.local.CredentialsStore
 import pl.sroki.cci.android.data.datasource.remote.auth.AuthApiService
-import pl.sroki.cci.android.data.datasource.remote.auth.SESSION_COOKIE_NAMES
+import pl.sroki.cci.android.data.datasource.remote.auth.WebSessionCookies
 import pl.sroki.cci.android.model.LoginRequest
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -38,8 +35,7 @@ class SessionRefresher @Inject constructor(
     private val authApiService: AuthApiService,
     private val credentialsStore: CredentialsStore,
     private val sessionRepository: SessionRepository,
-    private val cookieJar: PersistentCookieJar,
-    private val baseUrl: String
+    private val webSessionCookies: WebSessionCookies
 ) {
 
     private companion object {
@@ -67,11 +63,19 @@ class SessionRefresher @Inject constructor(
 
     /** Pełny wariant: ciche zalogowanie zapisanymi poświadczeniami. */
     suspend fun reauthenticate(): ReauthResult = mutex.withLock {
-        if (System.currentTimeMillis() - lastSuccessAt < FRESH_WINDOW_MS) return ReauthResult.SUCCESS
+        // Skrót przez okno świeżości wolno wziąć tylko wtedy, gdy w jarze siedzi dokładnie jedna
+        // sesja. Challenge Cloudflare chodzi współbieżnie z odnawianiem na innym wątku OkHttpa,
+        // więc zatrucie jara potrafi trafić w te dziesięć sekund PO udanym logowaniu — wtedy
+        // „sukces sprzed chwili" jest już nieaktualny, a ponowienie i tak dostałoby 401.
+        if (System.currentTimeMillis() - lastSuccessAt < FRESH_WINDOW_MS &&
+            !webSessionCookies.isDuplicated()
+        ) {
+            return ReauthResult.SUCCESS
+        }
 
         val credentials = credentialsStore.load() ?: return ReauthResult.NO_CREDENTIALS
         val response = runCatching {
-            dropSessionCookies()
+            webSessionCookies.drop()
             authApiService.initCsrf()
             authApiService.login(LoginRequest(credentials.email, credentials.password))
         }.getOrElse {
@@ -113,42 +117,4 @@ class SessionRefresher @Inject constructor(
     fun forgetCredentials() {
         credentialsStore.clear()
     }
-
-    /**
-     * Porzuca cookies starej sesji, żeby logowanie zaczynało od czystej karty.
-     *
-     * Bez tego ciche logowanie potrafiło zwrócić 200, a mimo to **ponowione żądanie dostawało
-     * 401** — i tak w kółko, aż do restartu procesu. Odtworzone na urządzeniu 2026-08-18:
-     * gdy sesja webowa i `cf_clearance` wygasną naraz (kilka dni bez otwierania aplikacji),
-     * `ClearanceStore.selectTransferable` nie ma czego chronić (`appHasSession=false`) i wpuszcza
-     * do jara **gościnne** `crowncapsinfo-session` oraz `XSRF-TOKEN` z WebView. Cookie z WebView
-     * budujemy sami (host-only + secure), a to od serwera przychodzi z własnymi atrybutami —
-     * jeśli się różnią, `PersistentCookieJar` widzi dwa osobne wpisy i wysyła oba. Serwer bierze
-     * gościnny i odmawia. Zły stan siedzi w pamięci jara, dlatego przeżywał kolejne logowania,
-     * a `CookiePersistence.xml` nawet nie pokazywał duplikatu (klucz to `url|nazwa`).
-     *
-     * Usuwamy przez nadpisanie wygasłą kopią: `PersistentCookieJar` nie ma API do skasowania
-     * pojedynczego cookie, ale `loadForRequest` wymiata przeterminowane z cache **i** z dysku.
-     * Kopia zachowuje domenę, ścieżkę i flagi, więc trafia dokładnie w ten sam wpis — czyścimy
-     * każdy wariant, nie zgadując, który z nich jest tym zatrutym.
-     */
-    private fun dropSessionCookies() {
-        val url = baseUrl.toHttpUrl()
-        val stale = cookieJar.loadForRequest(url).filter { it.name in SESSION_COOKIE_NAMES }
-        if (stale.isEmpty()) return
-        cookieJar.saveFromResponse(url, stale.map { it.expired() })
-        cookieJar.loadForRequest(url)
-        Log.d("CCI_AUTH", "reauth: porzucono ${stale.size} cookies starej sesji przed logowaniem")
-    }
-
-    /** Ta sama tożsamość cookie (domena/ścieżka/flagi), ale z datą wygaśnięcia w przeszłości. */
-    private fun Cookie.expired(): Cookie = Cookie.Builder()
-        .name(name)
-        .value(value)
-        .path(path)
-        .expiresAt(1L)
-        .let { if (hostOnly) it.hostOnlyDomain(domain) else it.domain(domain) }
-        .let { if (secure) it.secure() else it }
-        .let { if (httpOnly) it.httpOnly() else it }
-        .build()
 }

@@ -22,10 +22,9 @@ internal const val SESSION_COOKIE_NAME = "crowncapsinfo-session"
 /**
  * Komplet cookies niosących tożsamość sesji webowej.
  *
- * Nie wolno ich nadpisać gościnnymi z WebView, gdy aplikacja ma już zalogowaną sesję
- * ([ClearanceStore.selectTransferable]), i trzeba je porzucić przed cichym przelogowaniem
- * ([pl.sroki.cci.android.data.SessionRefresher]). `XSRF-TOKEN` idzie w parze z sesją: token
- * z innej sesji dałby 419 przy pierwszym POST.
+ * Nigdy nie przenoszone z WebView ([ClearanceStore.selectTransferable]) i porzucane przed
+ * każdym logowaniem ([pl.sroki.cci.android.data.datasource.remote.auth.WebSessionCookies]).
+ * `XSRF-TOKEN` idzie w parze z sesją: token z innej sesji dałby 419 przy pierwszym POST.
  */
 internal val SESSION_COOKIE_NAMES = setOf(SESSION_COOKIE_NAME, "XSRF-TOKEN")
 
@@ -39,9 +38,8 @@ internal val SESSION_COOKIE_NAMES = setOf(SESSION_COOKIE_NAME, "XSRF-TOKEN")
  *
  *  1. trzyma User-Agent zgodny z tym, którego używa WebView — `cf_clearance` jest ważny **tylko**
  *     dla pary (UA, IP), która go uzyskała, więc OkHttp musi wysyłać dokładnie ten sam UA;
- *  2. przenosi cookies z [CookieManager] WebView do [PersistentCookieJar] OkHttpa, żeby żądania
- *     API niosły `cf_clearance` (oraz świeżą sesję webową, jeśli użytkownik przy okazji się
- *     zalogował na stronie);
+ *  2. przenosi cookies Cloudflare z [CookieManager] WebView do [PersistentCookieJar] OkHttpa,
+ *     żeby żądania API niosły `cf_clearance` — bez cookies sesji, patrz [selectTransferable];
  *  3. wystawia [challengeRequired], które warstwa nawigacji obserwuje, by pokazać ekran WebView,
  *     gdy interceptor wykryje challenge.
  *
@@ -157,8 +155,7 @@ class ClearanceStore @Inject constructor(
 
         val url = baseUrl.toHttpUrl()
         val rawCookies = CookieManager.getInstance().getCookie(baseUrl) ?: return false
-        val appHasSession = cookieJar.loadForRequest(url).any { it.name == SESSION_COOKIE }
-        val cookies = selectTransferable(parseWebViewCookies(rawCookies, url), appHasSession)
+        val cookies = selectTransferable(parseWebViewCookies(rawCookies, url))
         if (cookies.isEmpty()) return false
 
         cookieJar.saveFromResponse(url, cookies)
@@ -188,25 +185,28 @@ class ClearanceStore @Inject constructor(
     }
 
     /**
-     * Wybiera cookies, które wolno przenieść z WebView do jara OkHttpa.
+     * Wybiera cookies, które wolno przenieść z WebView do jara OkHttpa: wszystko poza sesją.
      *
      * Cookies Cloudflare przenosimy zawsze — po to jest cały ten mechanizm. Cookies sesji serwisu
-     * przenosimy **tylko wtedy, gdy aplikacja własnej sesji jeszcze nie ma**. W WebView użytkownik
-     * jest zwykle gościem: otwiera się tam po to, żeby przejść challenge, nie żeby się zalogować.
-     * Przeniesienie gościnnego `crowncapsinfo-session` razem z `XSRF-TOKEN` nadpisywało
-     * uwierzytelnioną sesję OkHttpa, przez co `POST /data/…` (m.in. wyszukiwanie kapsla) wracał
-     * z 403 — a `AuthRepository` wciąż widział cookie o właściwej nazwie i uznawał użytkownika za
-     * zalogowanego, więc nie było ani ponowienia, ani wylogowania. Odzyskiwanie wygasłej sesji
-     * należy do `ReauthInterceptor` (ciche logowanie), nie do tego ekranu.
+     * **nigdy**: w WebView użytkownik jest gościem. [ClearanceGate] otwiera go wyłącznie po to,
+     * żeby wykonać JavaScript challengu, i nie ma w nim żadnej ścieżki logowania — poprzedni
+     * `ClearanceScreen`, w którym użytkownik mógł się zalogować na stronie, zniknął w `c9a8ce5`.
+     *
+     * Przeniesienie gościnnego `crowncapsinfo-session` razem z `XSRF-TOKEN` kosztowało dwa błędy.
+     * Najpierw (`c17aff3`) nadpisywało uwierzytelnioną sesję OkHttpa: `POST /data/…` wracał z 403,
+     * a `AuthRepository` wciąż widział cookie o właściwej nazwie i uznawał użytkownika za
+     * zalogowanego, więc nie było ani ponowienia, ani wylogowania. Warunkowa ochrona z tamtego
+     * commita („nie nadpisuj, gdy aplikacja ma już sesję") nie działała w jedynym przypadku,
+     * który miał znaczenie — gdy sesja i `cf_clearance` wygasną naraz, chronić nie ma czego,
+     * i gościnne cookies wjeżdżały do jara obok tych z logowania (`f963c6f`).
+     *
+     * Odzyskiwanie wygasłej sesji należy do `ReauthInterceptor` (ciche logowanie), nie do WebView.
      */
-    fun selectTransferable(cookies: List<Cookie>, appHasSession: Boolean): List<Cookie> =
-        if (appHasSession) cookies.filterNot { it.name in SESSION_COOKIES } else cookies
+    fun selectTransferable(cookies: List<Cookie>): List<Cookie> =
+        cookies.filterNot { it.name in SESSION_COOKIE_NAMES }
 
     private companion object {
         const val CLEARANCE_COOKIE = "cf_clearance"
-        const val SESSION_COOKIE = SESSION_COOKIE_NAME
-
-        val SESSION_COOKIES = SESSION_COOKIE_NAMES
 
         // Trzymamy przeniesione cookies jak najdłużej po stronie klienta. O realnym czasie życia
         // cf_clearance decyduje i tak Cloudflare (ustawienie „Challenge Passage" serwisu), a
