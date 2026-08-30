@@ -11,6 +11,11 @@ sources:
 
 # CCI Android — Plan refaktoru: Anti-Corruption Layer dla encji Room
 
+> **STATUS: WDROŻONY.** Ten dokument opisuje obowiązujący kształt granicy między Roomem a UI,
+> nie zadanie do wykonania. Kryterium z planu jest spełnione — `grep -r "datasource.local.entity"
+> ui/` daje zero trafień. Dwa siostrzane dokumenty z tej samej analizy (destylacja domeny
+> i porzucony agregat `CollectionEntry`) leżą w `context/archive/2026-06-16-domain-analysis/`.
+
 ---
 
 ## KROK 0 — Odkryj kontekst
