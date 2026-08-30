@@ -107,7 +107,6 @@ testOptions:  unitTests.returnDefaultValues = true
 
 | Klasa                       | Typ    | Co testuje                                       |
 |-----------------------------|--------|--------------------------------------------------|
-| `ExampleUnitTest`           | stub   | auto-wygenerowany (2+2=4)                        |
 | `CapsRepositoryTest`        | realny | 5 testów delegacji getLatest/getByCountryId/getByQuery/PagingSource |
 | `AuthRepositoryTest`        | realny | 5 testów login/logout/cookie session/CSRF flow   |
 | `HomeViewModelTest`         | realny | 3 testy stanu isLoggedIn/userName                |
